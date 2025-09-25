@@ -18,7 +18,6 @@ function readOpenFoamMesh(caseDir::String)
     nodes = readPointsFile(polymeshDir)
     owner = readOwnersFile(polymeshDir)
     neighbors = readNeighborsFile(polymeshDir)
-    println(neighbors)
     faces = readFacesFile(polymeshDir, owner, neighbors)
     numCells = maximum(owner) + 1
     boundaries = readBoundaryFile(polymeshDir)
@@ -174,10 +173,6 @@ function processOpenFoamMesh(mesh::Mesh)::Mesh
     return mesh
 end # function processOpenFoamMesh
 
-function _getEmptyVec3()::Vector{Float64}
-    return [0.0, 0.0, 0.0]
-end # function _getEmptyVec3
-
 function magnitude(vector::Vector{Float64})::Float64
     return sqrt(dot(vector, vector))
 end # function magnitude
@@ -185,8 +180,8 @@ end # function magnitude
 function processBasicFaceGeometry(mesh::Mesh)::Mesh
     println("Processing Mesh Geometry")
     for (index, face) in enumerate(mesh.faces)
-        centroid = _getEmptyVec3()
-        Sf = _getEmptyVec3()
+        centroid = zeros(3)
+        Sf = zeros(3)
         area = 0.0
         # special case: triangle
         if size(face.iNodes)[1] == 3
@@ -201,8 +196,8 @@ function processBasicFaceGeometry(mesh::Mesh)::Mesh
             # Using the center to compute the area and centroid of virtual
             # triangles based on the center and the face nodes
             triangleNode1 = center
-            triangleNode2 = _getEmptyVec3()
-            triangleNode3 = _getEmptyVec3()
+            triangleNode2 = zeros(3)
+            triangleNode3 = zeros(3)
             for (index, iNode) in enumerate(face.iNodes)
                 triangleNode2 = mesh.nodes[iNode].centroid
                 if index < size(face.iNodes)[1] - 1
@@ -233,12 +228,12 @@ end # function processBasicFaceGeometry
 function computeElementVolumeAndCentroid(mesh)::Mesh
     println("Computing Element Volumen and Centroid")
     for cell in mesh.cells
-        elementCenter = _getEmptyVec3()
+        elementCenter = zeros(3)
         elementCenter = sum(map(f -> f.centroid, mesh.faces[cell.iFaces])) / size(cell.iFaces)[1]
 
         # Compute volume and centroid of each element
-        elementCentroid = _getEmptyVec3()
-        localVolumeCentroidSum = _getEmptyVec3()
+        elementCentroid = zeros(3)
+        localVolumeCentroidSum = zeros(3)
         localVolumeSum = 0.0
         for i in 1:size(cell.iFaces)[1]
             localFace = mesh.faces[i]

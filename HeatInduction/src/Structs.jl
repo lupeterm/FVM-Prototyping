@@ -1,5 +1,5 @@
 module Structs
-export CaseDirError, Face, Node, Boundary, Cell, Mesh
+export CaseDirError, Face, Node, Boundary, Cell, Mesh, Field, BoundaryField
 
 struct CaseDirError <: Exception
     message::String
@@ -36,7 +36,7 @@ struct Boundary
     inGroups::Tuple{Int,String}
     nFaces::Int
     startFace::Int
-end
+end # struct Boundary
 
 mutable struct Cell
     index::Int
@@ -48,7 +48,7 @@ mutable struct Cell
     volume::Float64
     oldVolume::Float64
     centroid::Vector{Float64}
-end
+end # struct Cell
 
 struct Mesh
     nodes::Vector{Node}
@@ -59,6 +59,17 @@ struct Mesh
     numInteriorFaces::Int
     numBoundaryCells::Int
     numBoundaryFaces::Int
-end
+end # struct Mesh
+
+mutable struct Field
+    nElements::Int
+    values::Vector{Float64}
+end # struct Field
+
+mutable struct BoundaryField
+    nFaces::Int
+    values::Vector{Float64}
+    type::String
+end # struct BoundaryField
 
 end # module Structs
