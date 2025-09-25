@@ -19,13 +19,15 @@ mutable struct Face
     gDiff::Float64
     T::Vector{Float64}
     gf::Float64
+    patchIndex::Int
 end # struct Face
 
-struct Node
+mutable struct Node
     centroid::Vector{Float64}
     faces::Vector{Face}
     iCells::Vector{Int}
     iFaces::Vector{Int}
+    flag::Int
 end # struct Node
 
 struct Boundary

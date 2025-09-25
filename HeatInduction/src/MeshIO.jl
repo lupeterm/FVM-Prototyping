@@ -39,7 +39,7 @@ function readPointsFile(polyMeshDir::String)::Vector{Node}
     for line in lines
         s = split((line[2:(end-1)]), " ")
         coords = map(s -> tryparse(Float64, s), s)
-        push!(nodes, Node(coords, [], [], []))
+        push!(nodes, Node(coords, [], [], [], 0))
     end
     return nodes
 
@@ -55,7 +55,7 @@ function readFacesFile(polyMeshDir::String, owners::Vector{Int}, neighbors::Vect
     for (index, line) in enumerate(lines)
         s = split((line[3:(end-1)]), " ")
         nodes = map(s -> tryparse(Int, s) + 1, s)
-        push!(faces, Face(index, nodes, owners[index], 0, [], [], 0.0, [], 0.0, [], 0.0, [], 0.0))
+        push!(faces, Face(index, nodes, owners[index], 0, [], [], 0.0, [], 0.0, [], 0.0, [], 0.0, 0))
     end
     for (i, nb) in enumerate(neighbors)
         faces[i].iNeighbor = nb
@@ -169,6 +169,9 @@ function processOpenFoamMesh(mesh::Mesh)::Mesh
     mesh = processBasicFaceGeometry(mesh)
     mesh = computeElementVolumeAndCentroid(mesh)
     mesh = processSecondaryFaceGeometry(mesh)
+    mesh = sortBoundaryNodesFromInteriorNodes(mesh)
+    mesh = labelBoundaryFaces(mesh)
+    return mesh
 end # function processOpenFoamMesh
 
 function _getEmptyVec3()::Vector{Float64}
@@ -289,7 +292,7 @@ end # function processSecondaryFaceGeometry
 function sortBoundaryNodesFromInteriorNodes(mesh::Mesh)::Mesh
     for face in mesh.faces[1:mesh.numInteriorFaces]
         for iNode in face.iNodes
-            mesh.nodes[iNode] = 1
+            mesh.nodes[iNode].flag = 1
         end
     end
     for boundary in mesh.boundaries
@@ -297,16 +300,25 @@ function sortBoundaryNodesFromInteriorNodes(mesh::Mesh)::Mesh
         nBFaces = boundary.nFaces
         s1 = boundary.name == "frontAndBack"
         s2 = boundary.name == "frontAndBackPlanes"
-        if !s1 && !s2
-            continue
-        end
         for face in mesh.faces[startFace:(startFace+nBFaces)]
             for iNode in face.iNodes
-                mesh.nodes[iNode] = 1
+                mesh.nodes[iNode].flag = (s1 || s2) ? 1 : 0
             end
         end
     end
+    return mesh
 end # function sortBoundaryNodesFromInteriorNodes
+
+function labelBoundaryFaces(mesh::Mesh)::Mesh
+    for (index, boundary) in enumerate(mesh.boundaries)
+        startFace = boundary.startFace
+        nBFaces = boundary.nFaces
+        for face in mesh.faces[startFace:(startFace+nBFaces)]
+            face.patchIndex = index
+        end
+    end
+    return mesh
+end # function labelBoundaryFaces
 
 end # module MeshProcessor
 
