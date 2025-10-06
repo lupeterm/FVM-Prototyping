@@ -43,28 +43,56 @@ function main(caseDirectory::String)
 	internalTemperatureField = Field(numCells, zeros(numCells))
 	boundaryTemperatureFields = readTemperatureField(caseDirectory, mesh, internalTemperatureField)
 
+    println(mesh)
     # Assemble the coefficient matrix and RHS vector
-    RHS = zeros(size(mesh.cells)[1])
-    cellBasedAssembly(mesh, heatSource)
-
+    matrix, RHS = cellBasedAssembly(mesh, heatSource, thermalConductivity, boundaryTemperatureFields)
 end # function main
 
-function cellBasedAssembly(mesh::Mesh, source::Vector{Float64}, diffusionCoeff::Vector{Float64})
+function cellBasedAssembly(mesh::Mesh, source::Vector{Float64}, diffusionCoeff::Vector{Float64}, boundaryFields::Vector{BoundaryField})::Tuple{Matrix{Float64}, Vector{Float64}}
     nCells = size(mesh.cells)[1]
+    RHS = zeros(nCells)
     coeffMatrix = Matrix(zeros(nCells, nCells))
-    for (iElement, theElement) in enumerate(mesh.cells)
+    println(coeffMatrix)
+    # for (iElement, theElement) in enumerate(mesh.cells)
+    for iElement in 1:nCells
+        theElement = mesh.cells[iElement]
         RHS[iElement] = source[iElement] * theElement.volume
-        nFaces = size(theElement.iFaces)[1]
         diag = 0.0
-        for iFace in 1:nFaces
-            iFaceIndex = theElement.iFaces[iFace]
+        nFaces = size(theElement.iFaces)[1]
+        println("numfaces: $nFaces")
+        for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
             theFace = mesh.faces[iFaceIndex]
-
-            if theFace.iNeighbor != -1 
+            if theFace.iNeighbor != -1 # if interior face
+                println("$(theFace.index) is interior")
                 FluxCn = diffusionCoeff[iFaceIndex] * theFace.gDiff
                 FluxFn = -FluxCn
+                println("cell: $(iElement), iFace: $(iFace), nb: $(theElement.iNeighbors)")
+                coeffMatrix[iElement, theElement.iNeighbors[iFace]] = FluxFn
+                diag += FluxCn
+            else # if boundary face
+                iBoundary = mesh.faces[iFaceIndex].patchIndex
+                println("$(theFace.index) is exterior mit patchindex $(iBoundary)")
+                boundaryType = boundaryFields[iBoundary].type
+                FluxCb = 0.0
+                FluxVb = 0.0       
+                if boundaryType == "fixedValue" # dirichlet BC
+                    println("fixedValue for $(theFace.index)")
+                    FluxCb = diffusionCoeff[iFaceIndex] * theFace.gDiff
+                    relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+                    println("$relativeFaceIndex = $iFaceIndex - $(mesh.boundaries[iBoundary].startFace)")
+                    FluxVb = -FluxCb * boundaryFields[iBoundary].values[relativeFaceIndex]
+                    diag += FluxCb
+                    RHS[iElement] -= FluxCb
+                else 
+                    # ignore zeroGradient and empty
+                    # Do nothing because FluxCb and FluxVb are already 0.0
+                    # Do nothing because the face does not contribute
+                end
+            end
         end
+        coeffMatrix[iElement, iElement] = diag
     end
+    return coeffMatrix, RHS
 end # function cellBasedAssembly
 
 
@@ -96,6 +124,7 @@ function readTemperatureField(caseDir::String, mesh::Mesh, internalTemperatureFi
                 vals = match(r"(\w+)\s+(\w+)\s?(\d+)?;", lines[pointer])
                 if vals[1] == "type"
                     boundaryTemperatureFields[index].type = vals[2]
+                    println("iBoundary: $index, type: $(vals[2])")
                     if vals[2] == "empty"
                         boundaryTemperatureFields[index].values = []
                         boundaryTemperatureFields[index].nFaces = 0
