@@ -1,54 +1,27 @@
 module HeatInduction
-using ArgParse
-include("MeshIO.jl")
-# include("Structs.jl")
 using LinearAlgebra
-using .MeshIO
-using .MeshIO.Structs
+using MeshIO
+using MeshStructs
 
-arg_info = ArgParseSettings()
-@add_arg_table arg_info begin
-	"--case_directory"
-	arg_type = String
-	required = true
-	"--assembly_method"
-	arg_type = String
-	required = true
-	help = "<cell/face/batchedFace>"
+function heatInduction(caseDirectory::String)
+    mesh = readOpenFoamMesh(caseDirectory)
+    # Define the thermal conductivity and source term
+    thermalConductivity = ones(size(mesh.faces)[1])
+    numCells = size(mesh.cells)[1]
+    numBoundaries = size(mesh.boundaries)[1]
+    heatSource = zeros(numCells)
 
-end
+    # Read initial condition and boundary conditions
 
-if abspath(PROGRAM_FILE) == @__FILE__
-	args = parse_args(arg_info)
-	case_directory = args["case_directory"]
-	assembly_method = args["assembly_method"]
-	try
-		main(case_directory)
-	catch error
-		println(error)
-	end
-end
-
-
-function main(caseDirectory::String)
-	mesh = MeshIO.readOpenFoamMesh(caseDirectory)
-	# Define the thermal conductivity and source term
-	thermalConductivity = ones(size(mesh.faces)[1])
-	numCells = size(mesh.cells)[1]
-	numBoundaries = size(mesh.boundaries)[1]
-	heatSource = zeros(numCells)
-
-	# Read initial condition and boundary conditions
-
-	internalTemperatureField = Field(numCells, zeros(numCells))
-	boundaryTemperatureFields = readTemperatureField(caseDirectory, mesh, internalTemperatureField)
+    internalTemperatureField = Field(numCells, zeros(numCells))
+    boundaryTemperatureFields = readTemperatureField(caseDirectory, mesh, internalTemperatureField)
 
     println(mesh)
     # Assemble the coefficient matrix and RHS vector
     matrix, RHS = cellBasedAssembly(mesh, heatSource, thermalConductivity, boundaryTemperatureFields)
 end # function main
 
-function cellBasedAssembly(mesh::Mesh, source::Vector{Float64}, diffusionCoeff::Vector{Float64}, boundaryFields::Vector{BoundaryField})::Tuple{Matrix{Float64}, Vector{Float64}}
+function cellBasedAssembly(mesh::Mesh, source::Vector{Float64}, diffusionCoeff::Vector{Float64}, boundaryFields::Vector{BoundaryField})::Tuple{Matrix{Float64},Vector{Float64}}
     nCells = size(mesh.cells)[1]
     RHS = zeros(nCells)
     coeffMatrix = Matrix(zeros(nCells, nCells))
@@ -74,7 +47,7 @@ function cellBasedAssembly(mesh::Mesh, source::Vector{Float64}, diffusionCoeff::
                 println("$(theFace.index) is exterior mit patchindex $(iBoundary)")
                 boundaryType = boundaryFields[iBoundary].type
                 FluxCb = 0.0
-                FluxVb = 0.0       
+                FluxVb = 0.0
                 if boundaryType == "fixedValue" # dirichlet BC
                     println("fixedValue for $(theFace.index)")
                     FluxCb = diffusionCoeff[iFaceIndex] * theFace.gDiff
@@ -83,7 +56,7 @@ function cellBasedAssembly(mesh::Mesh, source::Vector{Float64}, diffusionCoeff::
                     FluxVb = -FluxCb * boundaryFields[iBoundary].values[relativeFaceIndex]
                     diag += FluxCb
                     RHS[iElement] -= FluxCb
-                else 
+                else
                     # ignore zeroGradient and empty
                     # Do nothing because FluxCb and FluxVb are already 0.0
                     # Do nothing because the face does not contribute
@@ -95,21 +68,20 @@ function cellBasedAssembly(mesh::Mesh, source::Vector{Float64}, diffusionCoeff::
     return coeffMatrix, RHS
 end # function cellBasedAssembly
 
-
 function readTemperatureField(caseDir::String, mesh::Mesh, internalTemperatureField::Field)::Vector{BoundaryField}
-	TFileName = joinpath(caseDir, "0/T")
-	if !isfile(TFileName)
-		throw(CaseDirError("T file '$(TFileName)' does not exist."))
-	end
-	lines = readlines(TFileName)[19:(end)]
-	split18 = match(r"(\w+)\s+(\w+)\s(\d+);", lines[1])
-	if split18[1] == "internalField" && split18[2] == "uniform"
-		value = tryparse(Int, split18[3])
-		internalTemperatureField.values = [value for x in internalTemperatureField.values]
-	end
+    TFileName = joinpath(caseDir, "0/T")
+    if !isfile(TFileName)
+        throw(CaseDirError("T file '$(TFileName)' does not exist."))
+    end
+    lines = readlines(TFileName)[19:(end)]
+    split18 = match(r"(\w+)\s+(\w+)\s(\d+);", lines[1])
+    if split18[1] == "internalField" && split18[2] == "uniform"
+        value = tryparse(Int, split18[3])
+        internalTemperatureField.values = [value for x in internalTemperatureField.values]
+    end
     boundaryTemperatureFields = [BoundaryField(0, [], "") for _ in 1:(size(mesh.boundaries)[1])]
 
-	if occursin("boundaryField", lines[3])
+    if occursin("boundaryField", lines[3])
         pointer = 5
         for (index, boundary) in enumerate(mesh.boundaries)
             name = strip(lines[pointer])
@@ -141,5 +113,5 @@ function readTemperatureField(caseDir::String, mesh::Mesh, internalTemperatureFi
     return boundaryTemperatureFields
 end # function readTemperatureField
 
-
+export readTemperatureField, cellBasedAssembly, heat
 end # module HeatInduction

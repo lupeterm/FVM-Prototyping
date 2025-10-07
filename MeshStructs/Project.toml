@@ -1,0 +1,6 @@
+name = "MeshStructs"
+uuid = "e7ff797b-5c94-4f68-b228-7c9c2c88eb4f"
+authors = ["Lukas Petermann <lukas.petermann13@gmail.com>"]
+version = "0.1.0"
+
+[deps]

@@ -1,5 +1,4 @@
-module Structs
-export CaseDirError, Face, Node, Boundary, Cell, Mesh, Field, BoundaryField, printBoundary, printFace
+module MeshStructs
 
 struct CaseDirError <: Exception
     message::String
@@ -176,4 +175,7 @@ function printCell(cell::Cell)
     println("\t\tCentroid: ", cell.centroid)
 end
 
-end # module Structs
+
+export CaseDirError, Face, Node, Boundary, Cell, Mesh, Field, BoundaryField, printBoundary, printFace, printCell, printNode
+
+end # module MeshStructs
