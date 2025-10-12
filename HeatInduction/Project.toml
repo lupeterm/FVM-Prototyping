@@ -5,6 +5,8 @@ version = "0.1.0"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-MeshIO = "9ba71a8e-acab-4f1f-95f6-47e475ec8156"
-MeshProcessor = "8593a249-0f5a-40e8-bb3b-d4f7a5832cfc"
+MatrixAssembly = "387d6434-66b3-4999-9a74-654017a16986"
 MeshStructs = "e7ff797b-5c94-4f68-b228-7c9c2c88eb4f"
+
+[compat]
+LinearAlgebra = "1.11.0"

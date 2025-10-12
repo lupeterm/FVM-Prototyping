@@ -1,72 +1,23 @@
 module HeatInduction
-using LinearAlgebra
-using MeshIO
+# include("MeshStructs.jl")
 using MeshStructs
+include("ReadMesh.jl")
 
-function heatInduction(caseDirectory::String)
+function heatInduction(caseDirectory::String)::MatrixAssemblyInput
     mesh = readOpenFoamMesh(caseDirectory)
     # Define the thermal conductivity and source term
     thermalConductivity = ones(size(mesh.faces)[1])
     numCells = size(mesh.cells)[1]
-    numBoundaries = size(mesh.boundaries)[1]
     heatSource = zeros(numCells)
 
     # Read initial condition and boundary conditions
 
     internalTemperatureField = Field(numCells, zeros(numCells))
     boundaryTemperatureFields = readTemperatureField(caseDirectory, mesh, internalTemperatureField)
-
-    println(mesh)
     # Assemble the coefficient matrix and RHS vector
-    matrix, RHS = cellBasedAssembly(mesh, heatSource, thermalConductivity, boundaryTemperatureFields)
+    matrixAssemblyInput = MatrixAssemblyInput(mesh, heatSource, thermalConductivity, boundaryTemperatureFields)
+    return matrixAssemblyInput
 end # function main
-
-function cellBasedAssembly(mesh::Mesh, source::Vector{Float64}, diffusionCoeff::Vector{Float64}, boundaryFields::Vector{BoundaryField})::Tuple{Matrix{Float64},Vector{Float64}}
-    nCells = size(mesh.cells)[1]
-    RHS = zeros(nCells)
-    coeffMatrix = Matrix(zeros(nCells, nCells))
-    println(coeffMatrix)
-    # for (iElement, theElement) in enumerate(mesh.cells)
-    for iElement in 1:nCells
-        theElement = mesh.cells[iElement]
-        RHS[iElement] = source[iElement] * theElement.volume
-        diag = 0.0
-        nFaces = size(theElement.iFaces)[1]
-        println("numfaces: $nFaces")
-        for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
-            theFace = mesh.faces[iFaceIndex]
-            if theFace.iNeighbor != -1 # if interior face
-                println("$(theFace.index) is interior")
-                FluxCn = diffusionCoeff[iFaceIndex] * theFace.gDiff
-                FluxFn = -FluxCn
-                println("cell: $(iElement), iFace: $(iFace), nb: $(theElement.iNeighbors)")
-                coeffMatrix[iElement, theElement.iNeighbors[iFace]] = FluxFn
-                diag += FluxCn
-            else # if boundary face
-                iBoundary = mesh.faces[iFaceIndex].patchIndex
-                println("$(theFace.index) is exterior mit patchindex $(iBoundary)")
-                boundaryType = boundaryFields[iBoundary].type
-                FluxCb = 0.0
-                FluxVb = 0.0
-                if boundaryType == "fixedValue" # dirichlet BC
-                    println("fixedValue for $(theFace.index)")
-                    FluxCb = diffusionCoeff[iFaceIndex] * theFace.gDiff
-                    relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
-                    println("$relativeFaceIndex = $iFaceIndex - $(mesh.boundaries[iBoundary].startFace)")
-                    FluxVb = -FluxCb * boundaryFields[iBoundary].values[relativeFaceIndex]
-                    diag += FluxCb
-                    RHS[iElement] -= FluxCb
-                else
-                    # ignore zeroGradient and empty
-                    # Do nothing because FluxCb and FluxVb are already 0.0
-                    # Do nothing because the face does not contribute
-                end
-            end
-        end
-        coeffMatrix[iElement, iElement] = diag
-    end
-    return coeffMatrix, RHS
-end # function cellBasedAssembly
 
 function readTemperatureField(caseDir::String, mesh::Mesh, internalTemperatureField::Field)::Vector{BoundaryField}
     TFileName = joinpath(caseDir, "0/T")
@@ -85,7 +36,6 @@ function readTemperatureField(caseDir::String, mesh::Mesh, internalTemperatureFi
         pointer = 5
         for (index, boundary) in enumerate(mesh.boundaries)
             name = strip(lines[pointer])
-            println("$(name), $(boundary.name)")
             if name != boundary.name
                 continue
             end
@@ -96,7 +46,6 @@ function readTemperatureField(caseDir::String, mesh::Mesh, internalTemperatureFi
                 vals = match(r"(\w+)\s+(\w+)\s?(\d+)?;", lines[pointer])
                 if vals[1] == "type"
                     boundaryTemperatureFields[index].type = vals[2]
-                    println("iBoundary: $index, type: $(vals[2])")
                     if vals[2] == "empty"
                         boundaryTemperatureFields[index].values = []
                         boundaryTemperatureFields[index].nFaces = 0
@@ -113,5 +62,5 @@ function readTemperatureField(caseDir::String, mesh::Mesh, internalTemperatureFi
     return boundaryTemperatureFields
 end # function readTemperatureField
 
-export readTemperatureField, cellBasedAssembly, heat
+export readTemperatureField, heatInduction
 end # module HeatInduction

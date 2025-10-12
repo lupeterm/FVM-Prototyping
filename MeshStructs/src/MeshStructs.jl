@@ -4,6 +4,8 @@ struct CaseDirError <: Exception
     message::String
 end # struct CaseDirError
 
+
+
 mutable struct Face
     index::Int
     iNodes::Vector{Int}
@@ -19,6 +21,9 @@ mutable struct Face
     T::Vector{Float64}
     gf::Float64
     patchIndex::Int
+    walldist::Float64
+    iOwnerNeighborCoef::Int
+    iNeighborOwnerCoef::Int
 end # struct Face
 
 mutable struct Node
@@ -175,7 +180,13 @@ function printCell(cell::Cell)
     println("\t\tCentroid: ", cell.centroid)
 end
 
+struct MatrixAssemblyInput
+    mesh::Mesh
+    source::Vector{Float64}
+    diffusionCoeff::Vector{Float64}
+    boundaryFields::Vector{BoundaryField}
+end
 
-export CaseDirError, Face, Node, Boundary, Cell, Mesh, Field, BoundaryField, printBoundary, printFace, printCell, printNode
+export CaseDirError, Face, Node, Boundary, Cell, Mesh, Field, BoundaryField, printBoundary, printFace, printCell, printNode, MatrixAssemblyInput
 
 end # module MeshStructs
