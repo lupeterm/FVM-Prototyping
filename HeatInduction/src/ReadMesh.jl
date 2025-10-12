@@ -9,8 +9,6 @@ function readOpenFoamMesh(caseDir::String)::Mesh
     if !isdir(polymeshDir)
         throw(CaseDirError("PolyMesh Directory '$(caseDir)' does not exist"))
     end
-    println("Reading OpenFOAM mesh files from mesh directory: $caseDir")
-
     nodes = readPointsFile(polymeshDir)
     owner = readOwnersFile(polymeshDir)
     faces = readFacesFile(polymeshDir, owner)

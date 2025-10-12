@@ -10,15 +10,20 @@ testcases = [
 ]
 
 assemblyMethods = [
-    (MatrixAssembly.cellBasedAssembly, "Cell-Based Matrix Assembly")
+    (MatrixAssembly.cellBasedAssembly, "Cell-Based Matrix Assembly"),
+    (MatrixAssembly.faceBasedAssembly, "Face-Based Matrix Assembly"),
+    (MatrixAssembly.batchedFaceBasedAssembly, "Batched Face-Based Matrix Assembly")
 ]
 
 for (testcase, desc) in testcases
     println("\n\n###### heat conduction on a $desc mesh ######\n")
     global inputData = HeatInduction.heatInduction(testcase)
     for (assemblyMethod, mDesc) in assemblyMethods
-        println("--> Using $mDesc\n")
-        results = @benchmark (global matrix, RHS = MatrixAssembly.cellBasedAssembly(inputData))
+        println("\n--> Using $mDesc <--\n")
+        results = @benchmark begin
+            global matrix, RHS = $assemblyMethod(inputData) 
+        end
         display(results)
+        # display(matrix)
     end
 end
