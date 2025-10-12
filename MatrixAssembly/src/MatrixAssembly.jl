@@ -9,17 +9,12 @@ function cellBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Ve
     nCells = size(mesh.cells)[1]
     RHS = zeros(nCells)
     coeffMatrix = Matrix(zeros(nCells, nCells))
-    for iElement in 1:nCells
-        theElement = mesh.cells[iElement]
+    for (iElement, theElement) in enumerate(mesh.cells)
         RHS[iElement] = source[iElement] * theElement.volume
         diag = 0.0
-        nFaces = size(theElement.iFaces)[1]
-        for iFace in 1:nFaces
-            iFaceIndex = theElement.iFaces[iFace]
+        for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
             theFace = mesh.faces[iFaceIndex]
             if theFace.iNeighbor != -1
-                fluxCn = 0.0
-                fluxFn = 0.0
                 fluxCn = diffusionCoeff[iFaceIndex] * theFace.gDiff
                 fluxFn = -fluxCn
                 coeffMatrix[iElement, theElement.iNeighbors[iFace]] = fluxFn
@@ -27,8 +22,6 @@ function cellBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Ve
             else
                 iBoundary = mesh.faces[iFaceIndex].patchIndex
                 boundaryType = boundaryFields[iBoundary].type
-                fluxCn = 0.0
-                fluxFn = 0.0
                 if boundaryType == "fixedValue"
                     fluxCb = diffusionCoeff[iFaceIndex] * theFace.gDiff
                     relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
@@ -48,32 +41,23 @@ function faceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Ve
     diffusionCoeff = input.diffusionCoeff
     boundaryFields = input.boundaryFields
     nCells = size(mesh.cells)[1]
-    nFaces = size(mesh.faces)[1]
     RHS = zeros(nCells)
     coeffMatrix = Matrix(zeros(nCells, nCells))
-    for iFace in 1:nFaces
-        theFace = mesh.faces[iFace]
+    for (iFace, theFace) in enumerate(mesh.faces)
+        fluxC = diffusionCoeff[iFace] * theFace.gDiff
         if theFace.iNeighbor != -1
-            fluxCn = 0.0
-            fluxFn = 0.0
-            fluxCn = diffusionCoeff[iFace] * theFace.gDiff
-            fluxFn = -fluxCn
-            # println("setting ($(theFace.iOwner), $(theFace.iNeighbor)) to $fluxFn")
+            fluxFn = -fluxC
             coeffMatrix[theFace.iOwner, theFace.iNeighbor] = fluxFn
             coeffMatrix[theFace.iNeighbor, theFace.iOwner] = fluxFn
-
-            coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxCn
-            coeffMatrix[theFace.iNeighbor, theFace.iNeighbor] += fluxCn
+            coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxC
+            coeffMatrix[theFace.iNeighbor, theFace.iNeighbor] += fluxC
         else 
             iBoundary = mesh.faces[iFace].patchIndex
             boundaryType = boundaryFields[iBoundary].type
-            fluxCn = 0.0
-            fluxFn = 0.0
             if boundaryType == "fixedValue"
-                fluxCb = diffusionCoeff[iFace] * theFace.gDiff
                 relativeFaceIndex = iFace - mesh.boundaries[iBoundary].startFace
-                fluxVb = -fluxCb * boundaryFields[iBoundary].values[relativeFaceIndex]
-                coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxFn
+                fluxVb = -fluxC * boundaryFields[iBoundary].values[relativeFaceIndex]
+                coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxC
                 RHS[theFace.iOwner] -= fluxVb
             end
         end
@@ -90,8 +74,7 @@ function batchedFaceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Floa
     RHS = zeros(nCells)
     coeffMatrix = Matrix(zeros(nCells, nCells))
     nInteriorFaces = mesh.numInteriorFaces
-    for iFace in 1:nInteriorFaces
-        theFace = mesh.faces[iFace]
+    for (iFace, theFace) in enumerate(mesh.faces[1:nInteriorFaces])
         fluxCn = diffusionCoeff[iFace] * theFace.gDiff
         fluxFn = -fluxCn
         coeffMatrix[theFace.iOwner, theFace.iNeighbor] = fluxFn

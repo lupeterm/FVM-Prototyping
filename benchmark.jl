@@ -24,6 +24,9 @@ for (testcase, desc) in testcases
             global matrix, RHS = $assemblyMethod(inputData) 
         end
         display(results)
-        # display(matrix)
+        if desc != "10x10"
+            display(matrix)
+        end
     end
+    println("\n\n##############################################################################################")
 end
