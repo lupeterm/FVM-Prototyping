@@ -11,8 +11,12 @@ testcases = [
 
 assemblyMethods = [
     (MatrixAssembly.cellBasedAssembly, "Cell-Based Matrix Assembly"),
+    (MatrixAssembly.cellBasedAssemblySparseMatrix, "Cell-Based Sparse Matrix Assembly"),
+    (MatrixAssembly.cellBasedAssemblySparseMultiVectorPrealloc, "Cell-Based Preallocated MultiVector Sparse Matrix Assembly"),
+    (MatrixAssembly.cellBasedAssemblySparseMultiVectorPush, "Cell-Based MultiVector Push Sparse Matrix Assembly"),
     (MatrixAssembly.faceBasedAssembly, "Face-Based Matrix Assembly"),
-    (MatrixAssembly.batchedFaceBasedAssembly, "Batched Face-Based Matrix Assembly")
+    (MatrixAssembly.batchedFaceBasedAssembly, "Batched Face-Based Matrix Assembly"),
+    (MatrixAssembly.batchedFaceBasedAssemblySparseMatrix, "Batched Face-Based Sparse Matrix Assembly")
 ]
 
 for (testcase, desc) in testcases

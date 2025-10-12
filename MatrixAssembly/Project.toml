@@ -5,3 +5,7 @@ version = "0.1.0"
 
 [deps]
 MeshStructs = "e7ff797b-5c94-4f68-b228-7c9c2c88eb4f"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
+[compat]
+SparseArrays = "1.11.0"
