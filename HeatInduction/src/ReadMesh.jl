@@ -27,9 +27,15 @@ function readPointsFile(polyMeshDir::String)::Vector{Node}
     if !isfile(pointsFileName)
         throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
     end
-    lines = readlines(pointsFileName)[22:(end-4)]
+    i = 18
+    lines = readlines(pointsFileName)
+    while isempty(lines[i])
+        i += 1
+    end
+    nNodes = tryparse(Int, lines[i])
+    i += 2
     nodes::Vector{Node} = []
-    for line in lines
+    for line in lines[i:i+nNodes-1]
         s = split((line[2:(end-1)]), " ")
         coords = map(s -> tryparse(Float64, s), s)
         push!(nodes, Node(coords, [], [], 0))
@@ -43,13 +49,18 @@ function readFacesFile(polyMeshDir::String, owners::Vector{Int})::Vector{Face}
     if !isfile(facesFileName)
         throw(CaseDirError("Faces file '$(facesFileName)' does not exist."))
     end
+    i = 18
     lines = readlines(facesFileName)
+    while isempty(lines[i])
+        i += 1
+    end
+    nfaces = tryparse(Int, lines[i])
     faces::Vector{Face} = []
-    nfaces = tryparse(Int, lines[20])
-    for iFace in 1:nfaces
-        s = split((lines[21+iFace][3:(end-1)]), " ")
+    i += 2
+    for (index, iFace) in enumerate(i:i+nfaces-1)
+        s = split((lines[iFace][3:(end-1)]), " ")
         nodes = map(s -> tryparse(Int, s) + 1, s)
-        push!(faces, Face(iFace, nodes, owners[iFace], -1, zeros(3), zeros(3), 0.0, zeros(3), 0.0, zeros(3), 0.0, zeros(3), 0.0, -1, 0.0, 0, 0))
+        push!(faces, Face(index, nodes, owners[index], -1, zeros(3), zeros(3), 0.0, zeros(3), 0.0, zeros(3), 0.0, zeros(3), 0.0, -1, 0.0, 0, 0))
     end
     return faces
 end # function readPointsFile
@@ -59,8 +70,19 @@ function readOwnersFile(polyMeshDir::String)::Vector{Int}
     if !isfile(ownersFileName)
         throw(CaseDirError("Owners file '$(ownersFileName)' does not exist."))
     end
-    lines = readlines(ownersFileName)[23:(end-4)]
-    owners = map(l -> tryparse(Int, l) + 1, lines)
+    i = 18
+    lines = readlines(ownersFileName)
+    while isempty(lines[i]) || startswith(lines[i], "//")
+        i += 1
+    end
+    nOwners = tryparse(Int, lines[i])
+    i += 2
+    owners = []
+    for iOwner in i:i+nOwners-1
+        owner = tryparse(Int, lines[iOwner]) +1
+        push!(owners, owner)
+    end
+    println(owners)
     return owners
 end # function readPointsFile
 
@@ -94,24 +116,39 @@ function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
     if !isfile(boundariesFileName)
         throw(CaseDirError("Boundary file '$(boundariesFileName)' does not exist."))
     end
-
+    i = 17
+    lines = readlines(boundariesFileName)
+    while isempty(lines[i]) || startswith(lines[i], "//")
+        i += 1
+    end
     boundaries::Vector{Boundary} = []
-    lines = readlines(boundariesFileName)[21:(end-4)]
+    lines = readlines(boundariesFileName)[i+2:(end-4)]
     l = split(join(lines), "}")
     for bound in l
         s = replace(bound, r"\s+" => " ")
         s = replace(bound, ";" => "")
         s = split(s, " ")
         s = filter(x -> x != "", s)
-        ing1 = tryparse(Int, "$(s[6][1])")
-        ing = (ing1, s[6][3:(end-1)])
-        boundary = Boundary(
-            s[1],
-            s[4],
-            ing,
-            tryparse(Int, s[8]),
-            tryparse(Int, s[10]),
-        )
+        if s[5] == "inGroups" 
+            ing1 = tryparse(Int, "$(s[6][1])")
+            ingroups = (ing1, s[6][3:(end-1)])
+            boundary = Boundary(
+                s[1],
+                s[4],
+                ingroups,
+                tryparse(Int, s[8]),
+                tryparse(Int, s[10]),
+            )
+        else
+            boundary = Boundary(
+                s[1],
+                s[4],
+                (-1, "null"),
+                tryparse(Int, s[6]),
+                tryparse(Int, s[8]),
+            )
+        end
+
         push!(boundaries, boundary)
     end
     return boundaries
@@ -146,9 +183,11 @@ function constructCells(nodes::Vector{Node}, boundaries::Vector{Boundary}, faces
 end # function constructCells
 
 function setupNodeConnectivities(mesh::Mesh)::Mesh
-    for face::Face in mesh.faces
-        for iNode in face.iNodes
-            push!(mesh.nodes[iNode].iFaces, face.index)
+    for iFace in 1:size(mesh.faces)[1]
+        iNodes = mesh.faces[iFace].iNodes
+        nNodes = size(iNodes)[1]
+        for iNode in 1:nNodes
+            push!(mesh.nodes[iNodes[iNode]].iFaces, mesh.faces[iFace].index)
         end
     end
     for cell in mesh.cells
@@ -222,6 +261,7 @@ function processBasicFaceGeometry(mesh::Mesh)::Mesh
         face.centroid = round.(centroid, digits=2)
         face.Sf = Sf
         face.area = area
+        # println("area of $(face.index): $area")
     end
     return mesh
 end # function processBasicFaceGeometry
@@ -234,12 +274,10 @@ function computeElementVolumeAndCentroid(mesh)::Mesh
             elementCenter += mesh.faces[iFace].centroid
         end
         elementCenter /= size(iFaces)[1]
-
-        elementCentroid = zeros(3)
         localVolumeCentroidSum = zeros(3)
         localVolumeSum = 0.0
-
-        for (iFace, localFace) in enumerate(mesh.faces[iFaces])
+        for iFace in 1:size(iFaces)[1]
+            localFace = mesh.faces[iFaces[iFace]]
             localFaceSign = mesh.cells[iElement].faceSigns[iFace]
             Sf = localFaceSign * localFace.Sf
             d_Gf = localFace.centroid - elementCenter
@@ -265,13 +303,15 @@ function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
         nf = (1 / theFace.area) * theFace.Sf
         ownerElement = mesh.cells[theFace.iOwner]
         neighborElement = mesh.cells[theFace.iNeighbor]
+        
         theFace.CN = neighborElement.centroid - ownerElement.centroid
+        # println("CN for $(theFace.index): $(theFace.CN)")
         theFace.magCN = magnitude(theFace.CN)
         theFace.eCN = (1 / theFace.magCN) * theFace.CN
 
         E = theFace.area * theFace.eCN
         theFace.gDiff = magnitude(E) / theFace.magCN
-
+        # println("E: $E magCN: $(theFace.magCN)")
         theFace.T = theFace.Sf - E
 
         # Compute theFace weighting factor
