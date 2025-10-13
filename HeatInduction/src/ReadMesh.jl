@@ -82,7 +82,6 @@ function readOwnersFile(polyMeshDir::String)::Vector{Int}
         owner = tryparse(Int, lines[iOwner]) +1
         push!(owners, owner)
     end
-    println(owners)
     return owners
 end # function readPointsFile
 
@@ -258,10 +257,9 @@ function processBasicFaceGeometry(mesh::Mesh)::Mesh
             # Compute centroid of the polygon
             centroid /= area
         end
-        face.centroid = round.(centroid, digits=2)
+        face.centroid = centroid
         face.Sf = Sf
         face.area = area
-        # println("area of $(face.index): $area")
     end
     return mesh
 end # function processBasicFaceGeometry
@@ -305,13 +303,11 @@ function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
         neighborElement = mesh.cells[theFace.iNeighbor]
         
         theFace.CN = neighborElement.centroid - ownerElement.centroid
-        # println("CN for $(theFace.index): $(theFace.CN)")
         theFace.magCN = magnitude(theFace.CN)
         theFace.eCN = (1 / theFace.magCN) * theFace.CN
 
         E = theFace.area * theFace.eCN
         theFace.gDiff = magnitude(E) / theFace.magCN
-        # println("E: $E magCN: $(theFace.magCN)")
         theFace.T = theFace.Sf - E
 
         # Compute theFace weighting factor

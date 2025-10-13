@@ -24,39 +24,35 @@ function readTemperatureField(caseDir::String, mesh::Mesh, internalTemperatureFi
     if !isfile(TFileName)
         throw(CaseDirError("T file '$(TFileName)' does not exist."))
     end
-    lines = readlines(TFileName)[19:(end)]
-    split18 = match(r"(\w+)\s+(\w+)\s(\d+);", lines[1])
+    i = 17
+    lines = readlines(TFileName)
+    while !startswith(lines[i], "internalField")
+        i += 1
+    end
+    split18 = match(r"(\w+)\s+(\w+)\s(\d+);", lines[i])
     if split18[1] == "internalField" && split18[2] == "uniform"
         value = tryparse(Int, split18[3])
         internalTemperatureField.values = [value for x in internalTemperatureField.values]
     end
+    while !contains(lines[i], "boundaryField")
+        i += 1
+    end
+    boundaryLines = lines[i+2:end-4]
+    joined = join(boundaryLines)
+    splitted = split(joined, "}")
     boundaryTemperatureFields = [BoundaryField(0, [], "") for _ in 1:(size(mesh.boundaries)[1])]
-
-    if occursin("boundaryField", lines[3])
-        pointer = 5
-        for (index, boundary) in enumerate(mesh.boundaries)
-            name = strip(lines[pointer])
-            if name != boundary.name
-                continue
-            end
-            boundaryTemperatureFields[index].values = zeros(boundary.nFaces)
-            boundaryTemperatureFields[index].nFaces = boundary.nFaces
-            pointer += 2
-            while !occursin("}", lines[pointer])
-                vals = match(r"(\w+)\s+(\w+)\s?(\d+)?;", lines[pointer])
-                if vals[1] == "type"
-                    boundaryTemperatureFields[index].type = vals[2]
-                    if vals[2] == "empty"
-                        boundaryTemperatureFields[index].values = []
-                        boundaryTemperatureFields[index].nFaces = 0
-                    end
-                elseif vals[1] == "value" && vals[2] == "uniform"
-                    temp = tryparse(Float64, vals[3])
-                    boundaryTemperatureFields[index].values = [temp for x in boundaryTemperatureFields[index].values]
-                end
-                pointer += 1
-            end
-            pointer += 1
+    for (index, b) in enumerate(splitted)
+        matches = match(r"\s*(\w+)\s*\{\s*type\s*(\w+);(?:\s*value\s*(\w+) (\d+);)?", b)
+        boundaryTemperatureFields[index].values = zeros(mesh.boundaries[index].nFaces)
+        boundaryTemperatureFields[index].nFaces = mesh.boundaries[index].nFaces
+        boundaryTemperatureFields[index].type = matches[2]
+        if matches[2] == "empty"
+            boundaryTemperatureFields[index].values = []
+            boundaryTemperatureFields[index].nFaces = 0
+        end
+        if !isnothing(matches[3])
+            temp = tryparse(Float64, matches[4])
+            boundaryTemperatureFields[index].values = fill(temp, boundaryTemperatureFields[index].nFaces) 
         end
     end
     return boundaryTemperatureFields
