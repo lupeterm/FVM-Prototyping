@@ -64,14 +64,15 @@ struct Mesh
     numBoundaryFaces::Int
 end # struct Mesh
 
-mutable struct Field
+mutable struct Field{T}
     nElements::Int
-    values::Vector{Float64}
+    values::Vector{T}
 end # struct Field
 
-mutable struct BoundaryField
+mutable struct BoundaryField{T}
+    name::String
     nFaces::Int
-    values::Vector{Float64}
+    values::Vector{T}
     type::String
 end # struct BoundaryField
 
@@ -180,13 +181,42 @@ function printCell(cell::Cell)
     println("\t\tCentroid: ", cell.centroid)
 end
 
-struct MatrixAssemblyInput
+struct MatrixAssemblyInput{T}
     mesh::Mesh
     source::Vector{Float64}
     diffusionCoeff::Vector{Float64}
-    boundaryFields::Vector{BoundaryField}
+    boundaryFields::Vector{BoundaryField{T}}
 end
 
-export CaseDirError, Face, Node, Boundary, Cell, Mesh, Field, BoundaryField, printBoundary, printFace, printCell, printNode, MatrixAssemblyInput
+struct LdcMatrixAssemblyInput
+    mesh::Mesh
+    nu::Float64
+    p::Vector{BoundaryField}
+    U::Vector{BoundaryField}
+end
+
+struct GenericMatrixAssemblyInput
+    mesh::Mesh
+    sources::Vector{Vector{Float64}}
+    variables::Vector{Float64}
+    boundaryFields::Vector{Vector{BoundaryField}}
+    mappings::Dict{Int, String}
+end
+
+export CaseDirError,
+    Face,
+    Node,
+    Boundary,
+    Cell,
+    Mesh,
+    Field,
+    BoundaryField,
+    printBoundary,
+    printFace,
+    printCell,
+    printNode,
+    MatrixAssemblyInput,
+    LdcMatrixAssemblyInput,
+    GenericMatrixAssemblyInput
 
 end # module MeshStructs

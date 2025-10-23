@@ -302,11 +302,15 @@ function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
         ownerElement = mesh.cells[theFace.iOwner]
         neighborElement = mesh.cells[theFace.iNeighbor]
         
+        # vector between cell centroids
         theFace.CN = neighborElement.centroid - ownerElement.centroid
+        # length of said vector / direct distance between cell centroids
         theFace.magCN = magnitude(theFace.CN)
+        # normalized vector to neighbor
         theFace.eCN = (1 / theFace.magCN) * theFace.CN
 
         E = theFace.area * theFace.eCN
+        # essentially strength of flux in the direction of neighboring cell
         theFace.gDiff = magnitude(E) / theFace.magCN
         theFace.T = theFace.Sf - E
 
@@ -376,3 +380,92 @@ function labelBoundaryFaces(mesh::Mesh)::Mesh
     end
     return mesh
 end # function labelBoundaryFaces
+
+function readFields(dir::String, mesh::Mesh)::Tuple{Vector{Vector{BoundaryField}}, Dict{Int, String}}
+    files = readdir(dir)
+    fields::Vector{Vector{BoundaryField}} = []
+    mappings = Dict()
+    for (i, variableFile) in enumerate(files)
+        fileName = joinpath(dir, variableFile)
+        bfields = readField(fileName, mesh)
+        mappings[i] = variableFile
+        push!(fields, bfields) 
+    end
+    return fields, mappings
+end # function readTemperatureField
+
+"""
+    parse '(0 0 0)' to [0.0, 0.0, 0.0]
+"""
+parseVec(string::String)::Vector{Float64} = map(s -> tryparse(Float64,s ), split(string[2:end-1], " "))
+parseVec(sub::SubString)::Vector{Float64} = parseVec(String(sub))
+
+function readField(filePath::String, mesh::Mesh)::Vector{BoundaryField}
+    fileName = rsplit(filePath, "/", limit=1)[1]
+    if !isfile(filePath)
+        throw(CaseDirError("Field file '$(filePath)' does not exist."))
+    end
+    i = 17
+    lines = readlines(filePath)
+    while !startswith(lines[i], "internalField")
+        i += 1
+    end
+    split18 = match(r"^(\w+)\s+(\w+)\s(?:(\d)|(\([\d\s]+\)));", lines[i])
+    # TODO so far not used 
+    numCells = size(mesh.cells)[1]
+    internalValues = []
+    if split18[1] == "internalField" && split18[2] == "uniform"
+        if isnothing(split18[3])
+            # parse '(0 0 0)' to [0.0, 0.0, 0.0]
+            value = parseVec(split18[4])
+        else
+            value = tryparse(Int, split18[3])
+        end
+        internalValues = fill(value, numCells)
+    end
+    internalField = Field(numCells, internalValues)
+    while !contains(lines[i], "boundaryField")
+        i += 1
+    end
+    boundaryLines = lines[i+2:end-4]
+    joined = join(boundaryLines)
+    splitted = split(joined, "}")
+    boundaryFields = []
+    for boundary in mesh.boundaries
+        for b in splitted
+            matches = match(r"\s*(\w+)\s*\{\s*type\s*(\w+);(?:\s*value\s*(\w+) (?:(\d+)|(\([\d\s]+\)));)?", b)
+            values = []
+            if boundary.name != matches[1]
+                continue
+            end
+            nFaces = boundary.nFaces
+            type = matches[2]
+            if matches[2] == "empty"
+                values = []
+                nFaces = 0
+            end
+            if !isnothing(matches[3])
+                if !isnothing(matches[4])  # scalars like temperature
+                    scalar = tryparse(Float64, matches[4])
+                    values = fill(scalar, nFaces) 
+                else  # vectors like velocity
+                    vector = parseVec(matches[5])
+                    values = fill(vector, nFaces) 
+                end
+            end
+            bfield = BoundaryField(String(fileName), nFaces, values, String(type))
+            push!(boundaryFields, bfield)
+        end
+    end
+    return boundaryFields
+end
+
+function readPropertiesFile(path::String)::Float64
+    if !isfile(path)
+        throw(CaseDirError("Field file '$(path)' does not exist."))
+    end
+    file = read(path, String)
+    variable = match(r"\w+\s*\[[\s\d-]+\]\s*([\.\d]+);", file)
+    val = tryparse(Float64, variable[1])
+    return val
+end

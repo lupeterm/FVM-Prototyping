@@ -5,21 +5,23 @@ using SparseArrays
 function cellBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Vector{Float64}}
     mesh = input.mesh
     source = input.source
-    diffusionCoeff = input.diffusionCoeff
+    diffusionCoeff = input.diffusionCoeff # Γ
     boundaryFields = input.boundaryFields
     nCells = size(mesh.cells)[1]
     RHS = zeros(nCells)
     coeffMatrix = Matrix(zeros(nCells, nCells))
     for (iElement, theElement) in enumerate(mesh.cells)
-        RHS[iElement] = source[iElement] * theElement.volume
-        diag = 0.0
+        # bC = Q_C*V_C - bigsum(FluxVf)
+        RHS[iElement] = source[iElement] * theElement.volume  # S_u
         for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
             theFace = mesh.faces[iFaceIndex]
             if theFace.iNeighbor != -1
+                # FluxCn = Γ_n * gdiff_n  (p.215)
                 fluxCn = diffusionCoeff[iFaceIndex] * theFace.gDiff
                 fluxFn = -fluxCn
                 coeffMatrix[iElement, theElement.iNeighbors[iFace]] = fluxFn
-                diag += fluxCn
+                # accumulate neighbors into diag 
+                coeffMatrix[iElement, iElement] += fluxCn
             else
                 iBoundary = mesh.faces[iFaceIndex].patchIndex
                 boundaryType = boundaryFields[iBoundary].type
@@ -27,15 +29,16 @@ function cellBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Ve
                     fluxCb = diffusionCoeff[iFaceIndex] * theFace.gDiff
                     relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
                     fluxVb = -fluxCb * boundaryFields[iBoundary].values[relativeFaceIndex]
-                    diag += fluxCb
+                    coeffMatrix[iElement, iElement] += fluxCb
                     RHS[iElement] -= fluxVb
                 end
             end
         end
-        coeffMatrix[iElement, iElement] = diag
     end
     return coeffMatrix, RHS
 end # function cellBasedAssembly
+
+
 
 function cellBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple{SparseMatrixCSC{Float64,Int64},SparseVector{Float64,Int64}}
     mesh = input.mesh
@@ -53,9 +56,7 @@ function cellBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple{Sparse
             if theFace.iNeighbor != -1
                 fluxCn = diffusionCoeff[iFaceIndex] * theFace.gDiff
                 fluxFn = -fluxCn
-                if fluxFn != 0.0
-                    coeffMatrix[iElement, theElement.iNeighbors[iFace]] = fluxFn
-                end
+                coeffMatrix[iElement, theElement.iNeighbors[iFace]] = fluxFn
                 diag += fluxCn
             else
                 iBoundary = mesh.faces[iFaceIndex].patchIndex
@@ -198,7 +199,7 @@ end # function faceBasedAssembly
 
 function batchedFaceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Vector{Float64}}
     mesh = input.mesh
-    diffusionCoeff = input.diffusionCoeff
+    diffusionCoeff = input.diffusionCoeff 
     boundaryFields = input.boundaryFields
     nCells = size(mesh.cells)[1]
     RHS = zeros(nCells)
@@ -263,6 +264,92 @@ function batchedFaceBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple
     end
     return coeffMatrix, RHS
 end # function batchedFaceBasedAssemblySparseMatrix
+
+function genericCellBasedAssemblySparseMatrix(input::GenericMatrixAssemblyInput)::Tuple{Vector{SparseMatrixCSC{Float64,Int64}},Vector{Vector{Float64}}}
+    mesh = input.mesh
+    variables = input.variables
+    boundaryFields = input.boundaryFields
+    nCells = size(mesh.cells)[1]
+    mappings = input.mappings
+    numVariables = length(mappings)
+    coeffMatrices = [spzeros(nCells, nCells) for _ in 1:numVariables]
+    RHSs = input.sources != [] ? input.sources : [zeros(nCells) for _ in 1:numVariables]
+    for (iElement, theElement) in enumerate(mesh.cells)
+        for iVar in 1:numVariables
+            RHSs[iVar][iElement] *= theElement.volume  # S_u
+        end
+        for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
+            theFace = mesh.faces[iFaceIndex]
+            for (iVariable, variable) in enumerate(variables)
+                if theFace.iNeighbor != -1
+                    fluxCn = variable[iFaceIndex] * theFace.gDiff
+                    fluxFn = -fluxCn
+                    coeffMatrices[iVariable][iElement, theElement.iNeighbors[iFace]] = fluxFn
+                    coeffMatrices[iVariable][iElement, iElement] += fluxCn
+                else
+                    iBoundary = mesh.faces[iFaceIndex].patchIndex
+                    boundaryType = boundaryFields[iVariable][iBoundary].type
+                    if boundaryType == "fixedValue"
+                        fluxCb = variable[iFaceIndex] * theFace.gDiff
+                        relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+                        fluxVb = -fluxCb * boundaryFields[iVariable][iBoundary].values[relativeFaceIndex]
+                        coeffMatrices[iVariable][iElement, iElement] += fluxCb
+                        RHSs[iVariable][iElement] -= fluxVb
+                    end
+                end
+            end
+        end
+    end
+    return coeffMatrices, RHSs
+end # function genericCellBasedAssemblySparseMatrix
+
+function LdcCellBasedAssemblySparseMatrix(input::LdcMatrixAssemblyInput)::Tuple{Vector{SparseMatrixCSC{Float64,Int64}},SparseMatrixCSC{Float64,Int64}}
+    mesh = input.mesh
+    nu = input.nu
+    p = input.p
+    U = input.U
+    nCells = size(mesh.cells)[1]
+    coeffMatrices = [spzeros(nCells, nCells) for _ in 1:2] # p and U
+    RHS = spzeros(nCells, 4)  # [ux,uy,uz,p]
+    for (iElement, theElement) in enumerate(mesh.cells)
+        for iVar in 1:numVariables
+            RHS[iVar, iElement] *= theElement.volume  # S_u
+        end
+        for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
+            theFace = mesh.faces[iFaceIndex]
+            if theFace.iNeighbor != -1
+                fluxCn = nu * theFace.gDiff
+                fluxFn = -fluxCn
+                # U
+                coeffMatrices[1][iElement, theElement.iNeighbors[iFace]] = fluxFn
+                coeffMatrices[1][iElement, iElement] += fluxCn
+
+                # p
+                coeffMatrices[2][iElement, theElement.iNeighbors[iFace]] = 0.0
+                coeffMatrices[2][iElement, iElement] += 0.0
+            else
+                iBoundary = mesh.faces[iFaceIndex].patchIndex
+                boundaryType = U[iBoundary].type
+                if boundaryType == "fixedValue"
+                    fluxCb = nu * theFace.gDiff
+                    relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+                    fluxVb = -fluxCb * U[iBoundary].values[relativeFaceIndex] 
+                    coeffMatrices[1][iElement, iElement] += fluxCb
+                    RHS[1, iElement] -= fluxVb
+                end
+                boundaryType = p[iBoundary].type
+                if boundaryType == "fixedValue"
+                    fluxCb = 0 # FIXME ?
+                    relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+                    fluxVb = -fluxCb * p[iBoundary].values[relativeFaceIndex]
+                    coeffMatrices[2][iElement, iElement] += fluxCb
+                end
+            end
+        end
+    end
+    return coeffMatrices, RHSs
+end # function genericCellBasedAssemblySparseMatrix
+
 
 export cellBasedAssembly, 
     cellBasedAssemblySparse1, 
