@@ -306,15 +306,17 @@ end # function genericCellBasedAssemblySparseMatrix
 function LdcCellBasedAssemblySparseMatrix(input::LdcMatrixAssemblyInput)::Tuple{Vector{SparseMatrixCSC{Float64,Int64}},SparseMatrixCSC{Float64,Int64}}
     mesh = input.mesh
     nu = input.nu
-    p = input.p
-    U = input.U
+    # pressure = input.p  ignore for now
+    velocity = input.U
+    velocity.values = [rand(3) for _ in 1:size(mesh.faces)[1]]
     nCells = size(mesh.cells)[1]
-    coeffMatrices = [spzeros(nCells, nCells) for _ in 1:2] # p and U
-    RHS = spzeros(nCells, 4)  # [ux,uy,uz,p]
+    coeffMatrices = [spzeros(nCells, nCells) for _ in 1:3] # ux, uy, uz (ignore pressure for now)
+    RHS = spzeros(nCells, 3)  # [ux,uy,uz]
     for (iElement, theElement) in enumerate(mesh.cells)
-        for iVar in 1:numVariables
-            RHS[iVar, iElement] *= theElement.volume  # S_u
-        end
+        # assume no body forces
+        # for iVar in 1:numVariables
+        #     RHS[iVar, iElement] *= theElement.volume  # S_u
+        # end
         for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
             theFace = mesh.faces[iFaceIndex]
             if theFace.iNeighbor != -1
@@ -324,26 +326,29 @@ function LdcCellBasedAssemblySparseMatrix(input::LdcMatrixAssemblyInput)::Tuple{
                 coeffMatrices[1][iElement, theElement.iNeighbors[iFace]] = fluxFn
                 coeffMatrices[1][iElement, iElement] += fluxCn
 
-                # p
-                coeffMatrices[2][iElement, theElement.iNeighbors[iFace]] = 0.0
-                coeffMatrices[2][iElement, iElement] += 0.0
+                # ignore p for now
+                # coeffMatrices[2][iElement, theElement.iNeighbors[iFace]] = 0.0
+                # coeffMatrices[2][iElement, iElement] += 0.0
             else
                 iBoundary = mesh.faces[iFaceIndex].patchIndex
-                boundaryType = U[iBoundary].type
+                boundaryType = velocity[iBoundary].type
                 if boundaryType == "fixedValue"
                     fluxCb = nu * theFace.gDiff
                     relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
-                    fluxVb = -fluxCb * U[iBoundary].values[relativeFaceIndex] 
-                    coeffMatrices[1][iElement, iElement] += fluxCb
-                    RHS[1, iElement] -= fluxVb
+                    for dim in 1:3
+                        fluxVb = -fluxCb * velocity[iBoundary].values[relativeFaceIndex][dim] 
+                        coeffMatrices[dim][iElement, iElement] += fluxCb
+                        RHS[dim, iElement] -= fluxVb
+                    end
                 end
-                boundaryType = p[iBoundary].type
-                if boundaryType == "fixedValue"
-                    fluxCb = 0 # FIXME ?
-                    relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
-                    fluxVb = -fluxCb * p[iBoundary].values[relativeFaceIndex]
-                    coeffMatrices[2][iElement, iElement] += fluxCb
-                end
+                # TODO ignore pressure for now ig
+                # boundaryType = pressure[iBoundary].type
+                # if boundaryType == "fixedValue"
+                #     fluxCb = 0 # FIXME ?
+                #     relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+                #     fluxVb = -fluxCb * pressure[iBoundary].values[relativeFaceIndex]
+                #     coeffMatrices[2][iElement, iElement] += fluxCb
+                # end
             end
         end
     end
