@@ -311,7 +311,8 @@ function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
 
         E = theFace.area * theFace.eCN
         # essentially strength of flux in the direction of neighboring cell
-        theFace.gDiff = magnitude(E) / theFace.magCN
+        # eq 8.11: gdiff of face = ||face Surface || / || distance between cell centroids ||
+        theFace.gDiff = magnitude(E) / magnitude(theFace.CN)
         theFace.T = theFace.Sf - E
 
         # Compute theFace weighting factor

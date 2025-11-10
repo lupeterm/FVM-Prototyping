@@ -1,7 +1,8 @@
 module MatrixAssembly
 using MeshStructs
 using SparseArrays
-
+using StaticArrays
+using ProgressBars
 function cellBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Vector{Float64}}
     mesh = input.mesh
     source = input.source
@@ -199,7 +200,7 @@ end # function faceBasedAssembly
 
 function batchedFaceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Vector{Float64}}
     mesh = input.mesh
-    diffusionCoeff = input.diffusionCoeff 
+    diffusionCoeff = input.diffusionCoeff
     boundaryFields = input.boundaryFields
     nCells = size(mesh.cells)[1]
     RHS = zeros(nCells)
@@ -303,16 +304,65 @@ function genericCellBasedAssemblySparseMatrix(input::GenericMatrixAssemblyInput)
     return coeffMatrices, RHSs
 end # function genericCellBasedAssemblySparseMatrix
 
-function LdcCellBasedAssemblySparseMatrix(input::LdcMatrixAssemblyInput)::Tuple{Vector{SparseMatrixCSC{Float64,Int64}},SparseMatrixCSC{Float64,Int64}}
+function LdcCellBasedAssemblySparseMultiVectorPrealloc(input::LdcMatrixAssemblyInput)::Tuple{SparseMatrixCSC{MVector{3,Float64},Int64},SparseMatrixCSC{Float64, Int64}}
+    mesh = input.mesh
+    nu = input.nu
+    velocity = input.U
+    nCells = size(mesh.cells)[1]
+    RHS = spzeros(nCells, 3)  # [ux,uy,uz]
+    rows = []
+    cols = []
+    vals::Vector{MVector{3, Float64}} = []
+    for (iElement, theElement) in enumerate(mesh.cells)
+        diag = 0.0
+        for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
+            theFace = mesh.faces[iFaceIndex]
+            if theFace.iNeighbor != -1
+                fluxCn = nu * theFace.gDiff
+                fluxFn = -fluxCn
+                push!(rows, iElement)
+                push!(cols, theElement.iNeighbors[iFace])
+                push!(vals, MVector(fluxFn, fluxFn, fluxFn))
+                diag += fluxCn
+            else
+                iBoundary = mesh.faces[iFaceIndex].patchIndex
+                boundaryType = velocity[iBoundary].type
+                if boundaryType == "fixedValue"
+                    fluxCb = nu * theFace.gDiff
+                    relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+                    fluxVb = velocity[iBoundary].values[relativeFaceIndex] .* -fluxCb
+                    RHS[iElement,:] .-= fluxVb
+                    diag += fluxCb
+                end
+            end
+        end
+        push!(rows, iElement)
+        push!(cols, iElement)
+        push!(vals, MVector(diag, diag, diag))
+    end
+
+    return SparseArrays.sparse(
+        rows,
+        cols,
+        vals,
+    ), RHS
+end # function cellBasedAssemblySparseMultiVectorPrealloc
+
+function LdcCellBasedAssemblySparseMatrix(input::LdcMatrixAssemblyInput)::Tuple{SparseMatrixCSC{Float64,Int64},SparseMatrixCSC{Float64,Int64}}
+    # function LdcCellBasedAssemblySparseMatrix(input::LdcMatrixAssemblyInput)::Tuple{SparseMatrixCSC{MVector{3,Float64},Int64},SparseMatrixCSC{Float64,Int64}}
     mesh = input.mesh
     nu = input.nu
     # pressure = input.p  ignore for now
     velocity = input.U
-    velocity.values = [rand(3) for _ in 1:size(mesh.faces)[1]]
     nCells = size(mesh.cells)[1]
-    coeffMatrices = [spzeros(nCells, nCells) for _ in 1:3] # ux, uy, uz (ignore pressure for now)
-    RHS = spzeros(nCells, 3)  # [ux,uy,uz]
-    for (iElement, theElement) in enumerate(mesh.cells)
+    coeffMatrices = spzeros(nCells, nCells) # ux, uy, uz (ignore pressure for now)
+    # coeffMatrices = spzeros(MVector{3,Float64}, nCells, nCells) # ux, uy, uz (ignore pressure for now)
+    # coeffMatrices = [spzeros(nCells, nCells) for _ in 1:3] 
+    RHS = spzeros(nCells)  # [ux,uy,uz]
+    # RHS = spzeros(nCells, 3)  # [ux,uy,uz]
+    progress = ProgressBar(total=nCells)
+    for (iElement, theElement) in enumerate(mesh.cells[1:50000])
+        update(progress)
         # assume no body forces
         # for iVar in 1:numVariables
         #     RHS[iVar, iElement] *= theElement.volume  # S_u
@@ -323,8 +373,9 @@ function LdcCellBasedAssemblySparseMatrix(input::LdcMatrixAssemblyInput)::Tuple{
                 fluxCn = nu * theFace.gDiff
                 fluxFn = -fluxCn
                 # U
-                coeffMatrices[1][iElement, theElement.iNeighbors[iFace]] = fluxFn
-                coeffMatrices[1][iElement, iElement] += fluxCn
+                coeffMatrices[iElement, theElement.iNeighbors[iFace]] = fluxFn
+                # coeffMatrices[iElement, theElement.iNeighbors[iFace]] = @MVector fill(fluxFn, 3)
+                coeffMatrices[iElement, iElement] += fluxCn
 
                 # ignore p for now
                 # coeffMatrices[2][iElement, theElement.iNeighbors[iFace]] = 0.0
@@ -335,11 +386,16 @@ function LdcCellBasedAssemblySparseMatrix(input::LdcMatrixAssemblyInput)::Tuple{
                 if boundaryType == "fixedValue"
                     fluxCb = nu * theFace.gDiff
                     relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
-                    for dim in 1:3
-                        fluxVb = -fluxCb * velocity[iBoundary].values[relativeFaceIndex][dim] 
-                        coeffMatrices[dim][iElement, iElement] += fluxCb
-                        RHS[dim, iElement] -= fluxVb
-                    end
+
+                    fluxVb = velocity[iBoundary].values[relativeFaceIndex] .* -fluxCb
+                    coeffMatrices[iElement, iElement] += fluxCb
+                    # coeffMatrices[iElement, iElement] = coeffMatrices[iElement, iElement].+ fluxCb
+                    RHS[iElement] -= fluxVb[1]
+                    # for dim in 1:3
+                    #     fluxVb = -fluxCb * velocity[iBoundary].values[relativeFaceIndex][dim] 
+                    #     coeffMatrices[dim][iElement, iElement] += fluxCb
+                    #     RHS[iElement, dim] -= fluxVb
+                    # end
                 end
                 # TODO ignore pressure for now ig
                 # boundaryType = pressure[iBoundary].type
@@ -352,15 +408,16 @@ function LdcCellBasedAssemblySparseMatrix(input::LdcMatrixAssemblyInput)::Tuple{
             end
         end
     end
-    return coeffMatrices, RHSs
+    return coeffMatrices, RHS
 end # function genericCellBasedAssemblySparseMatrix
 
 
-export cellBasedAssembly, 
-    cellBasedAssemblySparse1, 
+export cellBasedAssembly,
+    cellBasedAssemblySparse1,
     cellBasedAssemblySparse2,
     cellBasedAssemblySparse3,
-    faceBasedAssembly, 
-    batchedFaceBasedAssembly, 
-    batchedFaceBasedAssemblySparseMatrix
+    faceBasedAssembly,
+    batchedFaceBasedAssembly,
+    batchedFaceBasedAssemblySparseMatrix,
+    LdcCellBasedAssemblySparseMultiVectorPrealloc
 end # module MatrixAssembly

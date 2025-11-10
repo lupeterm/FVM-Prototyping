@@ -2,7 +2,8 @@ using HeatInduction
 using MatrixAssembly
 using BenchmarkTools
 import LinearSolve as LS
-
+using Profile
+using ProfileView
 testcases = [
     # ("/home/peter/clones/FVM-CFD-prototype/cases/Mycavity", "20x20"),
     # ("/home/peter/clones/FVM-CFD-prototype/cases/heat-conduction/2D-heat-conduction-on-a-2-by-2-mesh", "2x2"),
@@ -27,14 +28,14 @@ for (testcase, desc, caseName) in testcases
     global inputData = HeatInduction.LidDrivenCavity(testcase)
     for (assemblyMethod, mDesc) in assemblyMethods
         println("\n\n--> Using $mDesc <--\n")
-        # results = @benchmark begin
-            global matrices, RHSs = assemblyMethod(inputData) 
-        # end
+        results = @benchmark begin
+            global matrices, RHSs = LdcCellBasedAssemblySparseMultiVectorPrealloc(inputData) 
+        end
         display(results)
         # if desc != "10x10"
-        for matrix in matrices
-            display(matrix)
-        end
+        # for matrix in matrices
+        #     display(matrix)
+        # end
     end
     println("\n\n##############################################################################################")
 end

@@ -4,10 +4,23 @@ authors = ["lupeterm <lukas.petermann13@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+FlameGraphs = "08572546-2f56-4bcf-ba4e-bab62c3a3f89"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
+MatrixAssembly = "387d6434-66b3-4999-9a74-654017a16986"
 MeshStructs = "e7ff797b-5c94-4f68-b228-7c9c2c88eb4f"
+Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+ProfileView = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 
 [compat]
+BenchmarkTools = "1.6.3"
+FileIO = "1.17.1"
+FlameGraphs = "1.1.0"
 LinearAlgebra = "1.11.0"
+LinearSolve = "3.46.1"
+Profile = "1.11.0"
+ProfileView = "1.10.2"
 Revise = "3.10.0"
