@@ -1,10 +1,12 @@
 name = "MeshStructs"
 uuid = "e7ff797b-5c94-4f68-b228-7c9c2c88eb4f"
-authors = ["Lukas Petermann <lukas.petermann13@gmail.com>"]
 version = "0.1.0"
+authors = ["Lukas Petermann <lukas.petermann13@gmail.com>"]
 
 [deps]
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 Revise = "3.10.0"
+StaticArrays = "1.9.15"

@@ -1,4 +1,5 @@
 module MeshStructs
+using StaticArrays
 
 struct CaseDirError <: Exception
     message::String
@@ -11,23 +12,23 @@ mutable struct Face
     iNodes::Vector{Int}
     iOwner::Int
     iNeighbor::Int
-    centroid::Vector{Float64}
-    Sf::Vector{Float64}
-    area::Float64
-    CN::Vector{Float64}
-    magCN::Float64
-    eCN::Vector{Float64}
-    gDiff::Float64
-    T::Vector{Float64}
-    gf::Float64
+    centroid::MVector{3, Float32}
+    Sf::MVector{3, Float32}
+    area::Float32
+    CN::Vector{Float32}
+    magCN::Float32
+    eCN::Vector{Float32}
+    gDiff::Float32
+    T::Vector{Float32}
+    gf::Float32
     patchIndex::Int
-    walldist::Float64
+    walldist::Float32
     iOwnerNeighborCoef::Int
     iNeighborOwnerCoef::Int
 end # struct Face
 
 mutable struct Node
-    centroid::Vector{Float64}
+    centroid::SVector{3, Float32}
     iCells::Vector{Int}
     iFaces::Vector{Int}
     flag::Int
@@ -48,9 +49,9 @@ mutable struct Cell
     numNeighbors::Int
     faceSigns::Vector{Int}
     iNodes::Vector{Int}
-    volume::Float64
-    oldVolume::Float64
-    centroid::Vector{Float64}
+    volume::Float32
+    oldVolume::Float32
+    centroid::Vector{Float32}
 end # struct Cell
 
 struct Mesh
@@ -183,22 +184,22 @@ end
 
 struct MatrixAssemblyInput{T}
     mesh::Mesh
-    source::Vector{Float64}
-    diffusionCoeff::Vector{Float64}
+    source::Vector{Float32}
+    diffusionCoeff::Vector{Float32}
     boundaryFields::Vector{BoundaryField{T}}
 end
 
 struct LdcMatrixAssemblyInput
     mesh::Mesh
-    nu::Float64
+    nu::Float32
     p::Vector{BoundaryField}
     U::Vector{BoundaryField}
 end
 
 struct GenericMatrixAssemblyInput
     mesh::Mesh
-    sources::Vector{Vector{Float64}}
-    variables::Vector{Float64}
+    sources::Vector{Vector{Float32}}
+    variables::Vector{Float32}
     boundaryFields::Vector{Vector{BoundaryField}}
     mappings::Dict{Int, String}
 end

@@ -1,5 +1,6 @@
 using LinearAlgebra
 using ..MeshStructs
+using StaticArrays
 
 function readOpenFoamMesh(caseDir::String)::Mesh
     if !isdir(caseDir)
@@ -22,27 +23,26 @@ function readOpenFoamMesh(caseDir::String)::Mesh
     return mesh
 end # function readOpenFoamMesh
 
-function readPointsFile(polyMeshDir::String)::Vector{Node}
+
+function readPointsFile(polyMeshDir::String)
     pointsFileName = joinpath(polyMeshDir, "points")
     if !isfile(pointsFileName)
         throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
     end
-    i = 18
-    lines = readlines(pointsFileName)
-    while isempty(lines[i])
-        i += 1
-    end
-    nNodes = tryparse(Int, lines[i])
-    i += 2
-    nodes::Vector{Node} = []
-    for line in lines[i:i+nNodes-1]
+    approxPoints = countlines(pointsFileName) - 15
+    centroids = zeros(3, approxPoints)
+    i = 1
+    for line in eachline(pointsFileName)
+        if !startswith(line, "(") || line == "("
+            continue
+        end
         s = split((line[2:(end-1)]), " ")
-        coords = map(s -> tryparse(Float64, s), s)
-        push!(nodes, Node(coords, [], [], 0))
+        centroids[i:i+2] .= parse.(Float32, s)
+        i +=3
     end
-    return nodes
-
+    return centroids
 end # function readPointsFile
+
 
 function readFacesFile(polyMeshDir::String, owners::Vector{Int})::Vector{Face}
     facesFileName = joinpath(polyMeshDir, "faces")
@@ -213,22 +213,22 @@ function processOpenFoamMesh(mesh::Mesh)::Mesh
     return mesh
 end # function processOpenFoamMesh
 
-function magnitude(vector::Vector{Float64})::Float64
-    return sqrt(dot(vector, vector))
+function magnitude(vector::MVector{3, Float32})::Float32
+    return sqrt(vector'vector)
 end # function magnitude
 
 function processBasicFaceGeometry(mesh::Mesh)::Mesh
     for face in mesh.faces
-        centroid = zeros(3)
-        Sf = zeros(3)
-        area = 0.0
+        face.centroid = MVector(0.0,0.0,0.0)
+        face.Sf = MVector(0.0,0.0,0.0)
+        face.area = 0.0
         # special case: triangle
         if size(face.iNodes)[1] == 3
             # sum x,y,z and divide by 3
             triangleNodes = map(n -> n.centroid, mesh.nodes[face.iNodes])
             centroid = sum(triangleNodes) / 3
-            Sf = 0.5 * cross(triangleNodes[2] - triangleNodes[1], triangleNodes[3] - triangleNodes[1])
-            area = magnitude(Sf)
+            face.Sf .= 0.5 * cross(triangleNodes[2] - triangleNodes[1], triangleNodes[3] - triangleNodes[1])
+            face.area = magnitude(face.Sf)
         else # general case, polygon is not a triangle 
             nodes = map(n -> n.centroid, mesh.nodes[face.iNodes])
             center = sum(nodes) / size(nodes)[1]
@@ -253,13 +253,12 @@ function processBasicFaceGeometry(mesh::Mesh)::Mesh
                 centroid += localArea * localCentroid
                 Sf += localSf
             end
-            area = magnitude(Sf)
+            face.area = magnitude(Sf)
             # Compute centroid of the polygon
-            centroid /= area
+            face.centroid ./= area
         end
         face.centroid = centroid
         face.Sf = Sf
-        face.area = area
     end
     return mesh
 end # function processBasicFaceGeometry
@@ -267,11 +266,11 @@ end # function processBasicFaceGeometry
 function computeElementVolumeAndCentroid(mesh)::Mesh
     for iElement in 1:(size(mesh.cells)[1])
         iFaces = mesh.cells[iElement].iFaces
-        elementCenter = zeros(3)
+        elementCenter = MVector{3, Float32}
         for iFace in iFaces
-            elementCenter += mesh.faces[iFace].centroid
+            elementCenter .+= mesh.faces[iFace].centroid
         end
-        elementCenter /= size(iFaces)[1]
+        elementCenter ./= size(iFaces)[1]
         localVolumeCentroidSum = zeros(3)
         localVolumeSum = 0.0
         for iFace in 1:size(iFaces)[1]
@@ -398,8 +397,8 @@ end # function readTemperatureField
 """
     parse '(0 0 0)' to [0.0, 0.0, 0.0]
 """
-parseVec(string::String)::Vector{Float64} = map(s -> tryparse(Float64,s ), split(string[2:end-1], " "))
-parseVec(sub::SubString)::Vector{Float64} = parseVec(String(sub))
+parseVec(string::String)::Vector{Float32} = map(s -> tryparse(Float32,s ), split(string[2:end-1], " "))
+parseVec(sub::SubString)::Vector{Float32} = parseVec(String(sub))
 
 function readField(filePath::String, mesh::Mesh)::Vector{BoundaryField}
     fileName = rsplit(filePath, "/", limit=1)[1]
@@ -447,7 +446,7 @@ function readField(filePath::String, mesh::Mesh)::Vector{BoundaryField}
             end
             if !isnothing(matches[3])
                 if !isnothing(matches[4])  # scalars like temperature
-                    scalar = tryparse(Float64, matches[4])
+                    scalar = tryparse(Float32, matches[4])
                     values = fill(scalar, nFaces) 
                 else  # vectors like velocity
                     vector = parseVec(matches[5])
@@ -461,12 +460,12 @@ function readField(filePath::String, mesh::Mesh)::Vector{BoundaryField}
     return boundaryFields
 end
 
-function readPropertiesFile(path::String)::Float64
+function readPropertiesFile(path::String)::Float32
     if !isfile(path)
         throw(CaseDirError("Field file '$(path)' does not exist."))
     end
     file = read(path, String)
     variable = match(r"\w+\s*\[[\s\d-]+\]\s*([\.\d]+);", file)
-    val = tryparse(Float64, variable[1])
+    val = tryparse(Float32, variable[1])
     return val
 end
