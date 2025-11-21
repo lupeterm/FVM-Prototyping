@@ -23,22 +23,56 @@ function readOpenFoamMesh(caseDir::String)::Mesh
     return mesh
 end # function readOpenFoamMesh
 
+# function readPointsFile(polyMeshDir::String)::Vector{Node}
+#     pointsFileName = joinpath(polyMeshDir, "points")
+#     if !isfile(pointsFileName)
+#         throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
+#     end
+#     i = 18
+#     lines = readlines(pointsFileName)
+#     while isempty(lines[i])
+#         i += 1
+#     end
+#     nNodes = tryparse(Int, lines[i])
+#     i += 2
+#     nodes::Vector{Node} = []
+#     for line in lines[i:i+nNodes-1]
+#         s = split((line[2:(end-1)]), " ")
+#         coords = map(s -> tryparse(Float64, s), s)
+#         push!(nodes, Node(coords, [], [], 0))
+#     end
+#     return nodes
+
+# end # function readPointsFile
 
 function readPointsFile(polyMeshDir::String)
     pointsFileName = joinpath(polyMeshDir, "points")
     if !isfile(pointsFileName)
         throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
     end
-    approxPoints = countlines(pointsFileName) - 15
-    centroids = zeros(3, approxPoints)
+    nNodes = -1
+    start = 0
+    for (j, line) in enumerate(eachline(pointsFileName))
+        if j < 18 || isempty(line)
+            continue
+        elseif nNodes == -1
+            nNodes = tryparse(Int, line)
+            start = j += 2
+            break
+        end
+    end
+    centroids = zeros(3, nNodes)
     i = 1
-    for line in eachline(pointsFileName)
-        if !startswith(line, "(") || line == "("
+    for (j, line) in enumerate(eachline(pointsFileName))
+        if j < start 
             continue
         end
+        if line == ")"
+            break
+        end
         s = split((line[2:(end-1)]), " ")
-        centroids[i:i+2] .= parse.(Float32, s)
-        i +=3
+        centroids[i:i+2] .= tryparse.(Float32, s)
+        i += 1
     end
     return centroids
 end # function readPointsFile
