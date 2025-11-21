@@ -7,32 +7,44 @@ end # struct CaseDirError
 
 
 
+# mutable struct Face2
+#     index::Int
+#     iNodes::Vector{Int}
+#     iOwner::Int
+#     iNeighbor::Int
+#     centroid::MVector{3, Float32}
+#     Sf::MVector{3, Float32}
+#     area::Float32
+#     CN::Vector{Float32}
+#     magCN::Float32
+#     eCN::Vector{Float32}
+#     gDiff::Float32
+#     # T::Vector{Float32}
+#     gf::Float32
+#     patchIndex::Int
+#     walldist::Float32
+#     iOwnerNeighborCoef::Int
+#     iNeighborOwnerCoef::Int
+# end # struct Face
+
 mutable struct Face
-    index::Int
-    iNodes::Vector{Int}
-    iOwner::Int
-    iNeighbor::Int
+    index::Int  
+    iNodes::MVector{4, Int}
+    iOwner::Int 
+    iNeighbor::Int  
     centroid::MVector{3, Float32}
     Sf::MVector{3, Float32}
     area::Float32
-    CN::Vector{Float32}
-    magCN::Float32
-    eCN::Vector{Float32}
     gDiff::Float32
-    T::Vector{Float32}
-    gf::Float32
     patchIndex::Int
-    walldist::Float32
-    iOwnerNeighborCoef::Int
-    iNeighborOwnerCoef::Int
 end # struct Face
 
-mutable struct Node
-    centroid::SVector{3, Float32}
-    iCells::Vector{Int}
-    iFaces::Vector{Int}
-    flag::Int
-end # struct Node
+# mutable struct Node
+#     centroid::SVector{3, Float32}
+#     iCells::Vector{Int}
+#     iFaces::Vector{Int}
+#     flag::Int
+# end # struct Node
 
 struct Boundary
     name::String
@@ -44,18 +56,18 @@ end # struct Boundary
 
 mutable struct Cell
     index::Int
+    volume::Float32
     iFaces::Vector{Int}
     iNeighbors::Vector{Int}
-    numNeighbors::Int
     faceSigns::Vector{Int}
-    iNodes::Vector{Int}
-    volume::Float32
-    oldVolume::Float32
-    centroid::Vector{Float32}
+    centroid::MVector{3, Float32}
+    # iNodes::Vector{Int}
+    # numNeighbors::Int
+    # oldVolume::Float32
 end # struct Cell
 
 struct Mesh
-    nodes::Vector{Node}
+    nodes::Matrix{Float64}
     faces::Vector{Face}
     boundaries::Vector{Boundary}
     numCells::Int
@@ -79,25 +91,25 @@ end # struct BoundaryField
 
 import Base: show
 
-function show(io::IO, node::Node)
-    printNode(node)
-end
+# function show(io::IO, node::Node)
+#     printNode(node)
+# end
 
-function show(io::IO, cell::Cell)
-    printCell(cell)
-end
+# function show(io::IO, cell::Cell)
+#     printCell(cell)
+# end
 
-function show(io::IO, face::Face)
-    printFace(face)
-end
+# function show(io::IO, face::Face)
+#     printFace(face)
+# end
 
-function show(io::IO, boundary::Boundary)
-    printBoundary(boundary)
-end
+# function show(io::IO, boundary::Boundary)
+#     printBoundary(boundary)
+# end
 
-function show(io::IO, mesh::Mesh)
-    printMesh(mesh)
-end
+# function show(io::IO, mesh::Mesh)
+#     printMesh(mesh)
+# end
 
 function printMesh(mesh::Mesh)
     println("Mesh:")
@@ -162,13 +174,13 @@ function printBoundary(b::Boundary)
     println("\t}")
 end
 
-function printNode(node::Node)
-    println("\tNode:")
-    println("\t\tCentroid: ", node.centroid)
-    println("\t\tiCells: ", node.iCells)
-    println("\t\tiFaces: ", node.iFaces)
-    println("\t\tFlag: ", node.flag)
-end
+# function printNode(node::Node)
+#     println("\tNode:")
+#     println("\t\tCentroid: ", node.centroid)
+#     println("\t\tiCells: ", node.iCells)
+#     println("\t\tiFaces: ", node.iFaces)
+#     println("\t\tFlag: ", node.flag)
+# end
 
 function printCell(cell::Cell)
     println("\tCell $(cell.index):")
@@ -206,7 +218,7 @@ end
 
 export CaseDirError,
     Face,
-    Node,
+    # Node,
     Boundary,
     Cell,
     Mesh,
@@ -215,9 +227,10 @@ export CaseDirError,
     printBoundary,
     printFace,
     printCell,
-    printNode,
+    # printNode,
     MatrixAssemblyInput,
     LdcMatrixAssemblyInput,
-    GenericMatrixAssemblyInput
+    GenericMatrixAssemblyInput,
+    Face2
 
 end # module MeshStructs

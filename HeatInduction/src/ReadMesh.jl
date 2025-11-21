@@ -10,61 +10,39 @@ function readOpenFoamMesh(caseDir::String)::Mesh
     if !isdir(polymeshDir)
         throw(CaseDirError("PolyMesh Directory '$(caseDir)' does not exist"))
     end
-    nodes = readPointsFile(polymeshDir)
+    nodes::Matrix{Float64} = readPointsFile(polymeshDir)
     owner = readOwnersFile(polymeshDir)
     faces = readFacesFile(polymeshDir, owner)
-    neighbors, faces = readNeighborsFile(polymeshDir, faces)
+    numNeighbors, faces = readNeighborsFile(polymeshDir, faces)
     numCells = maximum(owner)
     boundaries = readBoundaryFile(polymeshDir)
 
-    mesh = constructCells(nodes, boundaries, faces, numCells, neighbors)
-    mesh = setupNodeConnectivities(mesh)
+    mesh = constructCells(nodes, boundaries, faces, numCells, numNeighbors)
+    # mesh = setupNodeConnectivities(mesh)
     mesh = processOpenFoamMesh(mesh)
     return mesh
 end # function readOpenFoamMesh
 
-# function readPointsFile(polyMeshDir::String)::Vector{Node}
-#     pointsFileName = joinpath(polyMeshDir, "points")
-#     if !isfile(pointsFileName)
-#         throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
-#     end
-#     i = 18
-#     lines = readlines(pointsFileName)
-#     while isempty(lines[i])
-#         i += 1
-#     end
-#     nNodes = tryparse(Int, lines[i])
-#     i += 2
-#     nodes::Vector{Node} = []
-#     for line in lines[i:i+nNodes-1]
-#         s = split((line[2:(end-1)]), " ")
-#         coords = map(s -> tryparse(Float64, s), s)
-#         push!(nodes, Node(coords, [], [], 0))
-#     end
-#     return nodes
+function getAmountAndStart(file::String)::Tuple{Int,Int}
+    for (j, line) in enumerate(eachline(file))
+        amount = tryparse(Int, line)
+        if isnothing(amount)
+            continue
+        end
+        return amount, j + 2
+    end
+end
 
-# end # function readPointsFile
-
-function readPointsFile(polyMeshDir::String)
+function readPointsFile(polyMeshDir::String)::Matrix{Float64}
     pointsFileName = joinpath(polyMeshDir, "points")
     if !isfile(pointsFileName)
         throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
     end
-    nNodes = -1
-    start = 0
-    for (j, line) in enumerate(eachline(pointsFileName))
-        if j < 18 || isempty(line)
-            continue
-        elseif nNodes == -1
-            nNodes = tryparse(Int, line)
-            start = j += 2
-            break
-        end
-    end
+    nNodes, start = getAmountAndStart(pointsFileName)
     centroids = zeros(3, nNodes)
     i = 1
     for (j, line) in enumerate(eachline(pointsFileName))
-        if j < start 
+        if j < start
             continue
         end
         if line == ")"
@@ -72,76 +50,81 @@ function readPointsFile(polyMeshDir::String)
         end
         s = split((line[2:(end-1)]), " ")
         centroids[i:i+2] .= tryparse.(Float32, s)
-        i += 1
+        i += 3
     end
     return centroids
 end # function readPointsFile
 
-
-function readFacesFile(polyMeshDir::String, owners::Vector{Int})::Vector{Face}
-    facesFileName = joinpath(polyMeshDir, "faces")
-    if !isfile(facesFileName)
-        throw(CaseDirError("Faces file '$(facesFileName)' does not exist."))
-    end
-    i = 18
-    lines = readlines(facesFileName)
-    while isempty(lines[i])
-        i += 1
-    end
-    nfaces = tryparse(Int, lines[i])
-    faces::Vector{Face} = []
-    i += 2
-    for (index, iFace) in enumerate(i:i+nfaces-1)
-        s = split((lines[iFace][3:(end-1)]), " ")
-        nodes = map(s -> tryparse(Int, s) + 1, s)
-        push!(faces, Face(index, nodes, owners[index], -1, zeros(3), zeros(3), 0.0, zeros(3), 0.0, zeros(3), 0.0, zeros(3), 0.0, -1, 0.0, 0, 0))
-    end
-    return faces
-end # function readPointsFile
-
-function readOwnersFile(polyMeshDir::String)::Vector{Int}
+function readOwnersFile(polyMeshDir::String)
     ownersFileName = joinpath(polyMeshDir, "owner")
     if !isfile(ownersFileName)
         throw(CaseDirError("Owners file '$(ownersFileName)' does not exist."))
     end
-    i = 18
-    lines = readlines(ownersFileName)
-    while isempty(lines[i]) || startswith(lines[i], "//")
+    nOwners, start = getAmountAndStart(ownersFileName)
+    owners::Vector{Int} = zeros(nOwners)
+    i = 1
+    for (j, line) in enumerate(eachline(ownersFileName))
+        if j < start
+            continue
+        end
+        if line == ")"
+            break
+        end
+        owners[i] = parse(Int, line) +1 
         i += 1
-    end
-    nOwners = tryparse(Int, lines[i])
-    i += 2
-    owners = []
-    for iOwner in i:i+nOwners-1
-        owner = tryparse(Int, lines[iOwner]) +1
-        push!(owners, owner)
     end
     return owners
 end # function readPointsFile
 
+function readFacesFile(polyMeshDir::String, owners::Vector{Int})
+    facesFileName = joinpath(polyMeshDir, "faces")
+    if !isfile(facesFileName)
+        throw(CaseDirError("Faces file '$(facesFileName)' does not exist."))
+    end
+    nFaces, start = getAmountAndStart(facesFileName)
+    faces = Vector{Face}(undef, nFaces)
+    i = 1
+    for (j, line) in enumerate(eachline(facesFileName))
+        if j < start
+            continue
+        end
+        if line == ")"
+            break
+        end
+        faces[i] = Face(
+            i,
+            parse.(Int, split(line[3:(end-1)], " ")) .+ 1,
+            owners[i],
+            -1,
+            MVector{3,Float32}(0.0, 0.0, 0.0),
+            MVector{3,Float32}(0.0, 0.0, 0.0),
+            0.0,
+            0.0,
+            -1,
+        )
+        i += 1
+    end
+    return faces
+end # function readPointsFile
 
-function readNeighborsFile(polyMeshDir::String, faces::Vector{Face})::Tuple{Vector{Int},Vector{Face}}
+
+
+function readNeighborsFile(polyMeshDir::String, faces::Vector{Face})::Tuple{Int,Vector{Face}}
     neighborsFileName = joinpath(polyMeshDir, "neighbour")
     if !isfile(neighborsFileName)
         throw(CaseDirError("Neighbors file '$(neighborsFileName)' does not exist."))
     end
-    i = 19 
-    lines = readlines(neighborsFileName)
-    while isempty(lines[i])
-        i += 1
+    numNeighbors, start = getAmountAndStart(neighborsFileName)
+    for (j, line) in enumerate(eachline(neighborsFileName))
+        if j < start
+            continue
+        end
+        if line == ")"
+            break
+        end
+        faces[j-start+1].iNeighbor = parse(Int, line) + 1
     end
-    nn = match(r"(\d+)(?:\([\d\s]+\))?", lines[i])
-    numNeighbors = tryparse(Int, nn[1])
-    if numNeighbors <= 4
-        s = split((lines[i][3:(end-1)]), " ")
-        nbs = map(s -> tryparse(Int, s), s)
-    else
-        nbs = [tryparse(Int, "$(l)") for l in lines[i+2:i+2+numNeighbors-1]]
-    end
-    for iNeighbor in 1:numNeighbors
-        faces[iNeighbor].iNeighbor = nbs[iNeighbor] + 1
-    end
-    return nbs, faces
+    return numNeighbors, faces
 end # function readPointsFile
 
 function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
@@ -162,7 +145,7 @@ function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
         s = replace(bound, ";" => "")
         s = split(s, " ")
         s = filter(x -> x != "", s)
-        if s[5] == "inGroups" 
+        if s[5] == "inGroups"
             ing1 = tryparse(Int, "$(s[6][1])")
             ingroups = (ing1, s[6][3:(end-1)])
             boundary = Boundary(
@@ -187,9 +170,19 @@ function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
     return boundaries
 end # function readPointsFile
 
-function constructCells(nodes::Vector{Node}, boundaries::Vector{Boundary}, faces::Vector{Face}, numCells::Int, neighbors::Vector{Int})::Mesh
-    numInteriorFaces = size(neighbors)[1]
-    cells = [Cell(index, [], [], 0, [], [], 0.0, 0.0, []) for index in 1:numCells]
+function constructCells(nodes::Matrix{Float64}, boundaries::Vector{Boundary}, faces::Vector{Face}, numCells::Int, numInteriorFaces::Int)::Mesh
+    cells = [
+        Cell(
+            index,
+            0.0,
+            [],
+            [],
+            [],
+            MVector{3,Float32}(0.0, 0.0, 0.0),
+        )
+        for index in 1:numCells
+    ]
+    
     for interiorFace::Int in 1:numInteriorFaces
         iOwner = faces[interiorFace].iOwner
         iNeighbor = faces[interiorFace].iNeighbor
@@ -207,9 +200,9 @@ function constructCells(nodes::Vector{Node}, boundaries::Vector{Boundary}, faces
         push!(cells[owner].faceSigns, 1)
     end
 
-    for cell in cells
-        cell.numNeighbors = size(cell.iNeighbors)[1]
-    end
+    # for cell in cells
+    #     cell.numNeighbors = size(cell.iNeighbors)[1]
+    # end
     numBoundaryCells = size(faces)[1] - numInteriorFaces
     numBoundaryFaces = size(faces)[1] - numInteriorFaces
     return Mesh(nodes, faces, boundaries, numCells, cells, numInteriorFaces, numBoundaryCells, numBoundaryFaces)
@@ -223,16 +216,16 @@ function setupNodeConnectivities(mesh::Mesh)::Mesh
             push!(mesh.nodes[iNodes[iNode]].iFaces, mesh.faces[iFace].index)
         end
     end
-    for cell in mesh.cells
-        for face in mesh.faces[cell.iFaces]
-            for iNode in face.iNodes
-                if !(iNode in cell.iNodes)
-                    push!(cell.iNodes, iNode)
-                    push!(mesh.nodes[iNode].iCells, cell.index)
-                end
-            end
-        end
-    end
+    # for cell in mesh.cells
+    #     for face in mesh.faces[cell.iFaces]
+    #         for iNode in face.iNodes
+    #             if !(iNode in cell.iNodes)
+    #                 push!(cell.iNodes, iNode)
+    #                 push!(mesh.nodes[iNode].iCells, cell.index)
+    #             end
+    #         end
+    #     end
+    # end
     return mesh
 end
 
@@ -242,57 +235,52 @@ function processOpenFoamMesh(mesh::Mesh)::Mesh
     mesh = processBasicFaceGeometry(mesh)
     mesh = computeElementVolumeAndCentroid(mesh)
     mesh = processSecondaryFaceGeometry(mesh)
-    mesh = sortBoundaryNodesFromInteriorNodes(mesh)
+    # mesh = sortBoundaryNodesFromInteriorNodes(mesh)
     mesh = labelBoundaryFaces(mesh)
     return mesh
 end # function processOpenFoamMesh
 
-function magnitude(vector::MVector{3, Float32})::Float32
+function magnitude(vector::MVector{3,Float32})::Float32
     return sqrt(vector'vector)
 end # function magnitude
 
 function processBasicFaceGeometry(mesh::Mesh)::Mesh
     for face in mesh.faces
-        face.centroid = MVector(0.0,0.0,0.0)
-        face.Sf = MVector(0.0,0.0,0.0)
-        face.area = 0.0
+        area = 0.0
         # special case: triangle
         if size(face.iNodes)[1] == 3
             # sum x,y,z and divide by 3
-            triangleNodes = map(n -> n.centroid, mesh.nodes[face.iNodes])
-            centroid = sum(triangleNodes) / 3
+            triangleNodes = [mesh.nodes[i:i+2] for i in face.iNodes]
+            face.centroid .= sum(triangleNodes) / 3
             face.Sf .= 0.5 * cross(triangleNodes[2] - triangleNodes[1], triangleNodes[3] - triangleNodes[1])
-            face.area = magnitude(face.Sf)
+            area = magnitude(face.Sf)
         else # general case, polygon is not a triangle 
-            nodes = map(n -> n.centroid, mesh.nodes[face.iNodes])
+            nodes = [mesh.nodes[i:i+2] for i in face.iNodes]
             center = sum(nodes) / size(nodes)[1]
             # Using the center to compute the area and centroid of virtual
             # triangles based on the center and the face nodes
             triangleNode1 = center
-            triangleNode2 = zeros(3)
-            triangleNode3 = zeros(3)
+            triangleNode3 = MVector{3, Float32}(0.0,0.0,0.0)
             for (iNodeIndex, iNode) in enumerate(face.iNodes)
-                triangleNode2 = mesh.nodes[iNode].centroid
                 if iNodeIndex < size(face.iNodes)[1]
-                    triangleNode3 = mesh.nodes[face.iNodes[iNodeIndex+1]].centroid
+                    triangleNode3 .= mesh.nodes[face.iNodes[iNodeIndex+1]:face.iNodes[iNodeIndex+1]+2]
                 else
-                    triangleNode3 = mesh.nodes[face.iNodes[1]].centroid
+                    triangleNode3 .= mesh.nodes[face.iNodes[1]:face.iNodes[1]+2]
                 end
                 # Calculate the centroid of a given subtriangle
-                localCentroid = (triangleNode1 + triangleNode2 + triangleNode3) / 3
+                localCentroid = (triangleNode1 .+ mesh.nodes[iNode:iNode+2] .+ triangleNode3) ./ 3
                 # Calculate the surface area vector of a given subtriangle by cross product
-                localSf = 0.5 * cross(triangleNode2 - triangleNode1, triangleNode3 - triangleNode2)
+                localSf = 0.5 .* cross(mesh.nodes[iNode:iNode+2] .- triangleNode1, triangleNode3 .- mesh.nodes[iNode:iNode+2])
                 # Calculate the surface area of a given subtriangle
                 localArea = sqrt(dot(localSf, localSf))
-                centroid += localArea * localCentroid
-                Sf += localSf
+                face.centroid .+= localArea * localCentroid
+                face.Sf += localSf
             end
-            face.area = magnitude(Sf)
+            area = magnitude(face.Sf)
             # Compute centroid of the polygon
             face.centroid ./= area
         end
-        face.centroid = centroid
-        face.Sf = Sf
+        face.area = area
     end
     return mesh
 end # function processBasicFaceGeometry
@@ -300,7 +288,7 @@ end # function processBasicFaceGeometry
 function computeElementVolumeAndCentroid(mesh)::Mesh
     for iElement in 1:(size(mesh.cells)[1])
         iFaces = mesh.cells[iElement].iFaces
-        elementCenter = MVector{3, Float32}
+        elementCenter = MVector{3,Float32}(0.0,0.0,0.0)
         for iFace in iFaces
             elementCenter .+= mesh.faces[iFace].centroid
         end
@@ -321,73 +309,77 @@ function computeElementVolumeAndCentroid(mesh)::Mesh
         end
         mesh.cells[iElement].centroid = (1 / localVolumeSum) * localVolumeCentroidSum
         mesh.cells[iElement].volume = localVolumeSum
-        mesh.cells[iElement].oldVolume = localVolumeSum
+        # mesh.cells[iElement].oldVolume = localVolumeSum
     end
     return mesh
 end # function computeElementVolumeAndCentroid
 
 function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
     # Loop over interior faces
+    eCN = MVector{3,Float32}(0.0, 0.0, 0.0)
+    CN = MVector{3,Float32}(0.0, 0.0, 0.0)
+
     for iFace in 1:mesh.numInteriorFaces
         theFace = mesh.faces[iFace]
         # Compute unit surtheFace normal vector
-        nf = (1 / theFace.area) * theFace.Sf
+        # nf = theFace.Sf ./ theFace.area
         ownerElement = mesh.cells[theFace.iOwner]
         neighborElement = mesh.cells[theFace.iNeighbor]
-        
-        # vector between cell centroids
-        theFace.CN = neighborElement.centroid - ownerElement.centroid
-        # length of said vector / direct distance between cell centroids
-        theFace.magCN = magnitude(theFace.CN)
-        # normalized vector to neighbor
-        theFace.eCN = (1 / theFace.magCN) * theFace.CN
 
-        E = theFace.area * theFace.eCN
+        # vector between cell centroids
+        CN = neighborElement.centroid .- ownerElement.centroid
+        # length of said vector / direct distance between cell centroids
+        magCN = magnitude(CN)
+        # normalized vector to neighbor
+        eCN .= CN ./ magCN
+
+        E = theFace.area * eCN
         # essentially strength of flux in the direction of neighboring cell
         # eq 8.11: gdiff of face = ||face Surface || / || distance between cell centroids ||
-        theFace.gDiff = magnitude(E) / magnitude(theFace.CN)
-        theFace.T = theFace.Sf - E
+        theFace.gDiff = magnitude(E) / magnitude(CN)
+        # theFace.T = theFace.Sf - E
 
+        # not needed?
         # Compute theFace weighting factor
-        Cf = theFace.centroid - ownerElement.centroid
-        fF = neighborElement.centroid - theFace.centroid
-        theFace.gf = dot(Cf, nf) / (dot(Cf, nf) + dot(fF, nf))
+        # Cf = theFace.centroid .- ownerElement.centroid
+        # fF = neighborElement.centroid - theFace.centroid
+        # theFace.gf = dot(Cf, nf) / (dot(Cf, nf) + dot(fF, nf))
     end
     for iBFace in (mesh.numInteriorFaces+1):size(mesh.faces)[1]
         theBFace = mesh.faces[iBFace]
         ownerElement = mesh.cells[theBFace.iOwner]
-        CN = theBFace.centroid - ownerElement.centroid
-        mesh.faces[iBFace].CN = CN
+        CN .= theBFace.centroid .- ownerElement.centroid
+        # mesh.faces[iBFace].CN = CN
         mesh.faces[iBFace].gDiff = theBFace.area * theBFace.area / dot(CN, theBFace.Sf)
-        magCN = magnitude(CN)
-        mesh.faces[iBFace].magCN = magCN
-        eCN = (1 / magCN) * CN
-        E = theBFace.area * eCN
-        mesh.faces[iBFace].T = theBFace.Sf - E
-        mesh.faces[iBFace].gf = 1.0
-        mesh.faces[iBFace].walldist = dot(CN, theBFace.Sf) / magnitude(theBFace.Sf)
+        # magCN = magnitude(CN)
+        # mesh.faces[iBFace].magCN = magCN
+        # eCN = (1 / magCN) * CN
+        # E = theBFace.area * eCN
+        # mesh.faces[iBFace].T = theBFace.Sf - E
+        # mesh.faces[iBFace].gf = 1.0
+        # mesh.faces[iBFace].walldist = dot(CN, theBFace.Sf) / magnitude(theBFace.Sf)
     end
-    for iElement in mesh.cells
-        iFaces = iElement.iFaces
-        iNeighbors = iElement.iNeighbors
-        kf = 1
-        for i in 1:size(iNeighbors)[1]
-            iFace = iFaces[i]
-            if mesh.faces[iFace].iOwner == iElement
-                mesh.faces[iFace].iOwnerNeighborCoef = kf
-            elseif mesh.faces[iFace].iNeighbor == iElement
-                mesh.faces[iFace].iNeighborOwnerCoef = kf
-            end
-            kf += 1
-        end
-    end
+    # for iElement in mesh.cells
+    #     iFaces = iElement.iFaces
+    #     iNeighbors = iElement.iNeighbors
+    #     kf = 1
+    #     for i in 1:size(iNeighbors)[1]
+    #         iFace = iFaces[i]
+    #         if mesh.faces[iFace].iOwner == iElement
+    #             mesh.faces[iFace].iOwnerNeighborCoef = kf
+    #         elseif mesh.faces[iFace].iNeighbor == iElement
+    #             mesh.faces[iFace].iNeighborOwnerCoef = kf
+    #         end
+    #         kf += 1
+    #     end
+    # end
     return mesh
 end # function processSecondaryFaceGeometry
 
 function sortBoundaryNodesFromInteriorNodes(mesh::Mesh)::Mesh
     for face in mesh.faces[1:mesh.numInteriorFaces]
         for iNode in face.iNodes
-            mesh.nodes[iNode].flag = 1
+            mesh.nodes[iNode:iNode+2].flag = 1
         end
     end
     for boundary in mesh.boundaries
@@ -397,7 +389,7 @@ function sortBoundaryNodesFromInteriorNodes(mesh::Mesh)::Mesh
         s2 = boundary.name == "frontAndBackPlanes"
         for face in mesh.faces[startFace:(startFace+nBFaces)]
             for iNode in face.iNodes
-                mesh.nodes[iNode].flag = (s1 || s2) ? 1 : 0
+                mesh.nodes[iNode:iNode+2].flag = (s1 || s2) ? 1 : 0
             end
         end
     end
@@ -415,7 +407,7 @@ function labelBoundaryFaces(mesh::Mesh)::Mesh
     return mesh
 end # function labelBoundaryFaces
 
-function readFields(dir::String, mesh::Mesh)::Tuple{Vector{Vector{BoundaryField}}, Dict{Int, String}}
+function readFields(dir::String, mesh::Mesh)::Tuple{Vector{Vector{BoundaryField}},Dict{Int,String}}
     files = readdir(dir)
     fields::Vector{Vector{BoundaryField}} = []
     mappings = Dict()
@@ -423,7 +415,7 @@ function readFields(dir::String, mesh::Mesh)::Tuple{Vector{Vector{BoundaryField}
         fileName = joinpath(dir, variableFile)
         bfields = readField(fileName, mesh)
         mappings[i] = variableFile
-        push!(fields, bfields) 
+        push!(fields, bfields)
     end
     return fields, mappings
 end # function readTemperatureField
@@ -431,7 +423,7 @@ end # function readTemperatureField
 """
     parse '(0 0 0)' to [0.0, 0.0, 0.0]
 """
-parseVec(string::String)::Vector{Float32} = map(s -> tryparse(Float32,s ), split(string[2:end-1], " "))
+parseVec(string::String)::Vector{Float32} = map(s -> tryparse(Float32, s), split(string[2:end-1], " "))
 parseVec(sub::SubString)::Vector{Float32} = parseVec(String(sub))
 
 function readField(filePath::String, mesh::Mesh)::Vector{BoundaryField}
@@ -468,6 +460,9 @@ function readField(filePath::String, mesh::Mesh)::Vector{BoundaryField}
     for boundary in mesh.boundaries
         for b in splitted
             matches = match(r"\s*(\w+)\s*\{\s*type\s*(\w+);(?:\s*value\s*(\w+) (?:(\d+)|(\([\d\s]+\)));)?", b)
+            if isnothing(matches)
+                continue
+            end
             values = []
             if boundary.name != matches[1]
                 continue
@@ -481,10 +476,10 @@ function readField(filePath::String, mesh::Mesh)::Vector{BoundaryField}
             if !isnothing(matches[3])
                 if !isnothing(matches[4])  # scalars like temperature
                     scalar = tryparse(Float32, matches[4])
-                    values = fill(scalar, nFaces) 
+                    values = fill(scalar, nFaces)
                 else  # vectors like velocity
                     vector = parseVec(matches[5])
-                    values = fill(vector, nFaces) 
+                    values = fill(vector, nFaces)
                 end
             end
             bfield = BoundaryField(String(fileName), nFaces, values, String(type))

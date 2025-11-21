@@ -9,7 +9,8 @@ testcases = [
     # ("/home/peter/clones/FVM-CFD-prototype/cases/heat-conduction/2D-heat-conduction-on-a-2-by-2-mesh", "2x2"),
     # ("/home/peter/clones/FVM-CFD-prototype/cases/heat-conduction/2D-heat-conduction-on-a-3-by-3-mesh", "3x3"),
     # ("/home/peter/clones/FVM-CFD-prototype/cases/heat-conduction/2D-heat-conduction-on-a-10-by-10-mesh", "10x10"),
-    ("/home/peter/Documents/uni/openfoam-benchmarking/LidDrivenCavityS/Lid_driven_cavity-3d/S", "1030301 x 1030301", "Lid-Driven Cavity")
+    # ("/home/peter/clones/cases/ldc/Lid_driven_cavity-3d/S", "1030301 x 1030301", "Lid-Driven Cavity"),
+    ("/home/peter/clones/cases/ldc/Lid_driven_cavity-3d/M", "8000000 x 8000000", "Lid-Driven Cavity")
 ]
 
 assemblyMethods = [
@@ -29,7 +30,7 @@ for (testcase, desc, caseName) in testcases
     for (assemblyMethod, mDesc) in assemblyMethods
         println("\n\n--> Using $mDesc <--\n")
         results = @benchmark begin
-            global matrices, RHSs = LdcCellBasedAssemblySparseMultiVectorPrealloc(inputData) 
+            global matrices, RHSs = LdcCellBasedAssedisplaymblySparseMultiVectorPrealloc(inputData) 
         end
         display(results)
         # if desc != "10x10"
