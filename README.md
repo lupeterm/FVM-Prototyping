@@ -8,20 +8,8 @@ TODOs:
 
 
 
-###### Lid-Driven Cavity on a 1030301 x 1030301 mesh ######
-
-Reading Points..
-Reading Owners..
-Reading Faces..
-Reading Neighbors..
-Reading Boundaries..
-Constructing Cells..
-Reading /home/peter/clones/cases/ldc/Lid_driven_cavity-3d/S/constant/transportProperties
-Variable: RegexMatch("nu              [0 2 -1 0 0 0 0] 0.01;", 1="0.01")
-
-
---> Using VectorAssembly <--
-
+## Lid-Driven Cavity on a 1030301 x 1030301 mesh 
+```
 BenchmarkTools.Trial: 5 samples with 1 evaluation per sample.
  Range (min … max):  755.584 ms …    2.900 s  ┊ GC (min … max):  0.00% … 73.32%
  Time  (median):        1.552 s               ┊ GC (median):    51.03%
@@ -32,51 +20,46 @@ BenchmarkTools.Trial: 5 samples with 1 evaluation per sample.
   756 ms           Histogram: frequency by time           2.9 s <
 
  Memory estimate: 1.67 GiB, allocs estimate: 49270990.
+```
 
+#### Using `julia -p 2` (2 or 8 didnt have a noticeable difference) 
 
+```
+BenchmarkTools.Trial: 4 samples with 1 evaluation per sample.
+ Range (min … max):  1.150 s …    1.618 s  ┊ GC (min … max): 35.72% … 50.97%
+ Time  (median):     1.495 s               ┊ GC (median):    44.07%
+ Time  (mean ± σ):   1.440 s ± 211.350 ms  ┊ GC (mean ± σ):  44.34% ±  6.32%
 
-##############################################################################################
+  █                                █                  █    █  
+  █▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█▁▁▁▁█ ▁
+  1.15 s         Histogram: frequency by time         1.62 s <
 
-###### Lid-Driven Cavity on a 8000000 x 8000000 mesh ######
+ Memory estimate: 1.67 GiB, allocs estimate: 49270988.
+```
 
-Reading Points..
-Reading Owners..
-Reading Faces..
-Reading Neighbors..
-Reading Boundaries..
-Constructing Cells..
-Reading /home/peter/clones/cases/ldc2/Lid_driven_cavity-3d/M/constant/transportProperties
-Variable: RegexMatch("nu              [0 2 -1 0 0 0 0] 0.01;", 1="0.01")
-
-
---> Using VectorAssembly <--
-
+## Lid-Driven Cavity on a 8000000 x 8000000 mesh ##
+```
 BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
  Single result which took 16.058 s (45.37% GC) to evaluate,
  with a memory estimate of 13.91 GiB, over 393192487 allocations.
+```
 
-
-
-##############################################################################################
-
-###### WindsorBody on a 6517376x6517376 mesh ######
-
-Reading Points..
-Reading Owners..
-Reading Faces..
-Reading Neighbors..
-Reading Boundaries..
-Constructing Cells..
-Reading /home/peter/clones/cases/windsor/workspace/0172cca15b84871d59583e93ed420b34/case/constant/transportProperties
-Variable: RegexMatch("nu              [0 2 -1 0 0 0 0] 1.44e-05;", 1="1.44e-05")
-
-
---> Using VectorAssembly <--
-
+#### Using `julia -p 2` (2 or 8 didnt have a noticeable difference) 
+```
+BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
+ Single result which took 11.712 s (45.17% GC) to evaluate,
+ with a memory estimate of 13.91 GiB, over 393192485 allocations.
+```
+## WindsorBody on a 6517376x6517376 mesh ##
+```
 BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
  Single result which took 11.594 s (50.27% GC) to evaluate,
  with a memory estimate of 11.70 GiB, over 302869853 allocations.
+```
+#### Using `julia -p 2` (2 or 8 didnt have a noticeable difference) 
 
-
-
-##############################################################################################
+```
+BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
+ Single result which took 10.257 s (47.26% GC) to evaluate,
+ with a memory estimate of 11.70 GiB, over 302869851 allocations.
+ ```
