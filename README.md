@@ -37,6 +37,21 @@ BenchmarkTools.Trial: 4 samples with 1 evaluation per sample.
  Memory estimate: 1.67 GiB, allocs estimate: 49270988.
 ```
 
+#### Improved version using ElasticArrays 
+```
+julia> @benchmark VectorAssemblyMulti(input)
+BenchmarkTools.Trial: 27 samples with 1 evaluation per sample.
+ Range (min … max):   75.370 ms … 929.260 ms  ┊ GC (min … max):  0.00% … 90.19%
+ Time  (median):      97.889 ms               ┊ GC (median):    13.44%
+ Time  (mean ± σ):   186.081 ms ± 249.596 ms  ┊ GC (mean ± σ):  54.62% ± 27.71%
+
+  ▃█                                                             
+  ██▄▃▁▁▁▁▁▁▁▃▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▃▁▁▁▁▁▁▁▁▁▃▃ ▁
+  75.4 ms          Histogram: frequency by time          929 ms <
+
+ Memory estimate: 488.23 MiB, allocs estimate: 600289.
+```
+
 ## Lid-Driven Cavity on a 8000000 x 8000000 mesh ##
 ```
 BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
@@ -50,6 +65,22 @@ BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
  Single result which took 11.712 s (45.17% GC) to evaluate,
  with a memory estimate of 13.91 GiB, over 393192485 allocations.
 ```
+#### Improved version using ElasticArrays
+
+```
+julia> @benchmark VectorAssemblyMulti(input)
+BenchmarkTools.Trial: 4 samples with 1 evaluation per sample.
+ Range (min … max):  1.193 s … 8.487 s  ┊ GC (min … max):  7.04% … 81.68%
+ Time  (median):     1.593 s            ┊ GC (median):    19.76%
+ Time  (mean ± σ):   3.217 s ± 3.532 s  ┊ GC (mean ± σ):  59.43% ± 33.54%
+
+  █    ▁                                                ▁  
+  █▁▁▁▁█▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
+  1.19 s        Histogram: frequency by time       8.49 s <
+
+ Memory estimate: 4.65 GiB, allocs estimate: 2481521.
+```
+
 ## WindsorBody on a 6517376x6517376 mesh ##
 ```
 BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
@@ -62,4 +93,23 @@ BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
 BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
  Single result which took 10.257 s (47.26% GC) to evaluate,
  with a memory estimate of 11.70 GiB, over 302869851 allocations.
+ ```
+
+#### Improved version using ElasticArrays
+
+> Bottlenecked by GC
+> No construction of sparse matrix 
+
+```
+julia> @benchmark VectorAssemblyMulti(input)
+BenchmarkTools.Trial: 5 samples with 1 evaluation per sample.
+ Range (min … max):  896.910 ms … 6.020 s  ┊ GC (min … max):  7.24% … 86.31%
+ Time  (median):     994.730 ms            ┊ GC (median):    18.85%
+ Time  (mean ± σ):      1.994 s ± 2.252 s  ┊ GC (mean ± σ):  58.43% ± 32.93%
+
+  █▁▁                                                      ▁  
+  ███▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁█ ▁
+  897 ms         Histogram: frequency by time         6.02 s <
+
+ Memory estimate: 4.64 GiB, allocs estimate: 2361499.
  ```
