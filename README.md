@@ -52,6 +52,12 @@ BenchmarkTools.Trial: 27 samples with 1 evaluation per sample.
  Memory estimate: 488.23 MiB, allocs estimate: 600289.
 ```
 
+#### Using C++ & Ginkgo Matrix
+
+- time measured with `std::chrono::steady_clock`
+    > ~ 148ms on average (range between 86ms - 238ms)
+
+
 ## Lid-Driven Cavity on a 8000000 x 8000000 mesh ##
 ```
 BenchmarkTools.Trial: 1 sample with 1 evaluation per sample.
@@ -80,6 +86,11 @@ BenchmarkTools.Trial: 4 samples with 1 evaluation per sample.
 
  Memory estimate: 4.65 GiB, allocs estimate: 2481521.
 ```
+
+#### Using C++ & Ginkgo Matrix
+
+- time measured with `std::chrono::steady_clock`
+    > ~ 1108ms on average (range between 1003ms - 1308ms)
 
 ## WindsorBody on a 6517376x6517376 mesh ##
 ```
@@ -113,3 +124,14 @@ BenchmarkTools.Trial: 5 samples with 1 evaluation per sample.
 
  Memory estimate: 4.64 GiB, allocs estimate: 2361499.
  ```
+
+
+#### Using C++ & Ginkgo Matrix
+
+- time measured with `std::chrono::steady_clock`
+    > ~ 750ms on average (range between 540ms - 858ms)
+
+- memory measured with `valgrind --tool=massif --xtree-memory=full`
+
+    ![memory usage](image.png)
+    > total memory usage: 6.44 Gb 
