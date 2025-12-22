@@ -207,7 +207,7 @@ function readNeighborsFile(polyMeshDir::String, faces::Vector{Face})::Tuple{Int,
         if line == ")"
             break
         end
-        faces[i].iNeighbor = parse(Int, line)
+        faces[i].iNeighbor = parse(Int, line)+1
         i += 1
     end
     # faces[j-start+1].iNeighbor = parse(Int, line)
@@ -1108,9 +1108,9 @@ function VectorAssembly(input::LdcMatrixAssemblyInput)
                         resize!(rows, newSize)
                         resize!(cols, newSize)
                     end
-                    rows[idx] = iElement
-                    cols[idx] = theElement.iNeighbors[iFace]
-                    vals[idx] = MVector(fluxFn, fluxFn, fluxFn)
+                    @inbounds rows[idx] = iElement
+                    @inbounds cols[idx] = theElement.iNeighbors[iFace]
+                    @inbounds vals[idx] = MVector(fluxFn, fluxFn, fluxFn)
                     # valsx[idx] = fluxFn
                     # valsy[idx] = fluxFn
                     # valsz[idx] = fluxFn
@@ -1141,9 +1141,9 @@ function VectorAssembly(input::LdcMatrixAssemblyInput)
                 resize!(rows, newSize)
                 resize!(cols, newSize)
             end
-            rows[idx] = iElement
-            cols[idx] = iElement
-            valsx[idx] = diag
+            @inbounds rows[idx] = iElement
+            @inbounds cols[idx] = iElement
+            @inbounds valsx[idx] = diag
             # valsx[idx] = diag[1]
             # valsy[idx] = diag[2]
             # valsz[idx] = diag[3]
@@ -1168,22 +1168,6 @@ function VectorAssembly(input::LdcMatrixAssemblyInput)
 
 end # function cellBasedAssemblySparseMultiVectorPrealloc
 
-function tryAddValues!(rows, cols, valsx, valsy, valsz, idx, indexval, value, maxresize)
-    if idx > size(valsx)[1]
-        newSize = floor(Int, min(size(valsx)[1] * 1.5, maxresize))
-        resize!(valsx, newSize)
-        resize!(valsy, newSize)
-        resize!(valsz, newSize)
-        resize!(rows, newSize)
-        resize!(cols, newSize)
-    end
-    rows[idx] = indexval
-    cols[idx] = indexval
-    valsx[idx] = value[1]
-    valsy[idx] = value[2]
-    valsz[idx] = value[3]
-    idx += 1
-end
 
 function VectorAssemblyMulti(input::LdcMatrixAssemblyInput)
     mesh = input.mesh
@@ -1192,75 +1176,61 @@ function VectorAssemblyMulti(input::LdcMatrixAssemblyInput)
     velocity_internal = input.U[2].values
     nCells = size(mesh.cells)[1]
     RHS = spzeros(nCells, 3)  # [ux,uy,uz]
-    rows = ElasticArray{Int}(undef, 1000000)
-    cols = ElasticArray{Int}(undef, 1000000)
+    entriesNeeded = estimate_data(input)
+    rows = zeros(Float32, entriesNeeded)
+    cols = zeros(Float32, entriesNeeded)
+    valsx = MVector{entriesNeeded,Float32}(undef)
+    valsy = MVector{entriesNeeded,Float32}(undef)
+    valsz = MVector{entriesNeeded,Float32}(undef)
 
-    valsx = ElasticArray{Float32}(undef, 1000000)
-    valsy = ElasticArray{Float32}(undef, 1000000)
-    valsz = ElasticArray{Float32}(undef, 1000000)
-
-
-    # vals::Vector{MVector{3, Float32}} = []
     idx = 1
-    # @time begin
     for (iElement, theElement) in enumerate(mesh.cells)
-        diag = velocity_internal[iElement]
-        for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
-            theFace = mesh.faces[iFaceIndex]
+        numFaces = size(theElement.iFaces)[1]
+        for iFace in 1:numFaces
+            @inbounds iFaceIndex = theElement.iFaces[iFace]
+            @inbounds theFace = mesh.faces[iFaceIndex]
             if theFace.iNeighbor > 0
                 fluxCn = nu * theFace.gDiff
                 fluxFn = -fluxCn
-                # println("$idx  >  $(size(vals)[2])")
-                if idx > size(valsx)[1]
-                    newSize = floor(Int, min(size(valsx)[1] * 1.5, nCells * nCells))
-                    resize!(valsx, newSize)
-                    resize!(valsy, newSize)
-                    resize!(valsz, newSize)
-                    resize!(rows, newSize)
-                    resize!(cols, newSize)
-                end
-                rows[idx] = iElement
-                cols[idx] = theElement.iNeighbors[iFace]
-                valsx[idx] = fluxFn
-                valsy[idx] = fluxFn
-                valsz[idx] = fluxFn
+                @inbounds rows[idx] = iElement
+                @inbounds cols[idx] = theElement.iNeighbors[iFace]
+                @inbounds valsx[idx] = fluxFn
+                @inbounds valsy[idx] = fluxFn
+                @inbounds valsz[idx] = fluxFn
                 idx += 1
-                diag .+= fluxCn
+                velocity_internal[iElement] .+= fluxCn
             else
-                iBoundary = mesh.faces[iFaceIndex].patchIndex
-                boundaryType = velocity_boundary[iBoundary].type
+                @inbounds iBoundary = mesh.faces[iFaceIndex].patchIndex
+                @inbounds boundaryType = velocity_boundary[iBoundary].type
                 if boundaryType == "fixedValue"
                     fluxCb = nu * theFace.gDiff
                     relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
-                    fluxVb = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
+                    fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
                     RHS[iElement, :] .-= fluxVb
-                    diag .+= fluxCb
+                    velocity_internal[iElement] .+= fluxCb
                 end
             end
         end
-        # tryAddValues!(rows, cols, valsx, valsy, valsz, idx, iElement, diag, nCells * nCells)
-        if idx > size(valsx)[1]
-            newSize = floor(Int, min(size(valsx)[1] * 1.5, nCells*nCells))
-            resize!(valsx, newSize)
-            resize!(valsy, newSize)
-            resize!(valsz, newSize)
-            resize!(rows, newSize)
-            resize!(cols, newSize)
-        end
-        rows[idx] = iElement
-        cols[idx] = iElement
-        # valsx[idx] = diag
-        valsx[idx] = diag[1]
-        valsy[idx] = diag[2]
-        valsz[idx] = diag[3]
-
+        @inbounds rows[idx] = iElement
+        @inbounds cols[idx] = iElement
+        @inbounds valsx[idx] = velocity_internal[iElement][1]
+        @inbounds valsy[idx] = velocity_internal[iElement][2]
+        @inbounds valsz[idx] = velocity_internal[iElement][3]
         idx += 1
     end
-    # end
-    # SparseArrays.sparse(
-    #     rows,
-    #     cols,
-    #     [MVector(a) for a in zip(valsx, valsy, valsz)]
-    # )
-    # return rows[1:idx-1], cols[1:idx-1], valsx[1:idx-1], valsy[1:idx-1], valsz[1:idx-1]
+    # SparseArrays.sparse(rows,cols,[MVector(a) for a in zip(valsx, valsy, valsz)])
+    # return rows, cols, vals
+    # return mat
+    # TODO row major ordering?
 end # function cellBasedAssemblySparseMultiVectorPrealloc
+
+function estimate_data(input::LdcMatrixAssemblyInput)
+    mesh = input.mesh
+    e2 = size(mesh.cells)[1]
+    for face in mesh.faces
+        if face.iNeighbor > 0
+            e2 += 2
+        end
+    end
+    return e2
+end
