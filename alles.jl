@@ -1,7 +1,7 @@
 using LinearAlgebra
 using StaticArrays
 using ElasticArrays
-
+using .Threads
 struct CaseDirError <: Exception
     message::String
 end # struct CaseDirError
@@ -39,7 +39,7 @@ mutable struct Cell
 end # struct Cell
 
 struct Mesh
-    nodes::Matrix{Float64}
+    nodes::MVector
     faces::Vector{Face}
     boundaries::Vector{Boundary}
     numCells::Int
@@ -91,7 +91,7 @@ function readOpenFoamMesh(caseDir::String)::Mesh
         throw(CaseDirError("PolyMesh Directory '$(caseDir)' does not exist"))
     end
     println("Reading Points..")
-    nodes::Matrix{Float64} = readPointsFile(polymeshDir)
+    nodes = readPointsFile(polymeshDir)
     println("Reading Owners..")
     owner = readOwnersFile(polymeshDir)
     println("Reading Faces..")
@@ -118,13 +118,13 @@ function getAmountAndStart(file::String)::Tuple{Int,Int}
     end
 end
 
-function readPointsFile(polyMeshDir::String)::Matrix{Float64}
+function readPointsFile(polyMeshDir::String)
     pointsFileName = joinpath(polyMeshDir, "points")
     if !isfile(pointsFileName)
         throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
     end
     nNodes, start = getAmountAndStart(pointsFileName)
-    centroids = zeros(3, nNodes)
+    centroids = MVector{nNodes,SVector{3,Float32}}(undef)
     i = 1
     for (j, line) in enumerate(eachline(pointsFileName))
         if j < start
@@ -134,8 +134,8 @@ function readPointsFile(polyMeshDir::String)::Matrix{Float64}
             break
         end
         s = split((line[2:(end-1)]), " ")
-        centroids[i:i+2] .= tryparse.(Float32, s)
-        i += 3
+        centroids[i] = SVector{3,Float32}(tryparse.(Float32, s))
+        i += 1
     end
     return centroids
 end # function readPointsFile
@@ -207,7 +207,7 @@ function readNeighborsFile(polyMeshDir::String, faces::Vector{Face})::Tuple{Int,
         if line == ")"
             break
         end
-        faces[i].iNeighbor = parse(Int, line)+1
+        faces[i].iNeighbor = parse(Int, line) + 1
         i += 1
     end
     # faces[j-start+1].iNeighbor = parse(Int, line)
@@ -259,7 +259,7 @@ function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
     return boundaries
 end # function readPointsFile
 
-function constructCells(nodes::Matrix{Float64}, boundaries::Vector{Boundary}, faces::Vector{Face}, numCells::Int, numInteriorFaces::Int)::Mesh
+function constructCells(nodes::MVector, boundaries::Vector{Boundary}, faces::Vector{Face}, numCells::Int, numInteriorFaces::Int)::Mesh
     cells = [
         Cell(
             index,
@@ -343,12 +343,12 @@ function processBasicFaceGeometry(mesh::Mesh)::Mesh
         # special case: triangle
         if size(face.iNodes)[1] == 3
             # sum x,y,z and divide by 3
-            triangleNodes = [mesh.nodes[i:i+2] for i in face.iNodes]
+            triangleNodes = [mesh.nodes[i] for i in face.iNodes]
             face.centroid .= sum(triangleNodes) / 3
             face.Sf .= 0.5 * cross(triangleNodes[2] - triangleNodes[1], triangleNodes[3] - triangleNodes[1])
             area = magnitude(face.Sf)
         else # general case, polygon is not a triangle 
-            nodes = [mesh.nodes[i:i+2] for i in face.iNodes]
+            nodes = [mesh.nodes[i] for i in face.iNodes]
             center = sum(nodes) / size(nodes)[1]
             # Using the center to compute the area and centroid of virtual
             # triangles based on the center and the face nodes
@@ -356,14 +356,14 @@ function processBasicFaceGeometry(mesh::Mesh)::Mesh
             triangleNode3 = MVector{3,Float32}(0.0, 0.0, 0.0)
             for (iNodeIndex, iNode) in enumerate(face.iNodes)
                 if iNodeIndex < size(face.iNodes)[1]
-                    triangleNode3 .= mesh.nodes[face.iNodes[iNodeIndex+1]:face.iNodes[iNodeIndex+1]+2]
+                    triangleNode3 .= mesh.nodes[face.iNodes[iNodeIndex+1]]
                 else
-                    triangleNode3 .= mesh.nodes[face.iNodes[1]:face.iNodes[1]+2]
+                    triangleNode3 .= mesh.nodes[face.iNodes[1]]
                 end
                 # Calculate the centroid of a given subtriangle
-                localCentroid = (triangleNode1 .+ mesh.nodes[iNode:iNode+2] .+ triangleNode3) ./ 3
+                localCentroid = (triangleNode1 .+ mesh.nodes[iNode] .+ triangleNode3) ./ 3
                 # Calculate the surface area vector of a given subtriangle by cross product
-                localSf = 0.5 .* cross(mesh.nodes[iNode:iNode+2] .- triangleNode1, triangleNode3 .- mesh.nodes[iNode:iNode+2])
+                localSf = 0.5 .* cross(mesh.nodes[iNode] .- triangleNode1, triangleNode3 .- triangleNode1)
                 # Calculate the surface area of a given subtriangle
                 localArea = sqrt(dot(localSf, localSf))
                 face.centroid .+= localArea * localCentroid
@@ -429,7 +429,7 @@ function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
         E = theFace.area * eCN
         # essentially strength of flux in the direction of neighboring cell
         # eq 8.11: gdiff of face = ||face Surface || / || distance between cell centroids ||
-        theFace.gDiff = magnitude(E) / magnitude(CN)
+        theFace.gDiff = magnitude(E) / magCN
         # theFace.T = theFace.Sf - E
 
         # not needed?
@@ -583,6 +583,7 @@ function readField(filePath::String, mesh::Mesh)
     fieldType = MVector{3,Float32} # getFieldType(filePath)
     internalValues = Vector{fieldType}(undef, numCells)
     if isUniform
+        println("isuniform")
         value = getUniformValue(filePath)
         internalValues = fill(value, numCells)
         lines = readlines(filePath)
@@ -713,7 +714,6 @@ function LidDrivenCavity(caseDirectory::String)::LdcMatrixAssemblyInput
     # Read initial condition and boundary conditions
     # p = readField(joinpath(caseDirectory, "0/p"), mesh)
     U = readField(joinpath(caseDirectory, "0/U"), mesh)
-
     # Assemble the coefficient matrix and RHS vector
     ldcInput = LdcMatrixAssemblyInput(mesh, nu, U)
     return ldcInput
@@ -723,7 +723,7 @@ using SparseArrays
 using StaticArrays
 using ProgressBars
 
-function cellBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Vector{Float64}}
+function cellBasedAssembly(input::LdcMatrixAssemblyInput)::Tuple{Matrix{Float32},Vector{Float32}}
     mesh = input.mesh
     source = input.source
     diffusionCoeff = input.diffusionCoeff # Γ
@@ -761,7 +761,7 @@ end # function cellBasedAssembly
 
 
 
-function cellBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple{SparseMatrixCSC{Float64,Int64},SparseVector{Float64,Int64}}
+function cellBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple{SparseMatrixCSC{Float32,Int64},SparseVector{Float32,Int64}}
     mesh = input.mesh
     source = input.source
     diffusionCoeff = input.diffusionCoeff
@@ -796,7 +796,7 @@ function cellBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple{Sparse
     return coeffMatrix, RHS
 end # function cellBasedAssemblySparseMatrix
 
-function cellBasedAssemblySparseMultiVectorPrealloc(input::MatrixAssemblyInput)::Tuple{SparseMatrixCSC{Float64,Int64},Vector{Float64}}
+function cellBasedAssemblySparseMultiVectorPrealloc(input::LdcMatrixAssemblyInput)
     mesh = input.mesh
     source = input.source
     diffusionCoeff = input.diffusionCoeff
@@ -805,7 +805,7 @@ function cellBasedAssemblySparseMultiVectorPrealloc(input::MatrixAssemblyInput):
     RHS = zeros(nCells)
     rows = zeros(nCells * nCells)
     cols = zeros(nCells * nCells)
-    vals::Vector{Float64} = zeros(nCells * nCells)
+    vals::Vector{Float32} = zeros(nCells * nCells)
     idx = 1
     for (iElement, theElement) in enumerate(mesh.cells)
         RHS[iElement] = source[iElement] * theElement.volume
@@ -845,7 +845,7 @@ function cellBasedAssemblySparseMultiVectorPrealloc(input::MatrixAssemblyInput):
     ), RHS
 end # function cellBasedAssemblySparseMultiVectorPrealloc
 
-function cellBasedAssemblySparseMultiVectorPush(input::MatrixAssemblyInput)::Tuple{SparseMatrixCSC{Float64,Int64},Vector{Float64}}
+function cellBasedAssemblySparseMultiVectorPush(input::MatrixAssemblyInput)::Tuple{SparseMatrixCSC{Float32,Int64},Vector{Float32}}
     mesh = input.mesh
     source = input.source
     diffusionCoeff = input.diffusionCoeff
@@ -854,7 +854,7 @@ function cellBasedAssemblySparseMultiVectorPush(input::MatrixAssemblyInput)::Tup
     RHS = zeros(nCells)
     rows = []
     cols = []
-    vals::Vector{Float64} = []
+    vals::Vector{Float32} = []
     for (iElement, theElement) in enumerate(mesh.cells)
         RHS[iElement] = source[iElement] * theElement.volume
         diag = 0.0
@@ -888,7 +888,7 @@ function cellBasedAssemblySparseMultiVectorPush(input::MatrixAssemblyInput)::Tup
     ), RHS
 end # function cellBasedAssemblySparseMultiVectorPush
 
-function faceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Vector{Float64}}
+function faceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float32},Vector{Float32}}
     mesh = input.mesh
     diffusionCoeff = input.diffusionCoeff
     boundaryFields = input.boundaryFields
@@ -918,7 +918,7 @@ function faceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Ve
 end # function faceBasedAssembly
 
 
-function batchedFaceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float64},Vector{Float64}}
+function batchedFaceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Float32},Vector{Float32}}
     mesh = input.mesh
     diffusionCoeff = input.diffusionCoeff
     boundaryFields = input.boundaryFields
@@ -952,7 +952,7 @@ function batchedFaceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Floa
     return coeffMatrix, RHS
 end # function batchedFaceBasedAssembly
 
-function batchedFaceBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple{SparseMatrixCSC{Float64,Int64},SparseVector{Float64,Int64}}
+function batchedFaceBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple{SparseMatrixCSC{Float32,Int64},SparseVector{Float32,Int64}}
     mesh = input.mesh
     diffusionCoeff = input.diffusionCoeff
     boundaryFields = input.boundaryFields
@@ -977,7 +977,7 @@ function batchedFaceBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple
                 theFace = mesh.faces[iFace]
                 fluxCb = diffusionCoeff[iFace] * theFace.gDiff
                 relativeFaceIndex = iFace - mesh.boundaries[theFace.patchIndex].startFace
-                fluxVb = -fluxCb * boundaryFields[iBoundary].values[relativeFaceIndex]
+                fluxVb = -fluxCb * boundaryFields[iBoundary].values[relavalstiveFaceIndex]
                 RHS[theFace.iOwner] -= fluxVb
                 coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxCb
             end
@@ -986,7 +986,7 @@ function batchedFaceBasedAssemblySparseMatrix(input::MatrixAssemblyInput)::Tuple
     return coeffMatrix, RHS
 end # function batchedFaceBasedAssemblySparseMatrix
 
-function genericCellBasedAssemblySparseMatrix(input::GenericMatrixAssemblyInput)::Tuple{Vector{SparseMatrixCSC{Float64,Int64}},Vector{Vector{Float64}}}
+function genericCellBasedAssemblySparseMatrix(input::GenericMatrixAssemblyInput)::Tuple{Vector{SparseMatrixCSC{Float32,Int64}},Vector{Vector{Float32}}}
     mesh = input.mesh
     variables = input.variables
     boundaryFields = input.boundaryFields
@@ -1034,7 +1034,7 @@ function ScalarAssembly(input::LdcMatrixAssemblyInput)
     RHS = spzeros(nCells, 3)  # [ux,uy,uz]
     rows = []
     cols = []
-    vals::Vector{float32} = []
+    vals::Vector{Float32} = []
     for (iElement, theElement) in enumerate(mesh.cells)
         diag = velocity_internal[iElement]
         for (iFace, iFaceIndex) in enumerate(theElement.iFaces)
@@ -1168,37 +1168,123 @@ function VectorAssembly(input::LdcMatrixAssemblyInput)
 
 end # function cellBasedAssemblySparseMultiVectorPrealloc
 
+function ThreadedAssembly(input::LdcMatrixAssemblyInput)
+    mesh = input.mesh
+    nCells = size(mesh.cells)[1]
+    RHSx::Vector{Float32} = zeros(nCells)  # [ux,uy,uz]
+    RHSy::Vector{Float32} = zeros(nCells)  # [ux,uy,uz]
+    RHSz::Vector{Float32} = zeros(nCells)  # [ux,uy,uz]
+    entriesNeeded, offsets = estimate_data(input)
+    rows = zeros(Int32, entriesNeeded)
+    cols = zeros(Int32, entriesNeeded)
+    valsx = Vector{Float32}(undef, entriesNeeded)
+    valsy = Vector{Float32}(undef, entriesNeeded)
+    valsz = Vector{Float32}(undef, entriesNeeded)
+    sizehint!(valsx, entriesNeeded)
+    sizehint!(valsy, entriesNeeded)
+    sizehint!(valsz, entriesNeeded)
+    chunks = Iterators.partition(1:nCells, nCells ÷ nthreads())
+    chunks = [c for c in chunks]
+    tasks = map(chunks) do chunk
+        # @spawn begin
+        #     for iElement in chunk
+        #         theElement = mesh.cells[iElement]
+        #         numFaces = size(theElement.iFaces)[1]
+        #         @inbounds diagx::Float32 = velocity_internal[iElement][1]
+        #         @inbounds diagy::Float32 = velocity_internal[iElement][2]
+        #         @inbounds diagz::Float32 = velocity_internal[iElement][3]
+        #         @inbounds for iFace in 1:numFaces
+        #             @inbounds iFaceIndex = theElement.iFaces[iFace]
+        #             @inbounds theFace = mesh.faces[iFaceIndex]
+        #             if theFace.iNeighbor > 0
+        #                 fluxCn = nu * theFace.gDiff
+        #                 fluxFn = -fluxCn
+        #                 idx = offsets[iElement] + iFace
+        #                 @inbounds cols[idx] = iElement
+        #                 @inbounds rows[idx] = theElement.iNeighbors[iFace]
+        #                 @inbounds valsx[idx] = fluxFn
+        #                 @inbounds valsy[idx] = fluxFn
+        #                 @inbounds valsz[idx] = fluxFn
+        #                 diagx += fluxCn
+        #                 diagy += fluxCn
+        #                 diagz += fluxCn
+        #             else
+        #                 @inbounds iBoundary = mesh.faces[iFaceIndex].patchIndex
+        #                 @inbounds boundaryType = velocity_boundary[iBoundary].type
+        #                 if boundaryType == "fixedValue"
+        #                     fluxCb = nu * theFace.gDiff
+        #                     relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+        #                     fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
+        #                     RHSx[iElement] -= fluxVb[1]
+        #                     RHSy[iElement] -= fluxVb[2]
+        #                     RHSz[iElement] -= fluxVb[3]
+        #                     diagx += fluxCb
+        #                     diagy += fluxCb
+        #                     diagz += fluxCb
+        #                 end
+        #             end
+        #         end
+        #         idx = offsets[iElement]
+        #         @inbounds cols[idx] = iElement
+        #         @inbounds rows[idx] = iElement
+        #         @inbounds valsx[idx] = diagx
+        #         @inbounds valsy[idx] = diagy
+        #         @inbounds valsz[idx] = diagz
+        #         ## this demolishes performance in multithreaded
+        #         # range = offsets[iElement]:(offsets[iElement+1]-1)
+        #         # p = sortperm(rows[range])
+        #         # @inbounds rows[range] .= rows[range][p]
+        #         # @inbounds valsx[range] .= valsx[range][p]
+        #         # @inbounds valsy[range] .= valsy[range][p]
+        #         # @inbounds valsz[range] .= valsz[range][p]
+        #     end
+        # end
+        @spawn helper(chunk, input, RHSx, RHSy, RHSz, rows, cols, offsets, valsx, valsy, valsz)
+    end
+    fetch.(tasks)
+    mats = Vector{SparseMatrixCSC}(undef, 3)
+    for (i, dim) in enumerate([valsx, valsy, valsz])
+        @spawn begin
+            mats[i] = SparseArrays.sparse(rows, cols, dim)
+        end
+    end
+    while !isassigned(mats, 1) && isassigned(mats, 2) && isassigned(mats, 3)
+        continue
+    end
+    rows = []
+    cols = []
+    valsx = []
+    valsy = []
+    valsz = []
+    return mats
+end
 
-function VectorAssemblyMulti(input::LdcMatrixAssemblyInput)
+function helper(chunk::UnitRange, input::LdcMatrixAssemblyInput, RHSx::Vector{Float32}, RHSy::Vector{Float32}, RHSz::Vector{Float32}, rows::Vector{Int32}, cols::Vector{Int32}, offsets, valsx::Vector, valsy::Vector, valsz::Vector)
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
     velocity_internal = input.U[2].values
-    nCells = size(mesh.cells)[1]
-    RHS = spzeros(nCells, 3)  # [ux,uy,uz]
-    entriesNeeded = estimate_data(input)
-    rows = zeros(Float32, entriesNeeded)
-    cols = zeros(Float32, entriesNeeded)
-    valsx = MVector{entriesNeeded,Float32}(undef)
-    valsy = MVector{entriesNeeded,Float32}(undef)
-    valsz = MVector{entriesNeeded,Float32}(undef)
-
-    idx = 1
-    for (iElement, theElement) in enumerate(mesh.cells)
+    for iElement in chunk
+        theElement = mesh.cells[iElement]
         numFaces = size(theElement.iFaces)[1]
-        for iFace in 1:numFaces
+        @inbounds diagx::Float32 = velocity_internal[iElement][1]
+        @inbounds diagy::Float32 = velocity_internal[iElement][2]
+        @inbounds diagz::Float32 = velocity_internal[iElement][3]
+        @inbounds for iFace in 1:numFaces
             @inbounds iFaceIndex = theElement.iFaces[iFace]
             @inbounds theFace = mesh.faces[iFaceIndex]
             if theFace.iNeighbor > 0
                 fluxCn = nu * theFace.gDiff
                 fluxFn = -fluxCn
-                @inbounds rows[idx] = iElement
-                @inbounds cols[idx] = theElement.iNeighbors[iFace]
+                idx = offsets[iElement] + iFace
+                @inbounds cols[idx] = iElement
+                @inbounds rows[idx] = theElement.iNeighbors[iFace]
                 @inbounds valsx[idx] = fluxFn
                 @inbounds valsy[idx] = fluxFn
                 @inbounds valsz[idx] = fluxFn
-                idx += 1
-                velocity_internal[iElement] .+= fluxCn
+                diagx += fluxCn
+                diagy += fluxCn
+                diagz += fluxCn
             else
                 @inbounds iBoundary = mesh.faces[iFaceIndex].patchIndex
                 @inbounds boundaryType = velocity_boundary[iBoundary].type
@@ -1206,31 +1292,125 @@ function VectorAssemblyMulti(input::LdcMatrixAssemblyInput)
                     fluxCb = nu * theFace.gDiff
                     relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
                     fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
-                    RHS[iElement, :] .-= fluxVb
-                    velocity_internal[iElement] .+= fluxCb
+                    RHSx[iElement] -= fluxVb[1]
+                    RHSy[iElement] -= fluxVb[2]
+                    RHSz[iElement] -= fluxVb[3]
+                    diagx += fluxCb
+                    diagy += fluxCb
+                    diagz += fluxCb
                 end
             end
         end
-        @inbounds rows[idx] = iElement
+        idx = offsets[iElement]
         @inbounds cols[idx] = iElement
-        @inbounds valsx[idx] = velocity_internal[iElement][1]
-        @inbounds valsy[idx] = velocity_internal[iElement][2]
-        @inbounds valsz[idx] = velocity_internal[iElement][3]
-        idx += 1
+        @inbounds rows[idx] = iElement
+        @inbounds valsx[idx] = diagx
+        @inbounds valsy[idx] = diagy
+        @inbounds valsz[idx] = diagz
     end
-    # SparseArrays.sparse(rows,cols,[MVector(a) for a in zip(valsx, valsy, valsz)])
-    # return rows, cols, vals
-    # return mat
-    # TODO row major ordering?
+end
+
+function VectorAssemblyMulti(input::LdcMatrixAssemblyInput)
+    mesh = input.mesh
+    nu = input.nu
+    velocity_boundary = input.U[1]
+    velocity_internal = input.U[2].values
+    nCells = size(mesh.cells)[1]
+    RHSx = zeros(Float32, nCells)
+    RHSy = zeros(Float32, nCells)
+    RHSz = zeros(Float32, nCells)
+    entriesNeeded, offsets = estimate_data(input)
+    rows = zeros(Int32, entriesNeeded)
+    cols = zeros(Int32, entriesNeeded)
+    valsx = Vector{Float32}(undef, entriesNeeded)
+    valsy = Vector{Float32}(undef, entriesNeeded)
+    valsz = Vector{Float32}(undef, entriesNeeded)
+
+    @threads for iElement = 1:nCells
+        theElement = mesh.cells[iElement]
+        numFaces = size(theElement.iFaces)[1]
+        @inbounds diagx::Float32 = velocity_internal[iElement][1]
+        @inbounds diagy::Float32 = velocity_internal[iElement][2]
+        @inbounds diagz::Float32 = velocity_internal[iElement][3]
+        for iFace in 1:numFaces
+            @inbounds iFaceIndex = theElement.iFaces[iFace]
+            @inbounds theFace = mesh.faces[iFaceIndex]
+            if theFace.iNeighbor > 0
+                fluxCn = nu * theFace.gDiff
+                fluxFn = -fluxCn
+                idx = offsets[iElement] + iFace
+                @inbounds cols[idx] = iElement
+                @inbounds rows[idx] = theElement.iNeighbors[iFace]
+                @inbounds valsx[idx] = fluxFn
+                @inbounds valsy[idx] = fluxFn
+                @inbounds valsz[idx] = fluxFn
+                diagx += fluxCn
+                diagy += fluxCn
+                diagz += fluxCn
+            else
+                @inbounds iBoundary = mesh.faces[iFaceIndex].patchIndex
+                @inbounds boundaryType = velocity_boundary[iBoundary].type
+                if boundaryType == "fixedValue"
+                    fluxCb = nu * theFace.gDiff
+                    relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+                    fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
+                    @inbounds RHSx[iElement] -= fluxVb[1]
+                    @inbounds RHSy[iElement] -= fluxVb[2]
+                    @inbounds RHSz[iElement] -= fluxVb[3]
+                    diagx += fluxCb
+                    diagy += fluxCb
+                    diagz += fluxCb
+                end
+            end
+        end
+        idx = offsets[iElement]
+        @inbounds cols[idx] = iElement
+        @inbounds rows[idx] = iElement
+        @inbounds valsx[idx] = diagx
+        @inbounds valsy[idx] = diagy
+        @inbounds valsz[idx] = diagz
+        # p = sortperm(rows[range])
+        # @inbounds rows[range] .= rows[range][p]
+        # @inbounds valsx[range] .= valsx[range][p]
+        # @inbounds valsy[range] .= valsy[range][p]
+        # @inbounds valsz[range] .= valsz[range][p]
+    end
+    return SparseArrays.sparse(rows, cols, valsx), SparseArrays.sparse(rows, cols, valsy), SparseArrays.sparse(rows, cols, valsz)
+    # return SparseMatrixCSC(nCells, nCells, offsets, rows, valsx), SparseMatrixCSC(nCells, nCells, offsets, rows, valsy), SparseMatrixCSC(nCells, nCells, offsets, rows, valsz)
 end # function cellBasedAssemblySparseMultiVectorPrealloc
+
 
 function estimate_data(input::LdcMatrixAssemblyInput)
     mesh = input.mesh
     e2 = size(mesh.cells)[1]
+    nCells = size(mesh.cells)[1]
+
+    offsets::Vector{Int32} = ones(e2 + 1)
     for face in mesh.faces
         if face.iNeighbor > 0
             e2 += 2
         end
     end
-    return e2
+    offsets[1] = 1
+    for iElement in 2:nCells
+        faces = mesh.cells[iElement-1].iFaces
+        nonzero = size(filter(f -> f.iNeighbor > 0, mesh.faces[faces]))[1]
+        offsets[iElement] += offsets[iElement-1] + nonzero
+    end
+    offsets[end] = e2 + 1
+    return e2, offsets
 end
+
+function bench_gc(input::LdcMatrixAssemblyInput)
+    for _ in 1:10
+        GC.gc()
+        @time ThreadedAssembly(input)
+    end
+end
+
+function bench_nogc(input::LdcMatrixAssemblyInput)
+    for _ in 1:10
+        @time ThreadedAssembly(input)
+    end
+end
+

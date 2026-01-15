@@ -1,5 +1,11 @@
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
+Cthulhu = "f68482b8-f384-11e8-15f7-abe071a5a75f"
 ElasticArrays = "fdbdab4c-e67f-52f5-8c3f-e7b388dad3d4"
+FlameGraphs = "08572546-2f56-4bcf-ba4e-bab62c3a3f89"
+Juno = "e5e0dc1b-0480-54bc-9374-aad01c23163d"
+OhMyThreads = "67456a42-1dca-4109-a031-0a68de7e3ad5"
+ProfileView = "c46f51b8-102a-5cf2-8d2c-8597cb0e0da7"
 ProgressBars = "49802e3a-d2f1-5c88-81d8-b72133a6f568"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
