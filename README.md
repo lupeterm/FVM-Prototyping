@@ -52,7 +52,7 @@ Cases:
 
 
 ```
-julia> @benchmark  VectorAssemblyMulti($input)
+julia> @benchmark  CellBasedAssembly($input)
 BenchmarkTools.Trial: 9 samples with 1 evaluation per sample.
  Range (min … max):  496.400 ms … 620.800 ms  ┊ GC (min … max):  0.00% … 0.00%
  Time  (median):     559.436 ms               ┊ GC (median):    10.64%
