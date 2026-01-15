@@ -16,7 +16,7 @@ Cases:
 
 ## Assembly Time
     
-   ![benchmark](benchmark.svg)
+   ![benchmark](benchmark_new.svg)
 
 
 ## Memory Usage
