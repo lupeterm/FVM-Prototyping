@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-
+import pandas as pd
 threads = [1, 2, 4, 8, 16, 32]
 xlabels = [str(t) for t in threads]
 # mean exclusive GC time

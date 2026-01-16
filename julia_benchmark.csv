@@ -1,0 +1,86 @@
+time_ms,case_short,case_long,threads,algorithm,incl_gc,metric,language
+
+
+150,LDC-S,Lid-Driven Cavity S,1,CellBasedAssembly,false, median,cpp
+78,LDC-S,Lid-Driven Cavity S,1,CellBasedAssembly,false, median,julia
+54,LDC-S,Lid-Driven Cavity S,2,CellBasedAssembly,false, median,julia
+49,LDC-S,Lid-Driven Cavity S,4,CellBasedAssembly,false, median,julia
+46,LDC-S,Lid-Driven Cavity S,8,CellBasedAssembly,false, median,julia
+41,LDC-S,Lid-Driven Cavity S,16,CellBasedAssembly,false, median,julia
+41,LDC-S,Lid-Driven Cavity S,32,CellBasedAssembly,false, median,julia
+90,LDC-S,Lid-Driven Cavity S,1, CellBasedAssembly,true,median,julia
+67,LDC-S,Lid-Driven Cavity S,2, CellBasedAssembly,true,median,julia
+55,LDC-S,Lid-Driven Cavity S,4, CellBasedAssembly,true,median,julia
+64,LDC-S,Lid-Driven Cavity S,8, CellBasedAssembly,true,median,julia
+51,LDC-S,Lid-Driven Cavity S,16,CellBasedAssembly,true,median,julia
+51,LDC-S,Lid-Driven Cavity S,32,CellBasedAssembly,true,median,julia
+278,LDC-S,Lid-Driven Cavity S,1,CellBasedAssembly,true,mean,julia
+286,LDC-S,Lid-Driven Cavity S,2,CellBasedAssembly,true,mean,julia
+111,LDC-S,Lid-Driven Cavity S,4,CellBasedAssembly,true,mean,julia
+140,LDC-S,Lid-Driven Cavity S,8,CellBasedAssembly,true,mean,julia
+91,LDC-S,Lid-Driven Cavity S,16,CellBasedAssembly,true,mean,julia
+100,LDC-S,Lid-Driven Cavity S,32,CellBasedAssembly,true,mean,julia
+
+1100,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,false, median,cpp
+643,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,false, median,julia
+677,LDC-M,Lid-Driven Cavity M,2,CellBasedAssembly,false, median,julia
+515,LDC-M,Lid-Driven Cavity M,4,CellBasedAssembly,false, median,julia
+502,LDC-M,Lid-Driven Cavity M,8,CellBasedAssembly,false, median,julia
+442,LDC-M,Lid-Driven Cavity M,16,CellBasedAssembly,false, median,julia
+444,LDC-M,Lid-Driven Cavity M,32,CellBasedAssembly,false, median,julia
+943,LDC-M,Lid-Driven Cavity M,1, CellBasedAssembly,true,median,julia
+879,LDC-M,Lid-Driven Cavity M,2, CellBasedAssembly,true,median,julia
+690,LDC-M,Lid-Driven Cavity M,4, CellBasedAssembly,true,median,julia
+638,LDC-M,Lid-Driven Cavity M,8, CellBasedAssembly,true,median,julia
+946,LDC-M,Lid-Driven Cavity M,16,CellBasedAssembly,true,median,julia
+800,LDC-M,Lid-Driven Cavity M,32,CellBasedAssembly,true,median,julia
+1740,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,true,mean,julia
+1687,LDC-M,Lid-Driven Cavity M,2,CellBasedAssembly,true,mean,julia
+1102,LDC-M,Lid-Driven Cavity M,4,CellBasedAssembly,true,mean,julia
+1001,LDC-M,Lid-Driven Cavity M,8,CellBasedAssembly,true,mean,julia
+932,LDC-M,Lid-Driven Cavity M,16,CellBasedAssembly,true,mean,julia
+865,LDC-M,Lid-Driven Cavity M,32,CellBasedAssembly,true,mean,julia
+
+424.127197265625,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,mean,julia
+412.2154712677002,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,median,julia
+649,Wind,WindsorBody,1,CellBasedAssembly,false, median,cpp
+643,Wind,WindsorBody,1,CellBasedAssembly,false,median,julia
+418,Wind,WindsorBody,1,CellBasedAssembly,false, median,julia
+418,Wind,WindsorBody,2,CellBasedAssembly,false, median,julia
+342,Wind,WindsorBody,4,CellBasedAssembly,false, median,julia
+336,Wind,WindsorBody,8,CellBasedAssembly,false, median,julia
+348,Wind,WindsorBody,16,CellBasedAssembly,false, median,julia
+340,Wind,WindsorBody,32,CellBasedAssembly,false, median,julia
+773,Wind,WindsorBody,1, CellBasedAssembly,true,median,julia
+565,Wind,WindsorBody,2, CellBasedAssembly,true,median,julia
+525,Wind,WindsorBody,4, CellBasedAssembly,true,median,julia
+437,Wind,WindsorBody,8, CellBasedAssembly,true,median,julia
+462,Wind,WindsorBody,16,CellBasedAssembly,true,median,julia
+431,Wind,WindsorBody,32,CellBasedAssembly,true,median,julia
+1415,Wind,WindsorBody,1,CellBasedAssembly,true,mean,julia
+1194,Wind,WindsorBody,2,CellBasedAssembly,true,mean,julia
+906,Wind,WindsorBody,4,CellBasedAssembly,true,mean,julia
+661,Wind,WindsorBody,8,CellBasedAssembly,true,mean,julia
+627,Wind,WindsorBody,16,CellBasedAssembly,true,mean,julia
+615,Wind,WindsorBody,32,CellBasedAssembly,true,mean,julia
+731.6699743270874,Wind,WindsorBody,1,CellBasedAssemblyBased,true,mean,julia
+734.8524332046509,Wind,WindsorBody,1,CellBasedAssemblyBased,true,median,julia
+ 
+  
+   
+    
+     
+
+
+  
+    
+      
+        
+          
+
+
+ 
+  
+   
+    
+     

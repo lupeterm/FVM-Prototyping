@@ -1,0 +1,37 @@
+time_ms,case_short,case_long,threads,algorithm,incl_gc,metric,language
+1689.4729137420654,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,true,mean,julia
+962.6491069793701,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,true,median,julia
+711.520266532898,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,false,mean,julia
+693.3220624923706,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,false,median,julia
+1360.854697227478,LDC-M,Lid-Driven Cavity M,1,FaceBasedAssembly,true,mean,julia
+672.6950407028198,LDC-M,Lid-Driven Cavity M,1,FaceBasedAssembly,true,median,julia
+468.3715581893921,LDC-M,Lid-Driven Cavity M,1,FaceBasedAssembly,false,mean,julia
+469.11346912384033,LDC-M,Lid-Driven Cavity M,1,FaceBasedAssembly,false,median,julia
+685.574746131897,LDC-M,Lid-Driven Cavity M,1,BatchedFaceBasedAssembly,true,mean,julia
+576.9189596176147,LDC-M,Lid-Driven Cavity M,1,BatchedFaceBasedAssembly,true,median,julia
+478.0845880508423,LDC-M,Lid-Driven Cavity M,1,BatchedFaceBasedAssembly,false,mean,julia
+478.1179428100586,LDC-M,Lid-Driven Cavity M,1,BatchedFaceBasedAssembly,false,median,julia
+214.54360485076904,LDC-S,Lid-Driven Cavity S,1,CellBasedAssembly,true,mean,julia
+81.68387413024902,LDC-S,Lid-Driven Cavity S,1,CellBasedAssembly,true,median,julia
+74.60715770721436,LDC-S,Lid-Driven Cavity S,1,CellBasedAssembly,false,mean,julia
+74.62596893310547,LDC-S,Lid-Driven Cavity S,1,CellBasedAssembly,false,median,julia
+60.75284481048584,LDC-S,Lid-Driven Cavity S,1,FaceBasedAssembly,true,mean,julia
+60.711026191711426,LDC-S,Lid-Driven Cavity S,1,FaceBasedAssembly,true,median,julia
+52.123355865478516,LDC-S,Lid-Driven Cavity S,1,FaceBasedAssembly,false,mean,julia
+50.785064697265625,LDC-S,Lid-Driven Cavity S,1,FaceBasedAssembly,false,median,julia
+66.94481372833252,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,mean,julia
+67.50190258026123,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,median,julia
+55.55374622344971,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,mean,julia
+54.23152446746826,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,median,julia
+1279.7227382659912,Wind,WindsorBody,1,CellBasedAssembly,true,mean,julia
+630.4805278778076,Wind,WindsorBody,1,CellBasedAssembly,true,median,julia
+516.8009281158447,Wind,WindsorBody,1,CellBasedAssembly,false,mean,julia
+514.4000053405762,Wind,WindsorBody,1,CellBasedAssembly,false,median,julia
+484.79647636413574,Wind,WindsorBody,1,FaceBasedAssembly,true,mean,julia
+478.7709712982178,Wind,WindsorBody,1,FaceBasedAssembly,true,median,julia
+388.45057487487793,Wind,WindsorBody,1,FaceBasedAssembly,false,mean,julia
+388.27431201934814,Wind,WindsorBody,1,FaceBasedAssembly,false,median,julia
+496.4191436767578,Wind,WindsorBody,1,BatchedFaceBasedAssembly,true,mean,julia
+499.78041648864746,Wind,WindsorBody,1,BatchedFaceBasedAssembly,true,median,julia
+408.52415561676025,Wind,WindsorBody,1,BatchedFaceBasedAssembly,false,mean,julia
+408.31899642944336,Wind,WindsorBody,1,BatchedFaceBasedAssembly,false,median,julia
