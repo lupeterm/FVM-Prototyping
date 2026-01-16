@@ -1,4 +1,7 @@
+import Pkg
+Pkg.activate(".")
 using LinearAlgebra
+using BenchmarkTools
 using StaticArrays
 using ElasticArrays
 using .Threads
@@ -94,18 +97,18 @@ function readOpenFoamMesh(caseDir::String)::Mesh
     if !isdir(polymeshDir)
         throw(CaseDirError("PolyMesh Directory '$(caseDir)' does not exist"))
     end
-    println("Reading Points..")
+    # println("Reading Points..")
     nodes = readPointsFile(polymeshDir)
-    println("Reading Owners..")
+    # println("Reading Owners..")
     owner = readOwnersFile(polymeshDir)
-    println("Reading Faces..")
+    # println("Reading Faces..")
     faces = readFacesFile(polymeshDir, owner)
-    println("Reading Neighbors..")
+    # println("Reading Neighbors..")
     numNeighbors, faces = readNeighborsFile(polymeshDir, faces)
     numCells = maximum(owner)
-    println("Reading Boundaries..")
+    # println("Reading Boundaries..")
     boundaries = readBoundaryFile(polymeshDir)
-    println("Constructing Cells..")
+    # println("Constructing Cells..")
     mesh = constructCells(nodes, boundaries, faces, numCells, numNeighbors)
     # mesh = setupNodeConnectivities(mesh)
     mesh = processOpenFoamMesh(mesh)
@@ -281,7 +284,7 @@ function constructCells(nodes::MVector, boundaries::Vector{Boundary}, faces::Vec
         iOwner = faces[interiorFace].iOwner
         iNeighbor = faces[interiorFace].iNeighbor
         if iNeighbor <= 0
-            println("settings numinteriors to $numInteriors")
+            # println("settings numinteriors to $numInteriors")
             numInteriors = interiorFace - 1
             break
         end
@@ -590,7 +593,7 @@ function readField(filePath::String, mesh::Mesh)
     fieldType = MVector{3,Float32} # getFieldType(filePath)
     internalValues = Vector{fieldType}(undef, numCells)
     if isUniform
-        println("isuniform")
+        # println("isuniform")
         value = getUniformValue(filePath)
         internalValues = fill(value, numCells)
         lines = readlines(filePath)
@@ -671,13 +674,12 @@ function readField(filePath::String, mesh::Mesh)
 end
 
 function readPropertiesFile(path::String)::Float32
-    println("Reading $(path)")
+    # println("Reading $(path)")
     if !isfile(path)
         throw(CaseDirError("Field file '$(path)' does not exist."))
     end
     file = read(path, String)
     variable = match(r"\w+\s*\[[\s\d-]+\]\s*([\.\d\-e]+);", file)
-    println("Variable: $(variable)")
     val = tryparse(Float32, variable[1])
     return val
 end
@@ -736,7 +738,7 @@ function ThreadedCellBasedAssembly(input::LdcMatrixAssemblyInput)
     entriesNeeded, offsets = estimate_data(input)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
-    vals = Vector{Float32}(undef, entriesNeeded*3)
+    vals = Vector{Float32}(undef, entriesNeeded * 3)
     chunks = Iterators.partition(1:nCells, nCells ÷ nthreads())
     chunks = [c for c in chunks]
     @threads for chunk in chunks
@@ -808,7 +810,7 @@ function CellBasedAssembly(input::LdcMatrixAssemblyInput)
     entriesNeeded, offsets = estimate_data(input)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
-    vals = Vector{Float32}(undef, entriesNeeded*3)
+    vals = Vector{Float32}(undef, entriesNeeded * 3)
 
     for iElement = 1:nCells
         theElement = mesh.cells[iElement]
@@ -863,7 +865,7 @@ end # function cellBasedAssemblySparseMultiVectorPrealloc
 
 function estimate_data(input::LdcMatrixAssemblyInput)
     mesh = input.mesh
-    e2 = size(mesh.cells)[1] + 2*mesh.numInteriorFaces
+    e2 = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
     nCells = size(mesh.cells)[1]
 
     offsets::Vector{Int32} = ones(e2 + 1)
@@ -876,29 +878,49 @@ function estimate_data(input::LdcMatrixAssemblyInput)
 end
 
 function bench_gc(input::LdcMatrixAssemblyInput)
+    times = []
     for _ in 1:10
         GC.gc()
-        @time CellBasedAssembly(input)
+        start = time()
+        CellBasedAssembly(input)
+        dur = time() - start
+        push!(times, dur)
     end
+    println("\tmean=$(mean(times)), median=$(median(times))")
 end
 
 function bench_nogc(input::LdcMatrixAssemblyInput)
+    times = []
     for _ in 1:10
-        @time CellBasedAssembly(input)
+        start = time()
+        CellBasedAssembly(input)
+        dur = time() - start
+        push!(times, dur)
     end
+    println("\tmean=$(mean(times)), median=$(median(times))")
 end
 
 function bench_gc_par(input::LdcMatrixAssemblyInput)
+    times = []
     for _ in 1:10
         GC.gc()
-        @time ThreadedCellBasedAssembly(input)
+        start = time()
+        ThreadedCellBasedAssembly(input)
+        dur = time() - start
+        push!(times, dur)
     end
+    println("\tmean=$(mean(times)), median=$(median(times))")
 end
 
 function bench_nogc_par(input::LdcMatrixAssemblyInput)
+    times = []
     for _ in 1:10
-        @time ThreadedCellBasedAssembly(input)
+        start = time()
+        ThreadedCellBasedAssembly(input)
+        dur = time() - start
+        push!(times, dur)
     end
+    println("\tmean=$(mean(times)), median=$(median(times))")
 end
 
 
@@ -973,3 +995,24 @@ function batchedFaceBasedAssembly(input::MatrixAssemblyInput)::Tuple{Matrix{Floa
     end
     return coeffMatrix, RHS
 end # function batchedFaceBasedAssembly
+
+
+if abspath(PROGRAM_FILE) == @__FILE__
+    for c = readdir("cases")
+        case = joinpath("cases", c)
+        input = LidDrivenCavity(case)
+        println("results for $c, EXCLUDING GC time, using $(Threads.nthreads()) Threads:")
+        if Threads.nthreads() == 1
+            bench_gc(input)
+        else
+            bench_gc_par(input)
+        end
+        println("results for $c, INCLUDING GC time, using $(Threads.nthreads()) Threads:")
+        if Threads.nthreads() == 1
+            bench_nogc(input)
+        else
+            bench_nogc_par(input)
+        end
+
+    end
+end
