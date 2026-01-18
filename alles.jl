@@ -237,8 +237,8 @@ function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
 
     l = split(join(lines), "}")
     for iBound in 1:numBoundaries
-        name = "" 
-        type = "" 
+        name = ""
+        type = ""
         nFaces = ""
         startface = ""
         spl = split(l[iBound], "{")
@@ -260,7 +260,7 @@ function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
             elseif left == "startFace"
                 startface = tryparse(Int, right)
             else
-                println("unknown boundary key $left") 
+                println("unknown boundary key $left")
             end
         end
         boundary = Boundary(
@@ -666,7 +666,7 @@ function readField(filePath::String, mesh::Mesh)
                 values = []
                 nFaces = 0
             end
-            
+
             if !isnothing(matches[3])
                 if !isnothing(matches[4])  # scalars like temperature
                     scalar = tryparse(Float32, matches[4])
@@ -767,35 +767,36 @@ function CellBasedHelper(chunk::UnitRange, input::LdcMatrixAssemblyInput, RHS::V
         @inbounds diagx::Float32 = velocity_internal[iElement][1]
         @inbounds diagy::Float32 = velocity_internal[iElement][2]
         @inbounds diagz::Float32 = velocity_internal[iElement][3]
-        @inbounds for iFace in 1:numFaces
+        @inbounds for iFace in 1:theElement.numIntFaces
             @inbounds iFaceIndex = theElement.iFaces[iFace]
             @inbounds theFace = mesh.faces[iFaceIndex]
-            if theFace.iNeighbor > 0
-                fluxCn = nu * theFace.gDiff
-                fluxFn = -fluxCn
-                idx = offsets[iElement] + iFace
-                @inbounds cols[idx] = iElement
-                @inbounds rows[idx] = theElement.iNeighbors[iFace]
-                @inbounds vals[idx] = fluxFn    # x  
-                @inbounds vals[2*idx] = fluxFn  # y
-                @inbounds vals[3*idx] = fluxFn  # z
-                diagx += fluxCn
-                diagy += fluxCn
-                diagz += fluxCn
-            else
-                @inbounds iBoundary = mesh.faces[iFaceIndex].patchIndex
-                @inbounds boundaryType = velocity_boundary[iBoundary].type
-                if boundaryType == "fixedValue"
-                    fluxCb = nu * theFace.gDiff
-                    relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
-                    fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
-                    @inbounds RHS[iElement] -= fluxVb[1]
-                    @inbounds RHS[iElement+nCells] -= fluxVb[2]
-                    @inbounds RHS[iElement+nCells+nCells] -= fluxVb[3]
-                    diagx += fluxCb
-                    diagy += fluxCb
-                    diagz += fluxCb
-                end
+            fluxCn = nu * theFace.gDiff
+            fluxFn = -fluxCn
+            idx = offsets[iElement] + iFace
+            @inbounds cols[idx] = iElement
+            @inbounds rows[idx] = theElement.iNeighbors[iFace]
+            @inbounds vals[idx] = fluxFn    # x  
+            @inbounds vals[2*idx] = fluxFn  # y
+            @inbounds vals[3*idx] = fluxFn  # z
+            diagx += fluxCn
+            diagy += fluxCn
+            diagz += fluxCn
+        end
+        for iFace in theElement.numIntFaces+1:nFaces
+            @inbounds iFaceIndex = theElement.iFaces[iFace]
+            @inbounds theFace = mesh.faces[iFaceIndex]
+            @inbounds iBoundary = mesh.faces[iFaceIndex].patchIndex
+            @inbounds boundaryType = velocity_boundary[iBoundary].type
+            if boundaryType == "fixedValue"
+                fluxCb = nu * theFace.gDiff
+                relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+                fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
+                @inbounds RHS[iElement] -= fluxVb[1]
+                @inbounds RHS[iElement+nCells] -= fluxVb[2]
+                @inbounds RHS[iElement+nCells+nCells] -= fluxVb[3]
+                diagx += fluxCb
+                diagy += fluxCb
+                diagz += fluxCb
             end
         end
         idx = offsets[iElement]
@@ -806,6 +807,7 @@ function CellBasedHelper(chunk::UnitRange, input::LdcMatrixAssemblyInput, RHS::V
         @inbounds vals[3*idx] = diagz  # z
     end
 end
+
 
 function CellBasedAssembly(input::LdcMatrixAssemblyInput)
     mesh = input.mesh
@@ -818,54 +820,64 @@ function CellBasedAssembly(input::LdcMatrixAssemblyInput)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
     vals = Vector{Float32}(undef, entriesNeeded * 3)
-
+    idx = 1
+    cellIdx = 1
     for iElement = 1:nCells
+        set = false
         theElement = mesh.cells[iElement]
         numFaces = size(theElement.iFaces)[1]
         @inbounds diagx::Float32 = velocity_internal[iElement][1]
         @inbounds diagy::Float32 = velocity_internal[iElement][2]
         @inbounds diagz::Float32 = velocity_internal[iElement][3]
-        for iFace in 1:numFaces
-            @inbounds iFaceIndex = theElement.iFaces[iFace]
-            @inbounds theFace = mesh.faces[iFaceIndex]
-            if theFace.iNeighbor > 0
-                fluxCn = nu * theFace.gDiff
-                fluxFn = -fluxCn
-                idx = offsets[iElement] + iFace
-                @inbounds cols[idx] = iElement
-                @inbounds rows[idx] = theElement.iNeighbors[iFace]
-                @inbounds vals[idx] = fluxFn    # x  
-                @inbounds vals[idx+entriesNeeded] = fluxFn  # y
-                @inbounds vals[idx+entriesNeeded+entriesNeeded] = fluxFn  # z
-                diagx += fluxCn
-                diagy += fluxCn
-                diagz += fluxCn
-            else
-                @inbounds iBoundary = mesh.faces[iFaceIndex].patchIndex
-                @inbounds boundaryType = velocity_boundary[iBoundary].type
-                if boundaryType == "fixedValue"
-                    fluxCb = nu * theFace.gDiff
-                    relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
-                    fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
-                    @inbounds RHS[iElement] -= fluxVb[1]
-                    @inbounds RHS[iElement+nCells] -= fluxVb[2]
-                    @inbounds RHS[iElement+nCells+nCells] -= fluxVb[3]
-                    diagx += fluxCb
-                    diagy += fluxCb
-                    diagz += fluxCb
-                end
+        for iFace in 1:theElement.numIntFaces
+            iFaceIndex = theElement.iFaces[iFace]
+            theFace = mesh.faces[iFaceIndex]
+            fluxCn = nu * theFace.gDiff
+            fluxFn = -fluxCn
+            if theElement.iNeighbors[iFace] > iElement && !set
+                cellIdx = idx
+                idx += 1
+                set = true
             end
+            cols[idx] = iElement
+            rows[idx] = theElement.iNeighbors[iFace]
+            vals[idx] = fluxFn    # x  
+            vals[idx+entriesNeeded] = fluxFn  # y
+            vals[idx+entriesNeeded+entriesNeeded] = fluxFn  # z
+            idx += 1
+            diagx += fluxCn
+            diagy += fluxCn
+            diagz += fluxCn
         end
-        idx = offsets[iElement]
-        @inbounds cols[idx] = iElement
-        @inbounds rows[idx] = iElement
-        @inbounds vals[idx] = diagx    # x  
-        @inbounds vals[idx+entriesNeeded] = diagy  # y
-        @inbounds vals[idx+entriesNeeded+entriesNeeded] = diagz  # z
+        if !set
+            cellIdx = idx
+        end
+        for iFace in theElement.numIntFaces+1:numFaces
+            iFaceIndex = theElement.iFaces[iFace]
+            iBoundary = mesh.faces[iFaceIndex].patchIndex
+            boundaryType = velocity_boundary[iBoundary].type
+            if boundaryType != "fixedValue"
+                continue
+            end
+            theFace = mesh.faces[iFaceIndex]
+            fluxCb = nu * theFace.gDiff
+            relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+            fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
+            RHS[iElement] -= fluxVb[1]
+            RHS[iElement+nCells] -= fluxVb[2]
+            RHS[iElement+nCells+nCells] -= fluxVb[3]
+            diagx += fluxCb
+            diagy += fluxCb
+            diagz += fluxCb
+        end
+        cols[cellIdx] = iElement
+        rows[cellIdx] = iElement
+        vals[cellIdx] = diagx    # x  
+        vals[cellIdx+entriesNeeded] = diagy  # y
+        vals[cellIdx+entriesNeeded+entriesNeeded] = diagz  # z
     end
     return rows, cols, vals, RHS
 end # function cellBasedAssemblySparseMultiVectorPrealloc
-
 
 function estimate_data(input::LdcMatrixAssemblyInput)
     mesh = input.mesh
@@ -1042,20 +1054,20 @@ function BatchedFaceBasedAssembly(input::LdcMatrixAssemblyInput)
 end # function batchedFaceBasedAssembly
 
 
-if abspath(PROGRAM_FILE) == @__FILE__
-    funcs = [CellBasedAssembly, FaceBasedAssembly, BatchedFaceBasedAssembly]
-    parFuncs = [ThreadedCellBasedAssembly]
-    iterFuncs = if Threads.nthreads() > 1
-        parFuncs
-    else
-        funcs
-    end
-    for c = readdir("cases")
-        case = joinpath("cases", c)
-        input = LidDrivenCavity(case)
-        for assemblyMethod in iterFuncs
-            bench_gc(input, assemblyMethod, c, false)
-            bench_gc(input, assemblyMethod, c, true)
-        end
-    end
-end
+# if abspath(PROGRAM_FILE) == @__FILE__
+#     funcs = [CellBasedAssembly, FaceBasedAssembly, BatchedFaceBasedAssembly]
+#     parFuncs = [ThreadedCellBasedAssembly]
+#     iterFuncs = if Threads.nthreads() > 1
+#         parFuncs
+#     else
+#         funcs
+#     end
+#     for c = readdir("cases")
+#         case = joinpath("cases", c)
+#         input = LidDrivenCavity(case)
+#         for assemblyMethod in iterFuncs
+#             bench_gc(input, assemblyMethod, c, false)
+#             bench_gc(input, assemblyMethod, c, true)
+#         end
+#     end
+# end
