@@ -213,10 +213,9 @@ function readNeighborsFile(polyMeshDir::String, faces::Vector{Face})::Tuple{Int,
         if line == ")"
             break
         end
-        faces[i].iNeighbor = parse(Int, line) + 1
+        faces[i].iNeighbor = parse(Int, line) +1
         i += 1
     end
-    # faces[j-start+1].iNeighbor = parse(Int, line)
     return numNeighbors, faces
 end # function readPointsFile
 
@@ -816,7 +815,7 @@ function CellBasedAssembly(input::LdcMatrixAssemblyInput)
     velocity_internal = input.U[2].values
     nCells = size(mesh.cells)[1]
     RHS = zeros(Float32, nCells * 3)
-    entriesNeeded, offsets = estimate_data(input)
+    entriesNeeded = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
     vals = Vector{Float32}(undef, entriesNeeded * 3)
@@ -896,24 +895,22 @@ end
 function estimate_data_facebased(input::LdcMatrixAssemblyInput)
     mesh = input.mesh
     velocity_internal = input.U[2].values
-    e2 = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
+    entries = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
     nCells = size(mesh.cells)[1]
-    vals = Vector{Float32}(undef, e2 * 3)
+    vals = Vector{Float32}(undef, entries * 3)
 
-    offsets::Vector{Int32} = ones(e2 + 1)
+    offsets::Vector{Int32} = ones(Int, entries)
     offsets[1] = 1
     vals[1] = velocity_internal[1][1]
-    vals[1+e2] = velocity_internal[1][2]
-    vals[1+e2+e2] = velocity_internal[1][3]
-    ## TODO fix offsets, does not make sense for face based assembly        
+    vals[1+entries] = velocity_internal[1][2]
+    vals[1+entries+entries] = velocity_internal[1][3]
     for iElement in 2:nCells
         offsets[iElement] += offsets[iElement-1] + mesh.cells[iElement-1].numIntFaces
         vals[iElement] = velocity_internal[iElement][1]
-        vals[iElement+e2] = velocity_internal[iElement][2]
-        vals[iElement+e2+e2] = velocity_internal[iElement][3]
+        vals[iElement+entries] = velocity_internal[iElement][2]
+        vals[iElement+entries+entries] = velocity_internal[iElement][3]
     end
-    offsets[end] = e2 + 1
-    return e2, offsets, vals
+    return offsets, vals
 end
 
 function bench_gc(input::LdcMatrixAssemblyInput, func::Function, case::String, runGC::Bool)
@@ -955,45 +952,45 @@ function FaceBasedAssembly(input::LdcMatrixAssemblyInput)
     RHS = zeros(Float32, nCells * 3)
     entriesNeeded = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
 
-    # entriesNeeded, offsets, vals = estimate_data_facebased(input)
+    offsets, vals = estimate_data_facebased(input)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
     seenOwner = ones(Int32, nCells)
-
-    @inbounds for (iFace, theFace) in enumerate(mesh.faces)
+    @inbounds for theFace in mesh.faces
         fluxCn = nu * theFace.gDiff
         if theFace.iNeighbor > 0
             iOwner = theFace.iOwner
             iNeighbor = theFace.iNeighbor
             fluxFn = -fluxCn
-            idx = offsets[iOwner] + seenOwner[iOwner]
+            # set diag and upper 
+            setIndex!(iOwner, iOwner, fluxCn, fluxCn, fluxCn, rows, cols, vals, offsets[iOwner], entriesNeeded)
+            setIndex!(iOwner, iNeighbor, fluxFn, fluxFn, fluxFn, rows, cols, vals, offsets[iOwner] + seenOwner[iOwner], entriesNeeded)
+            # increment für symmetry 
             seenOwner[iOwner] += 1
-            setIndex!(iOwner, iNeighbor, fluxFn, fluxFn, fluxFn, rows, cols, vals, idx, entriesNeeded)
-            idx = offsets[iNeighbor] + seenOwner[iNeighbor]
+            # set diag and lower
+            setIndex!(iNeighbor, iNeighbor, fluxCn, fluxCn, fluxCn, rows, cols, vals, offsets[iNeighbor], entriesNeeded)
+            setIndex!(iNeighbor, iOwner, fluxFn, fluxFn, fluxFn, rows, cols, vals, offsets[iNeighbor] + seenOwner[iNeighbor], entriesNeeded)
+            # increment für symmetry 
             seenOwner[iNeighbor] += 1
-            setIndex!(iNeighbor, iOwner, fluxFn, fluxFn, fluxFn, rows, cols, vals, idx, entriesNeeded)
-            idx = offsets[iOwner]
-            setIndex!(iOwner, iOwner, fluxCn, fluxCn, fluxCn, rows, cols, vals, idx, entriesNeeded)
-            idx = offsets[iNeighbor]
-            setIndex!(iNeighbor, iNeighbor, fluxCn, fluxCn, fluxCn, rows, cols, vals, idx, entriesNeeded)
         else
-            @inbounds iBoundary = mesh.faces[iFace].patchIndex
+            @inbounds iBoundary = theFace.patchIndex
             @inbounds boundaryType = velocity_boundary[iBoundary].type
             if boundaryType == "fixedValue"
-                relativeFaceIndex = iFace - mesh.boundaries[iBoundary].startFace
-                fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCn
-                idx = offsets[theFace.iOwner]
-                setIndex!(theFace.iOwner, theFace.iOwner, fluxCn, fluxCn, fluxCn, rows, cols, vals, idx, entriesNeeded)
-                @inbounds RHS[theFace.iOwner] -= fluxVb[1]
-                @inbounds RHS[theFace.iOwner+nCells] -= fluxVb[2]
-                @inbounds RHS[theFace.iOwner+nCells+nCells] -= fluxVb[3]
+                continue
             end
+            relativeFaceIndex = theFace.index - mesh.boundaries[iBoundary].startFace
+            fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCn
+            idx = offsets[theFace.iOwner]
+            setIndex!(theFace.iOwner, theFace.iOwner, fluxCn, fluxCn, fluxCn, rows, cols, vals, idx, entriesNeeded)
+            @inbounds RHS[theFace.iOwner] -= fluxVb[1]
+            @inbounds RHS[theFace.iOwner+nCells] -= fluxVb[2]
+            @inbounds RHS[theFace.iOwner+nCells+nCells] -= fluxVb[3]
         end
     end
     return rows, cols, vals
 end # function faceBasedAssembly
 
-function setIndex!(ir, ic, valx, valy, valz, rows, cols, vals, idx, entries)
+function setIndex!(ic, ir, valx, valy, valz, rows, cols, vals, idx, entries)
     # coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxC
     @inbounds cols[idx] = ic
     @inbounds rows[idx] = ir
@@ -1006,10 +1003,10 @@ function BatchedFaceBasedAssembly(input::LdcMatrixAssemblyInput)
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
-
+    entriesNeeded = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
     nCells = size(mesh.cells)[1]
     RHS = zeros(Float32, nCells * 3)
-    entriesNeeded, offsets, vals = estimate_data_facebased(input)
+    offsets, vals = estimate_data_facebased(input)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
     seenOwner = ones(Int32, nCells)
@@ -1019,18 +1016,17 @@ function BatchedFaceBasedAssembly(input::LdcMatrixAssemblyInput)
         iNeighbor = theFace.iNeighbor
         fluxCn = nu * theFace.gDiff
         fluxFn = -fluxCn
-        idx = offsets[iOwner] + seenOwner[iOwner]
+        # set diag and upper 
+        setIndex!(iOwner, iOwner, fluxCn, fluxCn, fluxCn, rows, cols, vals, offsets[iOwner], entriesNeeded)
+        setIndex!(iOwner, iNeighbor, fluxFn, fluxFn, fluxFn, rows, cols, vals, offsets[iOwner] + seenOwner[iOwner], entriesNeeded)
+        # increment für symmetry 
         seenOwner[iOwner] += 1
-        setIndex!(iOwner, iNeighbor, fluxFn, fluxFn, fluxFn, rows, cols, vals, idx, entriesNeeded)
-        idx = offsets[iNeighbor] + seenOwner[iNeighbor]
+        # set diag and lower
+        setIndex!(iNeighbor, iNeighbor, fluxCn, fluxCn, fluxCn, rows, cols, vals, offsets[iNeighbor], entriesNeeded)
+        setIndex!(iNeighbor, iOwner, fluxFn, fluxFn, fluxFn, rows, cols, vals, offsets[iNeighbor] + seenOwner[iNeighbor], entriesNeeded)
+        # increment für symmetry 
         seenOwner[iNeighbor] += 1
-        setIndex!(iNeighbor, iOwner, fluxFn, fluxFn, fluxFn, rows, cols, vals, idx, entriesNeeded)
-        idx = offsets[iOwner]
-        setIndex!(iOwner, iOwner, fluxCn, fluxCn, fluxCn, rows, cols, vals, idx, entriesNeeded)
-        idx = offsets[iNeighbor]
-        setIndex!(iNeighbor, iNeighbor, fluxCn, fluxCn, fluxCn, rows, cols, vals, idx, entriesNeeded)
     end
-
     @inbounds for iBoundary in eachindex(mesh.boundaries)
         if velocity_boundary[iBoundary].type != "fixedValue"
             continue
@@ -1043,8 +1039,7 @@ function BatchedFaceBasedAssembly(input::LdcMatrixAssemblyInput)
             fluxCn = nu * theFace.gDiff
             @inbounds relativeFaceIndex = iFace - mesh.boundaries[iBoundary].startFace
             @inbounds fluxVb = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCn
-            @inbounds idx = offsets[theFace.iOwner]
-            setIndex!(theFace.iOwner, theFace.iOwner, fluxCn, fluxCn, fluxCn, rows, cols, vals, idx, entriesNeeded)
+            setIndex!(theFace.iOwner, theFace.iOwner, fluxCn, fluxCn, fluxCn, rows, cols, vals, offsets[theFace.iOwner], entriesNeeded)
             @inbounds RHS[theFace.iOwner] -= fluxVb[1]
             @inbounds RHS[theFace.iOwner+nCells] -= fluxVb[2]
             @inbounds RHS[theFace.iOwner+nCells+nCells] -= fluxVb[3]
