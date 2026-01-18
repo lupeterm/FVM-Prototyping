@@ -1,4 +1,6 @@
 time_ms,case_short,case_long,threads,algorithm,incl_gc,metric,language
+1100,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,false, median,cpp
+649,Wind,WindsorBody,1,CellBasedAssembly,false, median,cpp
 
 
 150,LDC-S,Lid-Driven Cavity S,1,CellBasedAssembly,false, median,cpp
@@ -21,7 +23,6 @@ time_ms,case_short,case_long,threads,algorithm,incl_gc,metric,language
 91,LDC-S,Lid-Driven Cavity S,16,CellBasedAssembly,true,mean,julia
 100,LDC-S,Lid-Driven Cavity S,32,CellBasedAssembly,true,mean,julia
 
-1100,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,false, median,cpp
 643,LDC-M,Lid-Driven Cavity M,1,CellBasedAssembly,false, median,julia
 677,LDC-M,Lid-Driven Cavity M,2,CellBasedAssembly,false, median,julia
 515,LDC-M,Lid-Driven Cavity M,4,CellBasedAssembly,false, median,julia
@@ -43,7 +44,6 @@ time_ms,case_short,case_long,threads,algorithm,incl_gc,metric,language
 
 424.127197265625,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,mean,julia
 412.2154712677002,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,median,julia
-649,Wind,WindsorBody,1,CellBasedAssembly,false, median,cpp
 643,Wind,WindsorBody,1,CellBasedAssembly,false,median,julia
 418,Wind,WindsorBody,1,CellBasedAssembly,false, median,julia
 418,Wind,WindsorBody,2,CellBasedAssembly,false, median,julia
