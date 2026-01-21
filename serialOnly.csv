@@ -35,18 +35,39 @@ time_ms,case_short,case_long,threads,algorithm,incl_gc,metric,language
 499.78041648864746,Wind,WindsorBody,1,BatchedFaceBasedAssembly,true,median,julia
 408.52415561676025,Wind,WindsorBody,1,BatchedFaceBasedAssembly,false,mean,julia
 408.31899642944336,Wind,WindsorBody,1,BatchedFaceBasedAssembly,false,median,julia
-1100,LDC-M,Lid-Driven Cavity M,1,C++ CellBasedAssembly,false,median,cpp
-649,Wind,WindsorBody,1,C++ CellBasedAssembly,false,median,cpp
-150,LDC-S,Lid-Driven Cavity S,1,C++ CellBasedAssembly,false,median,cpp
-
-1100,LDC-M,Lid-Driven Cavity M,1,C++ CellBasedAssembly,false,mean,cpp
-649,Wind,WindsorBody,1,C++ CellBasedAssembly,false,mean,cpp
-150,LDC-S,Lid-Driven Cavity S,1,C++ CellBasedAssembly,false,mean,cpp
-
-1100,LDC-M,Lid-Driven Cavity M,1,C++ CellBasedAssembly,true,mean,cpp
-649,Wind,WindsorBody,1,C++ CellBasedAssembly,true,mean,cpp
-150,LDC-S,Lid-Driven Cavity S,1,C++ CellBasedAssembly,true,mean,cpp
-
-1100,LDC-M,Lid-Driven Cavity M,1,C++ CellBasedAssembly,true,median,cpp
-649,Wind,WindsorBody,1,C++ CellBasedAssembly,true,median,cpp
-150,LDC-S,Lid-Driven Cavity S,1,C++ CellBasedAssembly,true,median,cpp
+78,LDC-S,Lid-Driven Cavity S,1,C++ CellBasedAssembly,false,median,cpp
+615,LDC-S,Lid-Driven Cavity S,1,C++ FaceBasedAssembly,false,median,cpp
+620,LDC-S,Lid-Driven Cavity S,1,C++ BatchedFaceBasedAssembly,false,median,cpp
+78,LDC-S,Lid-Driven Cavity S,1,C++ CellBasedAssembly,true,median,cpp
+615,LDC-S,Lid-Driven Cavity S,1,C++ FaceBasedAssembly,true,median,cpp
+620,LDC-S,Lid-Driven Cavity S,1,C++ BatchedFaceBasedAssembly,true,median,cpp
+78,LDC-S,Lid-Driven Cavity S,1,C++ CellBasedAssembly,false,mean,cpp
+615,LDC-S,Lid-Driven Cavity S,1,C++ FaceBasedAssembly,false,mean,cpp
+620,LDC-S,Lid-Driven Cavity S,1,C++ BatchedFaceBasedAssembly,false,mean,cpp
+78,LDC-S,Lid-Driven Cavity S,1,C++ CellBasedAssembly,true,mean,cpp
+615,LDC-S,Lid-Driven Cavity S,1,C++ FaceBasedAssembly,true,mean,cpp
+620,LDC-S,Lid-Driven Cavity S,1,C++ BatchedFaceBasedAssembly,true,mean,cpp
+866,LDC-M,Lid-Driven Cavity M,1,C++ CellBasedAssembly,false,median,cpp
+5457,LDC-M,Lid-Driven Cavity M,1,C++ FaceBasedAssembly,false,median,cpp
+5268,LDC-M,Lid-Driven Cavity M,1,C++ BatchedFaceBasedAssembly,false,median,cpp
+866,LDC-M,Lid-Driven Cavity M,1,C++ CellBasedAssembly,true,median,cpp
+5457,LDC-M,Lid-Driven Cavity M,1,C++ FaceBasedAssembly,true,median,cpp
+5268,LDC-M,Lid-Driven Cavity M,1,C++ BatchedFaceBasedAssembly,true,median,cpp
+866,LDC-M,Lid-Driven Cavity M,1,C++ CellBasedAssembly,false,mean,cpp
+5457,LDC-M,Lid-Driven Cavity M,1,C++ FaceBasedAssembly,false,mean,cpp
+5268,LDC-M,Lid-Driven Cavity M,1,C++ BatchedFaceBasedAssembly,false,mean,cpp
+866,LDC-M,Lid-Driven Cavity M,1,C++ CellBasedAssembly,true,mean,cpp
+5457,LDC-M,Lid-Driven Cavity M,1,C++ FaceBasedAssembly,true,mean,cpp
+5268,LDC-M,Lid-Driven Cavity M,1,C++ BatchedFaceBasedAssembly,true,mean,cpp
+518,Wind,WindsorBody,1,C++ CellBasedAssembly,false,median,cpp
+4639,Wind,WindsorBody,1,C++ FaceBasedAssembly,false,median,cpp
+4634,Wind,WindsorBody,1,C++ BatchedFaceBasedAssembly,false,median,cpp
+518,Wind,WindsorBody,1,C++ CellBasedAssembly,true,median,cpp
+4639,Wind,WindsorBody,1,C++ FaceBasedAssembly,true,median,cpp
+4634,Wind,WindsorBody,1,C++ BatchedFaceBasedAssembly,true,median,cpp
+518,Wind,WindsorBody,1,C++ CellBasedAssembly,false,mean,cpp
+4639,Wind,WindsorBody,1,C++ FaceBasedAssembly,false,mean,cpp
+4634,Wind,WindsorBody,1,C++ BatchedFaceBasedAssembly,false,mean,cpp
+518,Wind,WindsorBody,1,C++ CellBasedAssembly,true,mean,cpp
+4639,Wind,WindsorBody,1,C++ FaceBasedAssembly,true,mean,cpp
+4634,Wind,WindsorBody,1,C++ BatchedFaceBasedAssembly,true,mean,cpp
