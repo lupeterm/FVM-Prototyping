@@ -975,7 +975,7 @@ function FaceBasedAssembly(input::LdcMatrixAssemblyInput)
         else
             @inbounds iBoundary = theFace.patchIndex
             @inbounds boundaryType = velocity_boundary[iBoundary].type
-            if boundaryType == "fixedValue"
+            if boundaryType != "fixedValue"
                 continue
             end
             relativeFaceIndex = theFace.index - mesh.boundaries[iBoundary].startFace

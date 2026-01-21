@@ -1,0 +1,12 @@
+algorithm,memory,case,case_long
+CellBasedAssembly,152,LDC-S,Lid-Driven Cavity S
+CellBasedAssembly,943,Wind,WindsorBody
+CellBasedAssembly,1160,LDC-M,Lid-Driven Cavity M
+FaceBasedAssembly,227,LDC-S,Lid-Driven Cavity S
+FaceBasedAssembly,1440,Wind,WindsorBody
+FaceBasedAssembly,1810,LDC-M,Lid-Driven Cavity M
+BatchedFaceBasedAssembly,243,LDC-S,Lid-Driven Cavity S
+BatchedFaceBasedAssembly,1470,Wind,WindsorBody
+BatchedFaceBasedAssembly,1850,LDC-M,Lid-Driven Cavity M
+
+		
