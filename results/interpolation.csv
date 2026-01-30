@@ -1,0 +1,18 @@
+time_ms,case_short,case_long,threads,algorithm,incl_gc,metric,language,interpolationMethod
+233.39223861694336,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,mean,julia,centralDifferencing
+223.64258766174316,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,median,julia,centralDifferencing
+245.2951192855835,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,mean,julia,centralDifferencing
+241.33753776550293,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,median,julia,centralDifferencing
+264.7850036621094,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,mean,julia,upwind
+260.0865364074707,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,median,julia,upwind
+240.2534008026123,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,mean,julia,upwind
+240.2970790863037,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,median,julia,upwind
+
+1870.1106071472168,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,mean,julia,centralDifferencing
+1854.0785312652588,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,median,julia,centralDifferencing
+2738.5403633117676,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,mean,julia,centralDifferencing
+2165.485978126526,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,median,julia,centralDifferencing
+2140.931177139282,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,mean,julia,upwind
+2136.9190216064453,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,true,median,julia,upwind
+1912.12739944458,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,mean,julia,upwind
+1910.5736017227173,LDC-S,Lid-Driven Cavity S,1,BatchedFaceBasedAssembly,false,median,julia,upwind
