@@ -69,25 +69,10 @@ mutable struct BoundaryField
     type::String
 end # struct BoundaryField
 
-struct MatrixAssemblyInput
-    mesh::Mesh
-    source::Vector{Float32}
-    diffusionCoeff::Vector{Float32}
-    boundaryFields::Vector{BoundaryField}
-end
-
 struct LdcMatrixAssemblyInput
     mesh::Mesh
     nu::Vector{Float32}
     U::Tuple{Vector{BoundaryField},Field}
-end
-
-struct GenericMatrixAssemblyInput
-    mesh::Mesh
-    sources::Vector{Vector{Float32}}
-    variables::Vector{Float32}
-    boundaryFields::Vector{Vector{BoundaryField}}
-    mappings::Dict{Int32,String}
 end
 
 
