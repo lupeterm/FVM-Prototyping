@@ -69,25 +69,10 @@ mutable struct BoundaryField
     type::String
 end # struct BoundaryField
 
-struct MatrixAssemblyInput
-    mesh::Mesh
-    source::Vector{Float32}
-    diffusionCoeff::Vector{Float32}
-    boundaryFields::Vector{BoundaryField}
-end
-
 struct LdcMatrixAssemblyInput
     mesh::Mesh
     nu::Vector{Float32}
     U::Tuple{Vector{BoundaryField},Field}
-end
-
-struct GenericMatrixAssemblyInput
-    mesh::Mesh
-    sources::Vector{Vector{Float32}}
-    variables::Vector{Float32}
-    boundaryFields::Vector{Vector{BoundaryField}}
-    mappings::Dict{Int32,String}
 end
 
 
@@ -573,7 +558,7 @@ returns either Float32 or MVector{3, Float32}
 function getUniformValue(file::String)
     for line in eachline(file)
         if startswith(line, "internalField")
-            cpy = replace(line, "internalField   uniform " => "")
+            cpy = replace(line, r"internalField\s+uniform " => "")
             cpy = replace(cpy, "(" => "")
             cpy = replace(cpy, ")" => "")
             cpy = replace(cpy, ";" => "")
@@ -657,7 +642,9 @@ function readField(filePath::String, mesh::Mesh)
     boundaryFields = []
     for boundary in mesh.boundaries
         for b in splitted
-            matches = match(r"\s*(\w+)\s*\{\s*type\s*(\w+);(?:\s*value\s*(\w+) (?:(\d+)|(\([\d\s]+\)));)?", b)
+            
+            matches = match(r"\s*(\w+)\s*\{\s*type\s*(\w+);\s*(?:\s*value\s*(\w+)\s*(?:(d+)|(\([\d\.\s]+\)));)?", b)
+            # matches = match(r"\s*(\w+)\s*\{\s*type\s*(\w+);(?:\s*value\s*(\w+) (?:(\d+)|(\([\d\s]+\)));)?", b)
             if isnothing(matches)
                 continue
             end
@@ -671,7 +658,8 @@ function readField(filePath::String, mesh::Mesh)
                 values = []
                 nFaces = 0
             end
-
+            
+            println(matches)
             if !isnothing(matches[3])
                 if !isnothing(matches[4])  # scalars like temperature
                     scalar = tryparse(Float32, matches[4])
@@ -694,7 +682,8 @@ function readPropertiesFile(path::String)::Float32
         throw(CaseDirError("Field file '$(path)' does not exist."))
     end
     file = read(path, String)
-    variable = match(r"\w+\s*\[[\s\d-]+\]\s*([\.\d\-e]+);", file)
+    variable = match(r"\w+\s*\[[\s\d-]+\]\s*([\.\d\-e]+(?:E-\d)?);", file)
+    print(variable)
     val = tryparse(Float32, variable[1])
     return val
 end
