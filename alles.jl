@@ -1461,13 +1461,13 @@ end
 
 function uuuh(input::LdcMatrixAssemblyInput)
     iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, faceBoundaryMapping, bFaceValues, RHS, nCells, M = prepare_batchedFace(input)
-    run_batchedface(prep...)
+    run_batchedface(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, faceBoundaryMapping, bFaceValues, RHS, nCells, M)
     return Vector(rows), Vector(cols), Vector(vals), Vector(RHS)
 end
 
 function run_batchedface(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internalblocks, bblocks, faceBoundaryMapping, bFaceValues, RHS, nCells, M)
-    @cuda threads = 256 blocks = blocks kernel_internalFace(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs)
-    @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, faceBoundaryMapping, bFaceValues, RHS, N, nCells, M)
+    CUDA.@sync @cuda threads = 256 blocks = blocks kernel_internalFace(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs)
+    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, faceBoundaryMapping, bFaceValues, RHS, N, nCells, M)
 end
 
 function associatedBoundaries(input::LdcMatrixAssemblyInput)
