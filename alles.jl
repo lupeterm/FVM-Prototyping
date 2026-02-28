@@ -69,7 +69,7 @@ mutable struct BoundaryField
     type::String
 end # struct BoundaryField
 
-struct LdcMatrixAssemblyInput
+struct MatrixAssemblyInput
     mesh::Mesh
     nu::Vector{Float32}
     U::Tuple{Vector{BoundaryField},Field}
@@ -296,24 +296,24 @@ function constructCells(nodes::Vector, boundaries::Vector{Boundary}, faces::Vect
         cells[iOwner].numIntFaces += 1
         cells[iNeighbor].numIntFaces += 1
     end
-    for boundaryFace in (numInteriors+1):size(faces)[1]
+    for boundaryFace in (numInteriors+1):length(faces)
         owner = faces[boundaryFace].iOwner
         push!(cells[owner].iFaces, boundaryFace)
         push!(cells[owner].faceSigns, 1)
     end
 
     # for cell in cells
-    #     cell.numNeighbors = size(cell.iNeighbors)[1]
+    #     cell.numNeighbors = length(cell.iNeighbors)
     # end
-    numBoundaryCells = size(faces)[1] - numInteriors
-    numBoundaryFaces = size(faces)[1] - numInteriors
+    numBoundaryCells = length(faces) - numInteriors
+    numBoundaryFaces = length(faces) - numInteriors
     return Mesh(nodes, faces, boundaries, numCells, cells, numInteriors, numBoundaryCells, numBoundaryFaces)
 end # function constructCells
 
 function setupNodeConnectivities(mesh::Mesh)::Mesh
-    for iFace in 1:size(mesh.faces)[1]
+    for iFace in 1:length(mesh.faces)
         iNodes = mesh.faces[iFace].iNodes
-        nNodes = size(iNodes)[1]
+        nNodes = length(iNodes)
         for iNode in 1:nNodes
             push!(mesh.nodes[iNodes[iNode]].iFaces, mesh.faces[iFace].index)
         end
@@ -350,21 +350,21 @@ function processBasicFaceGeometry(mesh::Mesh)::Mesh
     for face in mesh.faces
         area = 0.0
         # special case: triangle
-        if size(face.iNodes)[1] == 3
+        if length(face.iNodes) == 3
             # sum x,y,z and divide by 3
             triangleNodes = [mesh.nodes[i] for i in face.iNodes]
             face.centroid .= sum(triangleNodes) / 3
             face.Sf .= 0.5 * cross(triangleNodes[2] - triangleNodes[1], triangleNodes[3] - triangleNodes[1])
             area = magnitude(face.Sf)
-        else # general case, polygon is not a triangle 
+        else # general case, polygon is not a triangle
             nodes = [mesh.nodes[i] for i in face.iNodes]
-            center = sum(nodes) / size(nodes)[1]
+            center = sum(nodes) / length(nodes)
             # Using the center to compute the area and centroid of virtual
             # triangles based on the center and the face nodes
             triangleNode1 = center
             triangleNode3 = MVector{3,Float32}(0.0, 0.0, 0.0)
             for (iNodeIndex, iNode) in enumerate(face.iNodes)
-                if iNodeIndex < size(face.iNodes)[1]
+                if iNodeIndex < length(face.iNodes)
                     triangleNode3 .= mesh.nodes[face.iNodes[iNodeIndex+1]]
                 else
                     triangleNode3 .= mesh.nodes[face.iNodes[1]]
@@ -388,16 +388,16 @@ function processBasicFaceGeometry(mesh::Mesh)::Mesh
 end # function processBasicFaceGeometry
 
 function computeElementVolumeAndCentroid(mesh)::Mesh
-    for iElement in 1:(size(mesh.cells)[1])
+    for iElement in 1:(length(mesh.cells))
         iFaces = mesh.cells[iElement].iFaces
         elementCenter = MVector{3,Float32}(0.0, 0.0, 0.0)
         for iFace in iFaces
             elementCenter .+= mesh.faces[iFace].centroid
         end
-        elementCenter ./= size(iFaces)[1]
+        elementCenter ./= length(iFaces)
         localVolumeCentroidSum = zeros(3)
         localVolumeSum = 0.0
-        for iFace in 1:size(iFaces)[1]
+        for iFace in 1:length(iFaces)
             localFace = mesh.faces[iFaces[iFace]]
             localFaceSign = mesh.cells[iElement].faceSigns[iFace]
             Sf = localFaceSign * localFace.Sf
@@ -447,7 +447,7 @@ function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
         # fF = neighborElement.centroid - theFace.centroid
         # theFace.gf = dot(Cf, nf) / (dot(Cf, nf) + dot(fF, nf))
     end
-    for iBFace in (mesh.numInteriorFaces+1):size(mesh.faces)[1]
+    for iBFace in (mesh.numInteriorFaces+1):length(mesh.faces)
         theBFace = mesh.faces[iBFace]
         ownerElement = mesh.cells[theBFace.iOwner]
         CN .= theBFace.centroid .- ownerElement.centroid
@@ -465,7 +465,7 @@ function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
     #     iFaces = iElement.iFaces
     #     iNeighbors = iElement.iNeighbors
     #     kf = 1
-    #     for i in 1:size(iNeighbors)[1]
+    #     for i in 1:length(iNeighbors)
     #         iFace = iFaces[i]
     #         if mesh.faces[iFace].iOwner == iElement
     #             mesh.faces[iFace].iOwnerNeighborCoef = kf
@@ -563,20 +563,11 @@ function getUniformValue(file::String)
             cpy = replace(cpy, ")" => "")
             cpy = replace(cpy, ";" => "")
             values = parse.(Float32, split(cpy, " "))
-            if size(values)[1] == 1
+            if length(values) == 1
                 return values[1]
             end
             return MVector(values[1], values[2], values[3])
         end
-    end
-end
-
-function isvec3(file::String)::Bool
-    for line in eachline(file)
-        if j < start
-            continue
-        end
-        return startswith(line, "(")
     end
 end
 
@@ -586,8 +577,8 @@ function readField(filePath::String, mesh::Mesh)
         throw(CaseDirError("Field file '$(filePath)' does not exist."))
     end
     isUniform = isUniforminternalField(filePath)
-    # TODO so far not used 
-    numCells = size(mesh.cells)[1]
+    # TODO so far not used
+    numCells = length(mesh.cells)
     joined = ""
     fieldType = MVector{3,Float32} # getFieldType(filePath)
     internalValues = Vector{fieldType}(undef, numCells)
@@ -642,9 +633,8 @@ function readField(filePath::String, mesh::Mesh)
     boundaryFields = []
     for boundary in mesh.boundaries
         for b in splitted
-            
+
             matches = match(r"\s*(\w+)\s*\{\s*type\s*(\w+);\s*(?:\s*value\s*(\w+)\s*(?:(d+)|(\([\d\.\s]+\)));)?", b)
-            # matches = match(r"\s*(\w+)\s*\{\s*type\s*(\w+);(?:\s*value\s*(\w+) (?:(\d+)|(\([\d\s]+\)));)?", b)
             if isnothing(matches)
                 continue
             end
@@ -658,8 +648,7 @@ function readField(filePath::String, mesh::Mesh)
                 values = []
                 nFaces = 0
             end
-            
-            println(matches)
+
             if !isnothing(matches[3])
                 if !isnothing(matches[4])  # scalars like temperature
                     scalar = tryparse(Float32, matches[4])
@@ -683,44 +672,11 @@ function readPropertiesFile(path::String)::Float32
     end
     file = read(path, String)
     variable = match(r"\w+\s*\[[\s\d-]+\]\s*([\.\d\-e]+(?:E-\d)?);", file)
-    print(variable)
     val = tryparse(Float32, variable[1])
     return val
 end
 
-
-function heatInduction(caseDirectory::String)::MatrixAssemblyInput
-    mesh = readOpenFoamMesh(caseDirectory)
-    # Define the thermal conductivity and source term
-    thermalConductivity = ones(size(mesh.faces)[1])
-    numCells = size(mesh.cells)[1]
-    heatSource = zeros(numCells)
-
-    # Read initial condition and boundary conditions
-    boundaryTemperatureFields = readField(joinpath(caseDirectory, "0/T"), mesh)
-
-    # Assemble the coefficient matrix and RHS vector
-    matrixAssemblyInput = MatrixAssemblyInput(mesh, heatSource, thermalConductivity, boundaryTemperatureFields)
-    return matrixAssemblyInput
-end # function heatInduction
-
-function genericHeatInduction(caseDirectory::String)::GenericMatrixAssemblyInput
-    mesh = readOpenFoamMesh(caseDirectory)
-    # Define the thermal conductivity and source term
-    thermalConductivity = ones(size(mesh.faces)[1])
-    numCells = size(mesh.cells)[1]
-    heatSource = zeros(numCells)
-
-    # Read initial condition and boundary conditions
-    boundaryTemperatureFields = readField(joinpath(caseDirectory, "0/T"), mesh)
-    mapping = Dict()
-    mapping[1] = "T"
-    # Assemble the coefficient matrix and RHS vector
-    matrixAssemblyInput = GenericMatrixAssemblyInput(mesh, [heatSource], [thermalConductivity], boundaryTemperatureFields, mapping)
-    return matrixAssemblyInput
-end # function heatInduction
-
-function LidDrivenCavity(caseDirectory::String)::LdcMatrixAssemblyInput
+function ProcessCase(caseDirectory::String)::MatrixAssemblyInput
     mesh = readOpenFoamMesh(caseDirectory)
     # Define the thermal conductivity and source term
     nu = readPropertiesFile(joinpath(caseDirectory, "constant/transportProperties"))
@@ -728,16 +684,15 @@ function LidDrivenCavity(caseDirectory::String)::LdcMatrixAssemblyInput
     # p = readField(joinpath(caseDirectory, "0/p"), mesh)
     U = readField(joinpath(caseDirectory, "0/U"), mesh)
     # Assemble the coefficient matrix and RHS vector
-    ldcInput = LdcMatrixAssemblyInput(mesh, fill(nu, length(mesh.cells)), U)
-    return ldcInput
-end # function LidDrivenCavity
+    return MatrixAssemblyInput(mesh, fill(nu, length(mesh.cells)), U)
+end # function ProcessCase
 
-
-function ThreadedCellBasedAssembly(input::LdcMatrixAssemblyInput)
+function ThreadedCellBasedAssembly(input::MatrixAssemblyInput)#::Tuple{Vector{Int32},Vector{Int32},Vector{Float32}}
     mesh = input.mesh
-    nCells = size(mesh.cells)[1]
+    nCells = length(mesh.cells)
     RHS = zeros(Float32, nCells * 3)
-    entriesNeeded, offsets = estimate_data(input)
+    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
+    offsets = getOffsets(input)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
     vals = Vector{Float32}(undef, entriesNeeded * 3)
@@ -749,15 +704,14 @@ function ThreadedCellBasedAssembly(input::LdcMatrixAssemblyInput)
     return rows, cols, vals
 end
 
-function CellBasedHelper(chunk::UnitRange, input::LdcMatrixAssemblyInput, RHS::Vector{Float32}, rows::Vector{Int32}, cols::Vector{Int32}, offsets, vals::Vector)
+function CellBasedHelper(chunk::UnitRange, input::MatrixAssemblyInput, RHS::Vector{Float32}, rows::Vector{Int32}, cols::Vector{Int32}, offsets, vals::Vector)
     mesh = input.mesh
     nu = input.nu
-    nCells = size(mesh.cells)[1]
+    nCells = length(mesh.cells)
     velocity_boundary = input.U[1]
     velocity_internal = input.U[2].values
     for iElement in chunk
         theElement = mesh.cells[iElement]
-        numFaces = size(theElement.iFaces)[1]
         @inbounds diagx::Float32 = velocity_internal[iElement][1]
         @inbounds diagy::Float32 = velocity_internal[iElement][2]
         @inbounds diagz::Float32 = velocity_internal[iElement][3]
@@ -769,14 +723,14 @@ function CellBasedHelper(chunk::UnitRange, input::LdcMatrixAssemblyInput, RHS::V
             idx = offsets[iElement] + iFace
             @inbounds cols[idx] = iElement
             @inbounds rows[idx] = theElement.iNeighbors[iFace]
-            @inbounds vals[idx] = fluxFn    # x  
+            @inbounds vals[idx] = fluxFn    # x
             @inbounds vals[2*idx] = fluxFn  # y
             @inbounds vals[3*idx] = fluxFn  # z
             diagx += fluxCn
             diagy += fluxCn
             diagz += fluxCn
         end
-        for iFace in theElement.numIntFaces+1:nFaces
+        for iFace in theElement.numIntFaces+1:length(theElement.iFaces)
             @inbounds iFaceIndex = theElement.iFaces[iFace]
             @inbounds theFace = mesh.faces[iFaceIndex]
             @inbounds iBoundary = mesh.faces[iFaceIndex].patchIndex
@@ -796,21 +750,21 @@ function CellBasedHelper(chunk::UnitRange, input::LdcMatrixAssemblyInput, RHS::V
         idx = offsets[iElement]
         @inbounds cols[idx] = iElement
         @inbounds rows[idx] = iElement
-        @inbounds vals[idx] = diagx    # x  
+        @inbounds vals[idx] = diagx    # x
         @inbounds vals[2*idx] = diagy  # y
         @inbounds vals[3*idx] = diagz  # z
     end
 end
 
 
-function CellBasedAssembly(input::LdcMatrixAssemblyInput)
+function CellBasedAssembly(input::MatrixAssemblyInput)
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
     velocity_internal = input.U[2].values
-    nCells = size(mesh.cells)[1]
+    nCells = length(mesh.cells)
     RHS = zeros(Float32, nCells * 3)
-    entriesNeeded = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
+    entriesNeeded = length(mesh.cells) + 2 * mesh.numInteriorFaces
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
     vals = Vector{Float32}(undef, entriesNeeded * 3)
@@ -819,7 +773,7 @@ function CellBasedAssembly(input::LdcMatrixAssemblyInput)
     for iElement = 1:nCells
         set = false
         theElement = mesh.cells[iElement]
-        numFaces = size(theElement.iFaces)[1]
+        numFaces = length(theElement.iFaces)
         @inbounds diagx::Float32 = velocity_internal[iElement][1]
         @inbounds diagy::Float32 = velocity_internal[iElement][2]
         @inbounds diagz::Float32 = velocity_internal[iElement][3]
@@ -835,7 +789,7 @@ function CellBasedAssembly(input::LdcMatrixAssemblyInput)
             end
             cols[idx] = iElement
             rows[idx] = theElement.iNeighbors[iFace]
-            vals[idx] = fluxFn    # x  
+            vals[idx] = fluxFn    # x
             vals[idx+entriesNeeded] = fluxFn  # y
             vals[idx+entriesNeeded+entriesNeeded] = fluxFn  # z
             idx += 1
@@ -866,31 +820,31 @@ function CellBasedAssembly(input::LdcMatrixAssemblyInput)
         end
         cols[cellIdx] = iElement
         rows[cellIdx] = iElement
-        vals[cellIdx] = diagx    # x  
+        vals[cellIdx] = diagx    # x
         vals[cellIdx+entriesNeeded] = diagy  # y
         vals[cellIdx+entriesNeeded+entriesNeeded] = diagz  # z
     end
     return rows, cols, vals, RHS
-end # function cellBasedAssemblySparseMultiVectorPrealloc
+end # function CellBasedAssembly
 
-function estimate_data(input::LdcMatrixAssemblyInput)
+function getOffsets(input::MatrixAssemblyInput)
     mesh = input.mesh
-    e2 = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
-    nCells = size(mesh.cells)[1]
+    neededEntries = length(mesh.cells) + 2 * mesh.numInteriorFaces
+    nCells = length(mesh.cells)
 
-    offsets::Vector{Int32} = ones(e2 + 1)
+    offsets::Vector{Int32} = ones(nCells + 1)
     for iElement in 2:nCells
         offsets[iElement] += offsets[iElement-1] + mesh.cells[iElement-1].numIntFaces
     end
-    offsets[end] = e2 + 1
-    return e2, offsets
+    offsets[end] = neededEntries + 1
+    return offsets
 end
 
-function estimate_data_facebased(input::LdcMatrixAssemblyInput)#::Tuple{Vector{Int32},Vector{Float32}}
+function getOffsetsAndValues(input::MatrixAssemblyInput)#::Tuple{Vector{Int32},Vector{Float32}}
     mesh = input.mesh
     velocity_internal = input.U[2].values
-    entries = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
-    nCells = size(mesh.cells)[1]
+    entries = length(mesh.cells) + 2 * mesh.numInteriorFaces
+    nCells = length(mesh.cells)
     vals = Vector{Float32}(undef, entries * 3)
 
     offsets::Vector{Int32} = ones(Int32, nCells)
@@ -919,7 +873,7 @@ function estimate_data_facebased(input::LdcMatrixAssemblyInput)#::Tuple{Vector{I
     return offsets, negOffsets, vals
 end
 
-function bench_gc(input::LdcMatrixAssemblyInput, func::Function, case::String, runGC::Bool)
+function bench_gc(input::MatrixAssemblyInput, func::Function, case::String, runGC::Bool)
     times = []
     for _ in 1:10
         if runGC
@@ -949,7 +903,7 @@ function bench_gc(input::LdcMatrixAssemblyInput, func::Function, case::String, r
 end
 
 
-function bench_phi(input::LdcMatrixAssemblyInput, case::String, runGC::Bool, phiFunc::Function)
+function bench_phi(input::MatrixAssemblyInput, case::String, runGC::Bool, phiFunc::Function)
     times = []
     for _ in 1:10
         if runGC
@@ -979,85 +933,84 @@ function bench_phi(input::LdcMatrixAssemblyInput, case::String, runGC::Bool, phi
     println("$med,$case,$long,$(Threads.nthreads()),BatchedFaceBasedAssembly,$included,median,julia,$(String(Symbol(phiFunc)))")
 end
 
-
-
-function FaceBasedAssembly(input::LdcMatrixAssemblyInput)
+function JointFaceBasedAssembly(input::MatrixAssemblyInput)
     mesh = input.mesh
-    nu = input.nu
+    nu::Vector{Float32} = input.nu
     velocity_boundary = input.U[1]
-    nCells = size(mesh.cells)[1]
+    nCells = length(mesh.cells)
     RHS = zeros(Float32, nCells * 3)
-    entriesNeeded = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
+    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
 
-    offsets, vals = estimate_data_facebased(input)
+    offsets, negativeOffsets, vals = getOffsetsAndValues(input)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
     seenOwner = ones(Int32, nCells)
-    @inbounds for theFace in mesh.faces
-        fluxCn = nu * theFace.gDiff
+    @inbounds for iFace in eachindex(mesh.faces)
+        theFace::Face = mesh.faces[iFace]
+        iOwner = theFace.iOwner
+        fluxCn = nu[iOwner] * theFace.gDiff
         if theFace.iNeighbor > 0
-            iOwner = theFace.iOwner
             iNeighbor = theFace.iNeighbor
             fluxFn = -fluxCn
-            # set diag and upper 
+            # set diag and upper
             setIndex!(iOwner, iOwner, fluxCn, rows, cols, vals, offsets[iOwner], entriesNeeded)
             setIndex!(iOwner, iNeighbor, fluxFn, rows, cols, vals, offsets[iOwner] + seenOwner[iOwner], entriesNeeded)
-            # increment für symmetry 
+            # increment für symmetry
             seenOwner[iOwner] += 1
             # set diag and lower
             setIndex!(iNeighbor, iNeighbor, fluxCn, rows, cols, vals, offsets[iNeighbor], entriesNeeded)
-            setIndex!(iNeighbor, iOwner, fluxFn, rows, cols, vals, offsets[iNeighbor] + seenOwner[iNeighbor], entriesNeeded)
-            # increment für symmetry 
-            seenOwner[iNeighbor] += 1
+            setIndex!(iNeighbor, iOwner, fluxFn, rows, cols, vals, offsets[iNeighbor] - negativeOffsets[iNeighbor], entriesNeeded)
+            # increment für symmetry
+            negativeOffsets[iNeighbor] -= 1
         else
-            @inbounds iBoundary = theFace.patchIndex
-            @inbounds boundaryType = velocity_boundary[iBoundary].type
+            iBoundary = theFace.patchIndex
+            boundaryType = velocity_boundary[iBoundary].type
             if boundaryType != "fixedValue"
                 continue
             end
             relativeFaceIndex = theFace.index - mesh.boundaries[iBoundary].startFace
             fluxVb::Vector{Float32} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCn
             idx = offsets[theFace.iOwner]
-            setIndex!(theFace.iOwner, theFace.iOwner, fluxCn, rows, cols, vals, idx, entriesNeeded)
-            @inbounds RHS[theFace.iOwner] -= fluxVb[1]
-            @inbounds RHS[theFace.iOwner+nCells] -= fluxVb[2]
-            @inbounds RHS[theFace.iOwner+nCells+nCells] -= fluxVb[3]
+            setIndex!(iOwner, iOwner, fluxCn, rows, cols, vals, idx, entriesNeeded)
+            RHS[iOwner] -= fluxVb[1]
+            RHS[iOwner+nCells] -= fluxVb[2]
+            RHS[iOwner+nCells+nCells] -= fluxVb[3]
         end
     end
-    return rows, cols, vals
+    return rows, cols, vals, RHS
 end # function faceBasedAssembly
 
 function setIndex!(ic::Int32, ir::Int32, val::Float32, rows::Vector{Int32}, cols::Vector{Int32}, vals::Vector{Float32}, idx::Int32, entries::Int32)
     # coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxC
     # println("owner $ic neighbor $ir into $idx")
-    if ir in [990000, 999900, 999999] && idx > 6939995
-        println("owner: $ic, neighbor: $ir, idx: $idx")
-    end
-    @inbounds cols[idx] = ic
-    @inbounds rows[idx] = ir
-    @inbounds vals[idx] += val    # x  
-    @inbounds vals[idx+entries] += val  # y
-    @inbounds vals[idx+entries+entries] += val  # z
+    # if ir in [990000, 999900, 999999] && idx > 6939995
+    #     println("owner: $ic, neighbor: $ir, idx: $idx")
+    # end
+    cols[idx] = ic
+    rows[idx] = ir
+    vals[idx] += val    # x
+    vals[idx+entries] += val  # y
+    vals[idx+entries+entries] += val  # z
 end
 
 function setIndex!(ic::Int32, ir::Int32, val::MVector{3,Float32}, rows::Vector{Int32}, cols::Vector{Int32}, vals::Vector{Float32}, idx::Int32, entries::Int32)
     # coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxC
-    @inbounds cols[idx] = ic
-    @inbounds rows[idx] = ir
-    @inbounds vals[idx] += val[1]    # x  
-    @inbounds vals[idx+entries] += val[2]  # y
-    @inbounds vals[idx+entries+entries] += val[3]  # z
+    cols[idx] = ic
+    rows[idx] = ir
+    vals[idx] += val[1]    # x
+    vals[idx+entries] += val[2]  # y
+    vals[idx+entries+entries] += val[3]  # z
 end
 
-function BatchedFaceBasedAssembly(input::LdcMatrixAssemblyInput)
+function FaceBasedAssembly(input::MatrixAssemblyInput)
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
     nCells = length(mesh.cells)
     entriesNeeded::Int32 = nCells + 2 * mesh.numInteriorFaces
     RHS = zeros(Float32, nCells * 3)
-    offsets, negOffsets, vals = estimate_data_facebased(input)
-    # offsets: the exact index the owner cell is placed in relation to neighbor indices, 
+    offsets, negOffsets, vals = getOffsetsAndValues(input)
+    # offsets: the exact index the owner cell is placed in relation to neighbor indices,
     # negOffsets: where the cell faces start in relation to owner id
     # e.g: row values [1,2,101,10001,1,2,3...]
     #      offsets:   [1               2]
@@ -1073,15 +1026,15 @@ function BatchedFaceBasedAssembly(input::LdcMatrixAssemblyInput)
         iNeighbor = theFace.iNeighbor
         fluxCn = nu[iOwner] * theFace.gDiff
         fluxFn = -fluxCn
-        # set diag and upper 
+        # set diag and upper
         setIndex!(iOwner, iOwner, fluxCn, rows, cols, vals, offsets[iOwner], entriesNeeded)
         setIndex!(iOwner, iNeighbor, fluxFn, rows, cols, vals, offsets[iOwner] + seenOwner[iOwner], entriesNeeded)
-        # increment für symmetry 
+        # increment für symmetry
         seenOwner[iOwner] += 1
         # set diag and lower
         setIndex!(iNeighbor, iNeighbor, fluxCn, rows, cols, vals, offsets[iNeighbor], entriesNeeded)
         setIndex!(iNeighbor, iOwner, fluxFn, rows, cols, vals, offsets[iNeighbor] - negOffsets[iNeighbor], entriesNeeded)
-        # increment für symmetry 
+        # increment für symmetry
         negOffsets[iNeighbor] -= 1
     end
     @inbounds for iBoundary in eachindex(mesh.boundaries)
@@ -1119,11 +1072,11 @@ end
 
 function centralDifferencing(ownerVal::MVector{3,Float32}, otherVal::MVector{3,Float32}, Sf::MVector{3,Float32}, u_facelocal::MVector{3,Float32}, out::MVector{3,Float32})
     u_facelocal .= lerp(ownerVal, otherVal)
-    out .= dot(u_facelocal, Sf) .* u_facelocal   # mdot * ϕf 
+    out .= dot(u_facelocal, Sf) .* u_facelocal   # mdot * ϕf
 end
 
 
-function DivLapBatchedFaceBasedAssembly(input::LdcMatrixAssemblyInput, interpolation::Function)
+function DivLapBatchedFaceBasedAssembly(input::MatrixAssemblyInput, interpolation::Function)
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -1131,7 +1084,7 @@ function DivLapBatchedFaceBasedAssembly(input::LdcMatrixAssemblyInput, interpola
     nCells = length(mesh.cells)
     entriesNeeded::Int32 = nCells + 2 * mesh.numInteriorFaces
     RHS = zeros(Float32, nCells * 3)
-    offsets::Vector{Int32}, negOffsets::Vector{Int32}, vals::Vector{Float32} = estimate_data_facebased(input)
+    offsets::Vector{Int32}, negOffsets::Vector{Int32}, vals::Vector{Float32} = getOffsetsAndValues(input)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
     seenOwner = ones(Int32, nCells)
@@ -1145,15 +1098,15 @@ function DivLapBatchedFaceBasedAssembly(input::LdcMatrixAssemblyInput, interpola
         centralDifferencing(velocity_internal[theFace.iOwner], velocity_internal[theFace.iNeighbor], theFace.Sf, u_facelocal, fluxCn)           ## div(phi, U)      ⟹ Convection
         # fluxCn = nu[iOwner] * theFace.gDiff                                                                                ## laplacian(Γ, U)  ⟹ Diffusion
         fluxFn = -fluxCn
-        # set diag and upper 
+        # set diag and upper
         setIndex!(iOwner, iOwner, fluxCn, rows, cols, vals, offsets[iOwner], entriesNeeded)
         setIndex!(iOwner, iNeighbor, fluxFn, rows, cols, vals, offsets[iOwner] + seenOwner[iOwner], entriesNeeded)
-        # increment für symmetry 
+        # increment für symmetry
         seenOwner[iOwner] += 1
         # set diag and lower
         setIndex!(iNeighbor, iNeighbor, fluxCn, rows, cols, vals, offsets[iNeighbor], entriesNeeded)
         setIndex!(iNeighbor, iOwner, fluxFn, rows, cols, vals, offsets[iNeighbor] - negOffsets[iNeighbor], entriesNeeded)
-        # increment für symmetry 
+        # increment für symmetry
         negOffsets[iNeighbor] -= 1
     end
     @inbounds for iBoundary in eachindex(mesh.boundaries)
@@ -1195,16 +1148,16 @@ end # function batchedFaceBasedAssembly
 #         end
 #     end
 # end
-function GPU_estimate_data_facebased(input::LdcMatrixAssemblyInput)
+
+function gpu_estimate_data_facebased(input::MatrixAssemblyInput)
     mesh = input.mesh
     velocity_internal::Vector{MVector{3,Float32}} = input.U[2].values
-    entries = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
-    nCells = size(mesh.cells)[1]
+    entries = length(mesh.cells) + 2 * mesh.numInteriorFaces
+    nCells = length(mesh.cells)
     vals_g = CuArray{Float32}(undef, entries * 3)
 
     offsets::Vector{Int32} = ones(Int32, nCells)
     gpu_offsets = CuArray{Int32}(undef, nCells)
-    # offsets[1] = 1
     for iElement in 2:nCells
         offsets[iElement] += offsets[iElement-1] + mesh.cells[iElement-1].numIntFaces
     end
@@ -1219,15 +1172,15 @@ end
 
 
 
-function GPUFaceBasedAssembly(input::LdcMatrixAssemblyInput)
+function GPUFaceBasedAssembly(input::MatrixAssemblyInput)
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
-    nCells = size(mesh.cells)[1]
+    nCells = length(mesh.cells)
     RHS = zeros(Float32, nCells * 3)
-    entriesNeeded = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
+    entriesNeeded = length(mesh.cells) + 2 * mesh.numInteriorFaces
 
-    offsets, vals = GPU_estimate_data_facebased(input)
+    offsets, vals = gpu_estimate_data_facebased(input)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
     seenOwner = ones(Int32, nCells)
@@ -1237,15 +1190,15 @@ function GPUFaceBasedAssembly(input::LdcMatrixAssemblyInput)
             iOwner = theFace.iOwner
             iNeighbor = theFace.iNeighbor
             fluxFn = -fluxCn
-            # set diag and upper 
+            # set diag and upper
             setIndex!(iOwner, iOwner, fluxCn, rows, cols, vals, offsets[iOwner], entriesNeeded)
             setIndex!(iOwner, iNeighbor, fluxFn, rows, cols, vals, offsets[iOwner] + seenOwner[iOwner], entriesNeeded)
-            # increment für symmetry 
+            # increment für symmetry
             seenOwner[iOwner] += 1
             # set diag and lower
             setIndex!(iNeighbor, iNeighbor, fluxCn, rows, cols, vals, offsets[iNeighbor], entriesNeeded)
             setIndex!(iNeighbor, iOwner, fluxFn, rows, cols, vals, offsets[iNeighbor] + seenOwner[iNeighbor], entriesNeeded)
-            # increment für symmetry 
+            # increment für symmetry
             seenOwner[iNeighbor] += 1
         else
             @inbounds iBoundary = theFace.patchIndex
@@ -1265,7 +1218,10 @@ function GPUFaceBasedAssembly(input::LdcMatrixAssemblyInput)
     return rows, cols, vals
 end # function faceBasedAssembly
 
-function facesToGPUarrays(faces)
+CuArray{Int32} = CUDA.CuArray{Int32}
+CuArray{Float32} = CUDA.CuArray{Float32}
+
+function facesToGPUarrays(faces)::Tuple{CuArray{Int32},CuArray{Int32},CuArray{Float32},CuArray{Int32},CuArray{Int32}}
     numFaces = length(faces)
     iOwners = CuArray{Int32}(undef, numFaces)
     iNeighbors = CuArray{Int32}(undef, numFaces)
@@ -1281,7 +1237,7 @@ function facesToGPUarrays(faces)
     return iOwners, iNeighbors, gDiffs, relativesO, relativesN
 end
 
-function test(input::LdcMatrixAssemblyInput)
+function prepareRelativeIndices!(input::MatrixAssemblyInput)
     mesh = input.mesh
     cells = mesh.cells
     for cell in cells
@@ -1315,21 +1271,32 @@ function test(input::LdcMatrixAssemblyInput)
     end
 end
 
-# function kernel_internal_owner(internalFaces::Vector{Face}, offsets::CuArray{Int32}, nu::CuArray{Float32}, seenOwner::CuArray{Int32}, negOffsets::CuArray{Int32}, rows::CuArray{Int32}, cols::CuArray{Int32}, vals::CuArray{Float32})
-function kernel_internalFace(iOwners, iNeighbors, gDiffs, offsets, nu, rows, cols, vals, entriesNeeded, relativeToOwner, numInteriorFaces, relativeToNeighbor)
+function kernel_internalFace(
+    iOwners,
+    iNeighbors,
+    gDiffs,
+    offsets,
+    nus,
+    rows,
+    cols,
+    vals,
+    entriesNeeded,
+    relativeToOwner,
+    numInteriorFaces,
+    relativeToNeighbor
+)
     iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if iFace > numInteriorFaces
         return
     end
-
     iOwner = iOwners[iFace]
     iNeighbor = iNeighbors[iFace]
-    fluxCn = nu[iOwner] * gDiffs[iFace]
+    fluxCn = nus[iOwner] * gDiffs[iFace]
     fluxFn = -fluxCn
     idx = offsets[iOwner]
     cols[idx] = iOwner
     rows[idx] = iOwner
-    CUDA.@atomic vals[idx] += fluxCn    # x  
+    CUDA.@atomic vals[idx] += fluxCn    # x
     CUDA.@atomic vals[idx+entriesNeeded] += fluxCn  # y
     CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += fluxCn  # z
 
@@ -1339,31 +1306,41 @@ function kernel_internalFace(iOwners, iNeighbors, gDiffs, offsets, nu, rows, col
     end
     cols[idx] = iOwner
     rows[idx] = iNeighbor
-    vals[idx] += fluxFn    # x  
+    vals[idx] += fluxFn    # x
     vals[idx+entriesNeeded] += fluxFn  # y
     vals[idx+entriesNeeded+entriesNeeded] += fluxFn  # z
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
-    CUDA.@atomic vals[idx] += fluxCn    # x  
+    CUDA.@atomic vals[idx] += fluxCn    # x
     CUDA.@atomic vals[idx+entriesNeeded] += fluxCn  # y
     CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += fluxCn  # z
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
-    vals[idx] += fluxFn    # x  
+    vals[idx] += fluxFn    # x
     vals[idx+entriesNeeded] += fluxFn  # y
     vals[idx+entriesNeeded+entriesNeeded] += fluxFn  # z
     return nothing
 end
 
 
-# function kernel_internal_owner(internalFaces::Vector{Face}, offsets::CuArray{Int32}, nu::CuArray{Float32}, seenOwner::CuArray{Int32}, negOffsets::CuArray{Int32}, rows::CuArray{Int32}, cols::CuArray{Int32}, vals::CuArray{Float32})
-function kernel_boundaryFace(iOwners, gDiffs, offsets, nu, vals, entriesNeeded, associatedBoundary, bFaceValues, RHS, numInternalFaces, nCells, numBoundaryFaces)
+function kernel_boundaryFace(
+    iOwners,
+    gDiffs,
+    offsets,
+    nus,
+    vals,
+    entriesNeeded,
+    bFaceValues,
+    RHS,
+    numInternalFaces,
+    nCells,
+    numBoundaryFaces
+)
     localBFaceIndex = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    # bFaceValue = bFaceValues[iFace:iFace+2]
     globalFaceIndex = numInternalFaces + localBFaceIndex
     if globalFaceIndex > numInternalFaces + numBoundaryFaces
         return
@@ -1372,18 +1349,25 @@ function kernel_boundaryFace(iOwners, gDiffs, offsets, nu, vals, entriesNeeded, 
         return
     end
     iOwner = iOwners[globalFaceIndex]
-    fluxCb::Float32 = nu[iOwner] * gDiffs[globalFaceIndex]
-
-    x = bFaceValues[localBFaceIndex]
-    y = bFaceValues[localBFaceIndex+1]
-    z = bFaceValues[localBFaceIndex+2]
-    fluxVbx::Float32 = x * -fluxCb
-    fluxVby::Float32 = y * -fluxCb
-    fluxVbz::Float32 = z * -fluxCb
+    fluxCb = nus[iOwner] * gDiffs[globalFaceIndex]
+    boundaryValueIndex = (localBFaceIndex - 1) * 3 + 1  # one based indexing :grr:
+    x = bFaceValues[boundaryValueIndex]
+    y = bFaceValues[boundaryValueIndex+1]
+    z = bFaceValues[boundaryValueIndex+2]
+    fluxVbx = x * -fluxCb
+    fluxVby = y * -fluxCb
+    fluxVbz = z * -fluxCb
     idx = offsets[iOwner]
-    CUDA.@atomic vals[idx] += fluxCb    # x  
+    CUDA.@atomic vals[idx] += fluxCb    # x
     CUDA.@atomic vals[idx+entriesNeeded] += fluxCb  # y
     CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += fluxCb  # z
+    if localBFaceIndex < 4
+        @cuprintln("$localBFaceIndex = $((blockIdx().x - 1)) * $(blockDim().x) + $(threadIdx().x)")
+        @cuprintln("fluxVbz != 0.0: $fluxVbz, gdiff: $(gDiffs[globalFaceIndex]), [$x, $y, $z], [$(bFaceValues[1]), $(bFaceValues[2]), $(bFaceValues[3])]")
+    end
+    # if fluxVbz != 0.0
+    #     @cuprintln("fluxVbz != 0.0: $fluxVbz, gdiff: $(gDiffs[globalFaceIndex]), [$x, $y, $z], [$(bFaceValues[1]), $(bFaceValues[2]), $(bFaceValues[3])]")
+    # end
     CUDA.@atomic RHS[iOwner] -= fluxVbx
     CUDA.@atomic RHS[iOwner+nCells] -= fluxVby
     CUDA.@atomic RHS[iOwner+nCells+nCells] -= fluxVbz
@@ -1391,21 +1375,15 @@ function kernel_boundaryFace(iOwners, gDiffs, offsets, nu, vals, entriesNeeded, 
 end
 
 
-function gpuestimate(input::LdcMatrixAssemblyInput)
+function gpu_precalcOffsets(input::MatrixAssemblyInput)::CuArray{Int32}
     mesh = input.mesh
-    velocity_internal = input.U[2].values
-    entries = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
-    nCells = size(mesh.cells)[1]
-    vals_g = CuArray{Float32}(undef, entries * 3)
+    nCells = length(mesh.cells)
     offsets = ones(Int32, nCells)
     gpu_offsets = CuArray{Int32}(undef, nCells)
     negOffsets::Vector{Int32} = zeros(Int32, nCells)
     for iElement in 2:nCells
         offsets[iElement] += offsets[iElement-1] + mesh.cells[iElement-1].numIntFaces
     end
-    vals_g[1:nCells] = getindex.(velocity_internal, 1)
-    vals_g[entries+1:entries+nCells] = getindex.(velocity_internal, 2)
-    vals_g[entries+entries+1:entries+entries+nCells] = getindex.(velocity_internal, 3)
     for iElement in 1:nCells
         theElement = mesh.cells[iElement]
         for iFace in 1:theElement.numIntFaces
@@ -1420,67 +1398,84 @@ function gpuestimate(input::LdcMatrixAssemblyInput)
     copyto!(gpu_offsets, offsets)
     offsets = []
     negOffsets = []
-    return gpu_offsets, vals_g
+    return gpu_offsets
 end
 
-function prepare_batchedFace(input::LdcMatrixAssemblyInput)
+function gpu_prepareValues(input::MatrixAssemblyInput)::CuArray{Float32}
+    mesh = input.mesh
+    nCells = length(mesh.cells)
+    velocity_internal = input.U[2].values
+    entries = nCells + 2 * mesh.numInteriorFaces
+    vals_g = CuArray{Float32}(undef, entries * 3)
+    vals_g[1:nCells] = getindex.(velocity_internal, 1)
+    vals_g[entries+1:entries+nCells] = getindex.(velocity_internal, 2)
+    vals_g[entries+entries+1:entries+entries+nCells] = getindex.(velocity_internal, 3)
+    return vals_g
+end
+
+function gpu_prepareFaceBased(input::MatrixAssemblyInput)::Tuple
     mesh = input.mesh
     nu = input.nu
     nu_g = CuArray{Float32}(undef, nu.size[1])
     copyto!(nu_g, nu)
-    nCells = size(mesh.cells)[1]
+    nCells::Int32 = length(mesh.cells)
     RHS = CUDA.zeros(Float32, nCells * 3)
-    entriesNeeded = size(mesh.cells)[1] + 2 * mesh.numInteriorFaces
-
-    offsets::CuArray{Int32}, vals = gpuestimate(input)
+    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
+    offsets = gpu_precalcOffsets(input)
+    vals = gpu_prepareValues(input)
     rows::CuArray{Int32} = CUDA.zeros(Int32, entriesNeeded)
     cols = CUDA.zeros(Int32, entriesNeeded)
     N = mesh.numInteriorFaces
-    threads = 256
-    internal_blocks = cld(N, threads)
-    test(input)
+    threads::Int32 = 256
+    internal_blocks::Int32 = cld(N, threads)
+    prepareRelativeIndices!(input)
     M = mesh.numBoundaryFaces
-    threads = 256
     bblocks = cld(M, threads)
-    faceBoundaryMapping, bFaceValues = associatedBoundaries(input)
+    bFaceValues = gpu_getBoundaryFaceValues(input)
     iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs = facesToGPUarrays(mesh.faces)
-    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, faceBoundaryMapping, bFaceValues, RHS, nCells, M
+    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M
 end
 
 
-function uuuh(input::LdcMatrixAssemblyInput)
-    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, faceBoundaryMapping, bFaceValues, RHS, nCells, M = prepare_batchedFace(input)
-    run_batchedface(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, faceBoundaryMapping, bFaceValues, RHS, nCells, M)
+function gpu_FaceBasedAssembly(input::MatrixAssemblyInput)
+    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M = gpu_prepareFaceBased(input)
+    faceBasedRunner(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M)
     return Vector(rows), Vector(cols), Vector(vals), Vector(RHS)
 end
 
-function run_batchedface(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internalblocks, bblocks, faceBoundaryMapping, bFaceValues, RHS, nCells, M)
-    CUDA.@sync @cuda threads = 256 blocks = blocks kernel_internalFace(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs)
-    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, faceBoundaryMapping, bFaceValues, RHS, N, nCells, M)
+function faceBasedRunner(
+    iOwners::CuArray{Int32},
+    iNeighbors::CuArray{Int32},
+    gDiffs::CuArray{Float32},
+    offsets::CuArray{Int32},
+    nu_g::CuArray{Float32},
+    rows::CuArray{Int32},
+    cols::CuArray{Int32},
+    vals::CuArray{Float32},
+    entriesNeeded::Int32,
+    relativeToOwners::CuArray{Int32},
+    N::Int32,
+    relativeToNbs::CuArray{Int32},
+    internalblocks::Int32,
+    bblocks::Int32,
+    bFaceValues::CuArray{Float32},
+    RHS::CuArray{Float32},
+    nCells::Int32,
+    M::Int32
+)
+    CUDA.@sync @cuda threads = 256 blocks = internalblocks kernel_internalFace(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs)
+    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M)
 end
 
-function associatedBoundaries(input::LdcMatrixAssemblyInput)
-    mapping = zeros(Int32, input.mesh.numBoundaryFaces)  # iBFace -> iBoundary
-    for iBoundary in eachindex(input.mesh.boundaries)
-        theBoundary = input.mesh.boundaries[iBoundary]
-        if input.U[1][iBoundary].type != "fixedValue"
-            continue
-        end
-        startFace = theBoundary.startFace + 1
-        endFace = startFace + theBoundary.nFaces
-        mapping[startFace-input.mesh.numInteriorFaces:endFace-1-input.mesh.numInteriorFaces] .= theBoundary.index
-    end
+function gpu_getBoundaryFaceValues(input::MatrixAssemblyInput)
     velocities = [b.values for b in input.U[1]]
     bFaceValues = zeros(Float32, (length(input.mesh.faces) - input.mesh.numInteriorFaces) * 3)
     i = 1
-    # println("vel size: $(length(velocities))")
     for bvelocities in velocities
-        # println("bvel size: $(length(bvelocities))")
         for fVelocity in bvelocities
-            # println("fVelocity: $fVelocity")
             bFaceValues[i:i+2] = fVelocity
             i += 3
         end
     end
-    return CuArray(mapping), CuArray(bFaceValues)
+    return CuArray(bFaceValues)
 end
