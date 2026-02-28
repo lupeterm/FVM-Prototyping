@@ -12,3 +12,9 @@ time_ms,case_short,case_long,threadsPerBlock,strategy,prep_included,metric
 9.816,LDC-M,Lid-Driven Cavity M,256,gpu_batchedFace,false,median
 1308,LDC-M,Lid-Driven Cavity M,256,gpu_batchedFace,true,mean
 1315,LDC-M,Lid-Driven Cavity M,256,gpu_batchedFace,true,median
+
+
+0.217,drivFine,DrivAer Fine,256,gpu_batchedFace,false,mean
+0.218,drivFine,DrivAer Fine,256,gpu_batchedFace,false,median
+18.957,drivFine,DrivAer Fine,256,gpu_batchedFace,true,mean
+18.743,drivFine,DrivAer Fine,256,gpu_batchedFace,true,median

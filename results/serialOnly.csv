@@ -71,3 +71,11 @@ time_ms,case_short,case_long,threads,algorithm,incl_gc,metric,language
 518,Wind,WindsorBody,1,C++ CellBasedAssembly,true,mean,cpp
 4639,Wind,WindsorBody,1,C++ FaceBasedAssembly,true,mean,cpp
 4634,Wind,WindsorBody,1,C++ BatchedFaceBasedAssembly,true,mean,cpp
+
+
+
+
+567.349,drivFine,DrivAer Fine,1,BatchedFaceBasedAssembly,true,median,julia
+566.417,drivFine,DrivAer Fine,1,BatchedFaceBasedAssembly,true,mean,julia
+7.095,drivFine,DrivAer Fine,1,CellBasedAssembly,true,median,julia
+7.706,drivFine,DrivAer Fine,1,CellBasedAssembly,true,mean,julia
