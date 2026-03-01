@@ -24,6 +24,7 @@ mutable struct Face
     patchIndex::Int32
     relativeToOwner::Int32
     relativeToNeighbor::Int32
+    batchId::Int32
 end # struct Face
 
 struct Boundary
@@ -181,7 +182,8 @@ function readFacesFile(polyMeshDir::String, owners::Vector{Int32})
             0.0,
             -1,
             0,
-            0
+            0,
+            -1
         )
         i += 1
     end
@@ -397,7 +399,7 @@ function computeElementVolumeAndCentroid(mesh)::Mesh
         elementCenter ./= length(iFaces)
         localVolumeCentroidSum = zeros(3)
         localVolumeSum = 0.0
-        for iFace in 1:length(iFaces)
+        for iFace in eachindex(iFaces)
             localFace = mesh.faces[iFaces[iFace]]
             localFaceSign = mesh.cells[iElement].faceSigns[iFace]
             Sf = localFaceSign * localFace.Sf
@@ -671,7 +673,7 @@ function readPropertiesFile(path::String)::Float32
         throw(CaseDirError("Field file '$(path)' does not exist."))
     end
     file = read(path, String)
-    variable = match(r"\w+\s*\[[\s\d-]+\]\s*([\.\d\-e]+(?:E-\d)?);", file)
+    variable = match(r"nu\s*(?:\[[\s\d-]+\])?\s*([\.\d\-e]+(?:E-\d)?);", file)
     val = tryparse(Float32, variable[1])
     return val
 end
@@ -758,6 +760,7 @@ end
 
 
 function CellBasedAssembly(input::MatrixAssemblyInput)
+    println("Cellbased is currently broken.")
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -1218,9 +1221,6 @@ function GPUFaceBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals
 end # function faceBasedAssembly
 
-CuArray{Int32} = CUDA.CuArray{Int32}
-CuArray{Float32} = CUDA.CuArray{Float32}
-
 function facesToGPUarrays(faces)::Tuple{CuArray{Int32},CuArray{Int32},CuArray{Float32},CuArray{Int32},CuArray{Int32}}
     numFaces = length(faces)
     iOwners = CuArray{Int32}(undef, numFaces)
@@ -1361,10 +1361,6 @@ function kernel_boundaryFace(
     CUDA.@atomic vals[idx] += fluxCb    # x
     CUDA.@atomic vals[idx+entriesNeeded] += fluxCb  # y
     CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += fluxCb  # z
-    if localBFaceIndex < 4
-        @cuprintln("$localBFaceIndex = $((blockIdx().x - 1)) * $(blockDim().x) + $(threadIdx().x)")
-        @cuprintln("fluxVbz != 0.0: $fluxVbz, gdiff: $(gDiffs[globalFaceIndex]), [$x, $y, $z], [$(bFaceValues[1]), $(bFaceValues[2]), $(bFaceValues[3])]")
-    end
     # if fluxVbz != 0.0
     #     @cuprintln("fluxVbz != 0.0: $fluxVbz, gdiff: $(gDiffs[globalFaceIndex]), [$x, $y, $z], [$(bFaceValues[1]), $(bFaceValues[2]), $(bFaceValues[3])]")
     # end
@@ -1478,4 +1474,142 @@ function gpu_getBoundaryFaceValues(input::MatrixAssemblyInput)
         end
     end
     return CuArray(bFaceValues)
+end
+
+function getGreedyEdgeColoring(input::MatrixAssemblyInput)
+    mesh = input.mesh
+    for face::Face in mesh.faces
+        face.batchId = -1
+    end
+    faceColorMapping = zeros(Int32, mesh.numInteriorFaces)
+    for cell::Cell in mesh.cells
+        usedColors = []
+        for iFace in cell.iFaces[1:cell.numIntFaces]
+            face::Face = mesh.faces[iFace]
+            if face.batchId == -1
+                continue
+            end
+            push!(usedColors, face.batchId)
+        end
+        id = 1
+        for iFace in cell.iFaces[1:cell.numIntFaces]
+            face::Face = mesh.faces[iFace]
+            if face.batchId != -1
+                continue
+            end
+            while true
+                if id in usedColors
+                    id += 1
+                    continue
+                end
+                face.batchId = id
+                faceColorMapping[face.index] = id
+                push!(usedColors, face.batchId)
+                break
+            end
+        end
+    end
+    return maximum(faceColorMapping), CuArray{Int32}(faceColorMapping)
+end
+
+
+function kernel_internalFace_coloured(
+    iOwners,
+    iNeighbors,
+    gDiffs,
+    offsets,
+    nus,
+    rows,
+    cols,
+    vals,
+    entriesNeeded,
+    relativeToOwner,
+    numInteriorFaces,
+    relativeToNeighbor,
+    faceColors,
+    color
+)
+    iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if iFace > numInteriorFaces
+        return
+    end
+    faceColor = faceColors[iFace]
+    if faceColor != color
+        return
+    end 
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    fluxCn = nus[iOwner] * gDiffs[iFace]
+    fluxFn = -fluxCn
+    idx = offsets[iOwner]
+    cols[idx] = iOwner
+    rows[idx] = iOwner
+    vals[idx] += fluxCn    # x
+    vals[idx+entriesNeeded] += fluxCn  # y
+    vals[idx+entriesNeeded+entriesNeeded] += fluxCn  # z
+
+    idx = offsets[iOwner] + relativeToOwner[iFace]
+    cols[idx] = iOwner
+    rows[idx] = iNeighbor
+    vals[idx] += fluxFn    # x
+    vals[idx+entriesNeeded] += fluxFn  # y
+    vals[idx+entriesNeeded+entriesNeeded] += fluxFn  # z
+
+    idx = offsets[iNeighbor]
+    cols[idx] = iNeighbor
+    rows[idx] = iNeighbor
+    vals[idx] += fluxCn    # x
+    vals[idx+entriesNeeded] += fluxCn  # y
+    vals[idx+entriesNeeded+entriesNeeded] += fluxCn  # z
+
+    idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
+    cols[idx] = iNeighbor
+    rows[idx] = iOwner
+    vals[idx] += fluxFn    # x
+    vals[idx+entriesNeeded] += fluxFn  # y
+    vals[idx+entriesNeeded+entriesNeeded] += fluxFn  # z
+    return nothing
+end
+
+
+function gpu_prepareBatchedFaceBased(input::MatrixAssemblyInput)
+    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M = gpu_prepareFaceBased(input)
+    numBatches, faceColorMapping = getGreedyEdgeColoring(input)
+    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping
+end
+
+
+function batchedFaceBasedRunner(
+    iOwners::CuArray{Int32},
+    iNeighbors::CuArray{Int32},
+    gDiffs::CuArray{Float32},
+    offsets::CuArray{Int32},
+    nu_g::CuArray{Float32},
+    rows::CuArray{Int32},
+    cols::CuArray{Int32},
+    vals::CuArray{Float32},
+    entriesNeeded::Int32,
+    relativeToOwners::CuArray{Int32},
+    N::Int32,
+    relativeToNbs::CuArray{Int32},
+    internalblocks::Int32,
+    bblocks::Int32,
+    bFaceValues::CuArray{Float32},
+    RHS::CuArray{Float32},
+    nCells::Int32,
+    M::Int32,
+    numBatches::Int32,
+    faceColorMapping::CuArray{Int32}
+)
+    for color in 1:numBatches
+        CUDA.@sync @cuda threads = 256 blocks = internalblocks kernel_internalFace_coloured(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, faceColorMapping, color)
+    end
+    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M)
+end
+
+function gpu_BatchedFaceBasedAssembly(input::MatrixAssemblyInput)
+    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping = gpu_prepareBatchedFaceBased(input)
+    batchedFaceBasedRunner(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping)
+    # return Vector(rows), Vector(cols), Vector(vals), Vector(RHS)
+    return rows, cols, vals, RHS
 end

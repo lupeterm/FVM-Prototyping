@@ -1,20 +1,34 @@
 time_ms,case_short,case_long,threadsPerBlock,strategy,prep_included,metric
-1.576,LDC-S,Lid-Driven Cavity S,256,gpu_batchedFace,false,mean
-1.585,LDC-S,Lid-Driven Cavity S,256,gpu_batchedFace,false,median
-170.794,LDC-S,Lid-Driven Cavity S,256,gpu_batchedFace,true,mean
-169.147,LDC-S,Lid-Driven Cavity S,256,gpu_batchedFace,true,median
-9.514,Wind,WindsorBody,256,gpu_batchedFace,false,mean
-9.551,Wind,WindsorBody,256,gpu_batchedFace,false,median
-1107,Wind,WindsorBody,256,gpu_batchedFace,true,median
-1099,Wind,WindsorBody,256,gpu_batchedFace,true,median
+1.576,LDC-S,Lid-Driven Cavity S,256,gpu_FaceBased,false,mean
+1.585,LDC-S,Lid-Driven Cavity S,256,gpu_FaceBased,false,median
+170.794,LDC-S,Lid-Driven Cavity S,256,gpu_FaceBased,true,mean
+169.147,LDC-S,Lid-Driven Cavity S,256,gpu_FaceBased,true,median
+9.514,Wind,WindsorBody,256,gpu_FaceBased,false,mean
+9.551,Wind,WindsorBody,256,gpu_FaceBased,false,median
+1107,Wind,WindsorBody,256,gpu_FaceBased,true,median
+1099,Wind,WindsorBody,256,gpu_FaceBased,true,median
+9.730,LDC-M,Lid-Driven Cavity M,256,gpu_FaceBased,false,mean
+9.816,LDC-M,Lid-Driven Cavity M,256,gpu_FaceBased,false,median
+1308,LDC-M,Lid-Driven Cavity M,256,gpu_FaceBased,true,mean
+1315,LDC-M,Lid-Driven Cavity M,256,gpu_FaceBased,true,median
 
-9.730,LDC-M,Lid-Driven Cavity M,256,gpu_batchedFace,false,mean
-9.816,LDC-M,Lid-Driven Cavity M,256,gpu_batchedFace,false,median
-1308,LDC-M,Lid-Driven Cavity M,256,gpu_batchedFace,true,mean
-1315,LDC-M,Lid-Driven Cavity M,256,gpu_batchedFace,true,median
 
+0.217,drivFine,DrivAer Fine,256,gpu_FaceBased,false,mean
+0.218,drivFine,DrivAer Fine,256,gpu_FaceBased,false,median
+18.957,drivFine,DrivAer Fine,256,gpu_FaceBased,true,mean
+18.743,drivFine,DrivAer Fine,256,gpu_FaceBased,true,median
 
-0.217,drivFine,DrivAer Fine,256,gpu_batchedFace,false,mean
-0.218,drivFine,DrivAer Fine,256,gpu_batchedFace,false,median
-18.957,drivFine,DrivAer Fine,256,gpu_batchedFace,true,mean
-18.743,drivFine,DrivAer Fine,256,gpu_batchedFace,true,median
+4.874,Wind,WindsorBody,256,gpu_BatchedFaceBased,false,mean
+4.859,Wind,WindsorBody,256,gpu_BatchedFaceBased,false,median
+3604.00,Wind,WindsorBody,256,gpu_BatchedFaceBased,true,median
+3604.00,Wind,WindsorBody,256,gpu_BatchedFaceBased,true,median
+
+4.898,LDC-S,Lid-Driven Cavity S,256,gpu_BatchedFaceBased,false,mean
+4.856,LDC-S,Lid-Driven Cavity S,256,gpu_BatchedFaceBased,false,median
+528.794,LDC-S,Lid-Driven Cavity S,256,gpu_BatchedFaceBased,true,mean
+539.147,LDC-S,Lid-Driven Cavity S,256,gpu_BatchedFaceBased,true,median
+
+38.997,LDC-S,Lid-Driven Cavity M,256,gpu_BatchedFaceBased,false,mean
+38.457,LDC-S,Lid-Driven Cavity M,256,gpu_BatchedFaceBased,false,median
+4538.794,LDC-S,Lid-Driven Cavity M,256,gpu_BatchedFaceBased,true,mean
+4539.147,LDC-S,Lid-Driven Cavity M,256,gpu_BatchedFaceBased,true,median
