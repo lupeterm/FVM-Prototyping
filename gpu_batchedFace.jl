@@ -1,11 +1,28 @@
 include("init.jl")
-include("gpu_facebased.jl")
+include("gpu_faceBased.jl")
 
 function gpu_BatchedFaceBasedAssembly(input::MatrixAssemblyInput)
     iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping = gpu_prepareBatchedFaceBased(input)
     batchedFaceBasedRunner(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping)
     # return Vector(rows), Vector(cols), Vector(vals), Vector(RHS)
     return rows, cols, vals, RHS
+end
+
+function gpu_DivOnlyFaceBasedAssembly(input::MatrixAssemblyInput)
+end
+function gpu_LaplaceOnlyFaceBasedAssembly(input::MatrixAssemblyInput)
+end
+function gpu_PrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
+end
+function gpu_PrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput)
+end
+function gpu_HardCodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
+end
+function gpu_HardCodedCDFFaceBasedAssembly(input::MatrixAssemblyInput)
+end
+function gpu_DynamicCDFFaceBasedAssembly(input::MatrixAssemblyInput)
+end
+function gpu_DynamicUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
 end
 
 function batchedFaceBasedRunner(

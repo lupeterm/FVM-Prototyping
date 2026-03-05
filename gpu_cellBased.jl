@@ -1,0 +1,18 @@
+include("init.jl")
+
+function gpu_DivOnlyCellBasedAssembly(input)
+end
+function gpu_LaplaceOnlyCellBasedAssembly(input)
+end
+function gpu_PrecalculatedWeightsUpwindCellBasedAssembly(input)
+end
+function gpu_PrecalculatedWeightsCDFCellBasedAssembly(input)
+end
+function gpu_HardCodedUpwindCellBasedAssembly(input)
+end
+function gpu_HardCodedCDFCellBasedAssembly(input)
+end
+function gpu_DynamicCDFCellBasedAssembly(input)
+end
+function gpu_DynamicUpwindCellBasedAssembly(input)
+end

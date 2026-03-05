@@ -1,38 +1,5 @@
 include("init.jl")
 
-function prepareRelativeIndices!(input::MatrixAssemblyInput)
-    mesh = input.mesh
-    cells = mesh.cells
-    for cell in cells
-        ownerIdx = -1
-        for iFace in 1:cell.nInternalFaces
-            iFaceIndex = cell.iFaces[iFace]
-            theFace = mesh.faces[iFaceIndex]
-            if ownerIdx == -1 && theFace.iOwner == cell.index && theFace.iOwner < theFace.iNeighbor
-                theFace.relativeToOwner = 0
-                ownerIdx = iFace
-                continue
-            end
-            if cell.index == theFace.iOwner
-                theFace.relativeToOwner = iFace - ownerIdx + 1
-            else
-                theFace.relativeToNeighbor = iFace - ownerIdx
-            end
-        end
-        if ownerIdx == -1
-            ownerIdx = cell.nInternalFaces + 1
-        end
-        for iFace in 1:cell.nInternalFaces
-            iFaceIndex = cell.iFaces[iFace]
-            theFace = mesh.faces[iFaceIndex]
-            if cell.index == theFace.iOwner
-                theFace.relativeToOwner = iFace - ownerIdx + 1
-            else
-                theFace.relativeToNeighbor = iFace - ownerIdx
-            end
-        end
-    end
-end
 
 function gpu_precalcOffsets(input::MatrixAssemblyInput)::CuArray{Int32}
     mesh = input.mesh

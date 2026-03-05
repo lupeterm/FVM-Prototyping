@@ -66,34 +66,4 @@ function bench_phi(input::MatrixAssemblyInput, case::String, runGC::Bool, phiFun
     println("$med,$case,$long,$(Threads.nthreads()),BatchedFaceBasedAssembly,$included,median,julia,$(String(Symbol(phiFunc)))")
 end
 
-function upwind(ϕf)
-    # ϕf Uf ⋅ Sf = 0
-    # ϕf is ̇m in the non-versteeg book
-    if (ϕf >= 0)
-        return 1.0
-    end
-    return 0.0
-end
-
-function centralDifferencing(_)
-    return 0.5
-end
-
-function precalcWeights(input::MatrixAssemblyInput, div::Function)::Vector{Float32}
-    mesh = input.mesh
-    U = input.U[2].values
-    weights = zeros(Float32, mesh.numInteriorFaces)
-    @inbounds for iFace in 1:mesh.numInteriorFaces
-        theFace = mesh.faces[iFace]
-        iOwner = theFace.iOwner
-        iNeighbor = theFace.iNeighbor
-        U_P = U[iOwner]     
-        U_N = U[iNeighbor]
-        Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-        ϕf::Float32 = Uf ⋅ theFace.Sf                   # flux through the face
-        weights_f = div(ϕf)
-        weights[iFace] = weights_f
-    end
-    return weights
-end
 

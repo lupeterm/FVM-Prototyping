@@ -58,7 +58,7 @@ end # struct Field
 mutable struct BoundaryField
     name::String
     nFaces::Int32
-    values::Vector{SVector{3,Float32}}
+    values::Vector{MVector{3,Float32}}
     type::String
 end # struct BoundaryField
 
@@ -66,4 +66,8 @@ struct MatrixAssemblyInput
     mesh::Mesh
     nu::Vector{Float32}
     U::Tuple{Vector{BoundaryField},Field}
+    weightsUpwind::Vector{Float32}
+    weightsCdf::Vector{Float32}
+    offsets::Vector{Int32}
+    negOffsets::Vector{Int32}
 end

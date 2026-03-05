@@ -1,3 +1,4 @@
+include("classes.jl")
 using LinearAlgebra
 using StaticArrays
 
@@ -602,6 +603,89 @@ function readPropertiesFile(path::String)::Float32
     return val
 end
 
+function upwind(ϕf)
+    # ϕf Uf ⋅ Sf = 0
+    # ϕf is ̇m in the non-versteeg book
+    if (ϕf >= 0)
+        return 1.0
+    end
+    return 0.0
+end
+
+function centralDifferencing(_)
+    return 0.5
+end
+
+function precalcWeights!(input::MatrixAssemblyInput)
+    mesh = input.mesh
+    U = input.U[2].values
+    @inbounds for iFace in 1:mesh.numInteriorFaces
+        theFace = mesh.faces[iFace]
+        iOwner = theFace.iOwner
+        iNeighbor = theFace.iNeighbor
+        U_P = U[iOwner]
+        U_N = U[iNeighbor]
+        Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
+        ϕf::Float32 = Uf ⋅ theFace.Sf                   # flux through the face
+        input.weightsCdf[iFace] = centralDifferencing(ϕf)
+        input.weightsUpwind[iFace] = upwind(ϕf)
+    end
+end
+
+function prepareRelativeIndices!(input::MatrixAssemblyInput)
+    mesh = input.mesh
+    cells = mesh.cells
+    for cell in cells
+        ownerIdx = -1
+        for iFace in 1:cell.nInternalFaces
+            iFaceIndex = cell.iFaces[iFace]
+            theFace = mesh.faces[iFaceIndex]
+            if ownerIdx == -1 && theFace.iOwner == cell.index && theFace.iOwner < theFace.iNeighbor
+                theFace.relativeToOwner = 0
+                ownerIdx = iFace
+                continue
+            end
+            if cell.index == theFace.iOwner
+                theFace.relativeToOwner = iFace - ownerIdx + 1
+            else
+                theFace.relativeToNeighbor = iFace - ownerIdx
+            end
+        end
+        if ownerIdx == -1
+            ownerIdx = cell.nInternalFaces + 1
+        end
+        for iFace in 1:cell.nInternalFaces
+            iFaceIndex = cell.iFaces[iFace]
+            theFace = mesh.faces[iFaceIndex]
+            if cell.index == theFace.iOwner
+                theFace.relativeToOwner = iFace - ownerIdx + 1
+            else
+                theFace.relativeToNeighbor = iFace - ownerIdx
+            end
+        end
+    end
+end
+
+function getOffsetsAndValues!(input::MatrixAssemblyInput)
+    mesh = input.mesh
+    nCells = length(mesh.cells)
+
+    for iElement in 2:nCells
+        input.offsets[iElement] += input.offsets[iElement-1] + mesh.cells[iElement-1].nInternalFaces
+    end
+    for iElement in 1:nCells
+        theElement = mesh.cells[iElement]
+        for iFace in 1:theElement.nInternalFaces
+            iFaceIndex = theElement.iFaces[iFace]
+            theFace = mesh.faces[iFaceIndex]
+            if theFace.iNeighbor > iElement
+                input.negOffsets[theFace.iNeighbor] += 1
+            end
+        end
+        input.offsets[iElement] += input.negOffsets[iElement]  # increase offset
+    end
+end
+
 function ProcessCase(caseDirectory::String)::MatrixAssemblyInput
     mesh = readOpenFoamMesh(caseDirectory)
     # Define the thermal conductivity and source term
@@ -610,5 +694,17 @@ function ProcessCase(caseDirectory::String)::MatrixAssemblyInput
     # p = readField(joinpath(caseDirectory, "0/p"), mesh)
     U = readField(joinpath(caseDirectory, "0/U"), mesh)
     # Assemble the coefficient matrix and RHS vector
-    return MatrixAssemblyInput(mesh, fill(nu, length(mesh.cells)), U)
+    i = MatrixAssemblyInput(
+        mesh,
+        fill(nu, length(mesh.cells)),
+        U,
+        zeros(Float32, mesh.numInteriorFaces),
+        zeros(Float32, mesh.numInteriorFaces),
+        ones(Int32, length(mesh.cells)),
+        zeros(Int32, length(mesh.cells))
+    )
+    precalcWeights!(i)
+    prepareRelativeIndices!(i)
+    getOffsetsAndValues!(i)
+    return i
 end # function ProcessCase
