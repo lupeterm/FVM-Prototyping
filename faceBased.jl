@@ -478,7 +478,7 @@ function LaplaceOnlyFaceBasedAssembly(input::MatrixAssemblyInput)
             # convection
             U_b = velocity_boundary[iBoundary].values[relativeFaceIndex]
             # ϕf  = theFace.Sf ⋅ U_b
-            # @inbounds convection = velocity_boundary[iBoundary].values[relativeFaceIndex] .* ϕf
+            # @inbounds convection = U_b .* ϕf
             # diffusion 
             diffusion = U_b .* nu[theFace.iOwner] * theFace.gDiff
             setIndex!(theFace.iOwner, theFace.iOwner, -diffusion, rows, cols, vals, offsets[theFace.iOwner], entriesNeeded)

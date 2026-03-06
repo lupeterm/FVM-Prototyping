@@ -52,13 +52,13 @@ struct Mesh
 end # struct Mesh
 
 mutable struct Field
-    values::Vector{MVector{3,Float32}}
+    values::Vector{SVector{3,Float32}}
 end # struct Field
 
 mutable struct BoundaryField
     name::String
     nFaces::Int32
-    values::Vector{MVector{3,Float32}}
+    values::Vector{SVector{3,Float32}}
     type::String
 end # struct BoundaryField
 

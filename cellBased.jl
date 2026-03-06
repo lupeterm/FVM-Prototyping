@@ -1,5 +1,5 @@
 include("init.jl")
-
+include("cpu_helper.jl")
 function CellBasedAssembly(input::MatrixAssemblyInput)
     mesh = input.mesh
     nu = input.nu
@@ -16,7 +16,7 @@ function CellBasedAssembly(input::MatrixAssemblyInput)
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
-        diag = 0
+        diag = @MVector zeros(Float32, 3)
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
             theFace::Face = mesh.faces[iFaceIndex]
@@ -36,7 +36,7 @@ function CellBasedAssembly(input::MatrixAssemblyInput)
                 val = valueUpper + diffusion
             end
             setIndex!(iElement, theElement.iNeighbors[iFace], val, rows, cols, vals, offsets[iElement] + rel, entriesNeeded)
-            diag += valueUpper + diffusion
+            diag .+= valueUpper + diffusion
         end
         for iFace in theElement.nInternalFaces+1:numFaces
             iFaceIndex = theElement.iFaces[iFace]
@@ -48,9 +48,9 @@ function CellBasedAssembly(input::MatrixAssemblyInput)
             theFace = mesh.faces[iFaceIndex]
             relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
             U_b = velocity_boundary[iBoundary].values[relativeFaceIndex]
-            diffusion::Float32 = U_b .* nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
+            diffusion = U_b .* nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
             ϕf = theFace.Sf ⋅ U_b
-            diag -= diffusion
+            diag .-= diffusion
             @inbounds convection = U_b .* ϕf
             value = convection .+ diffusion
             RHS[iElement] -= value[1]

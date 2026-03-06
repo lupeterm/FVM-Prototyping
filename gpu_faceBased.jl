@@ -2,8 +2,8 @@ include("init.jl")
 include("gpu_helper.jl")
 
 function gpu_FaceBasedAssembly(input::MatrixAssemblyInput)
-    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M = gpu_prepareFaceBased(input)
-    faceBasedRunner(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M)
+    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, U, Sf = gpu_prepareFaceBased(input)
+    faceBasedRunner(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, U, Sf)
     return Vector(rows), Vector(cols), Vector(vals), Vector(RHS)
 end
 
@@ -24,7 +24,8 @@ end
 function gpu_DynamicUpwindBatchedFaceAssembly(input::MatrixAssemblyInput)
 end
 
-function faceBasedRunner(
+
+function faceBasedAllRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
     gDiffs::CuArray{Float32},
@@ -39,13 +40,148 @@ function faceBasedRunner(
     relativeToNbs::CuArray{Int32},
     internalblocks::Int32,
     bblocks::Int32,
-    bFaceValues::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,Float32}},
     RHS::CuArray{Float32},
     nCells::Int32,
-    M::Int32
+    M::Int32,
+    U::CuArray{SVector{3,Float32}},
+    Sf::CuArray{SVector{3,Float32}}
 )
-    CUDA.@sync @cuda threads = 256 blocks = internalblocks kernel_internalFace(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs)
-    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M)
+    # blocks = cld(N + M, 256)
+    # println(blocks)
+    CUDA.@sync @cuda threads = 256 blocks = 11836 kernel_all(
+        iOwners,
+        iNeighbors,
+        gDiffs,
+        offsets,
+        nu_g,
+        rows,
+        cols,
+        vals,
+        entriesNeeded,
+        relativeToOwners,
+        relativeToNbs,
+        U,
+        Sf,
+        bFaceValues,
+        RHS,
+        N,
+        nCells,
+        M
+    )
+end
+
+function kernel_all(
+    iOwners,
+    iNeighbors,
+    gDiffs,
+    offsets,
+    nus,
+    rows,
+    cols,
+    vals,
+    entriesNeeded,
+    relativeToOwner,
+    relativeToNeighbor,
+    U,
+    Sf,
+    bFaceValues,
+    RHS,
+    numInternalFaces,
+    nCells,
+    numBoundaryFaces
+)
+    iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if iFace > numInternalFaces + numBoundaryFaces
+        return
+    end
+    iOwner = iOwners[iFace]
+    if iFace <= numInternalFaces
+
+        iNeighbor = iNeighbors[iFace]
+
+        # Diffusion
+        diffusion = nus[iOwner] * gDiffs[iFace]
+
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = 0.5                              # get weight of transport variable interpolation 
+                                                            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        valueUpper::Float32 = ϕf * weights_f + diffusion
+        valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
+
+        idx = offsets[iOwner]
+        cols[idx] = iOwner
+        rows[idx] = iOwner
+        CUDA.@atomic vals[idx] += valueUpper    # x
+        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
+        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
+
+        idx = offsets[iOwner] + relativeToOwner[iFace]
+        cols[idx] = iOwner
+        rows[idx] = iNeighbor
+        vals[idx] += valueLower    # x
+        vals[idx+entriesNeeded] += valueLower  # y
+        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
+
+        idx = offsets[iNeighbor]
+        cols[idx] = iNeighbor
+        rows[idx] = iNeighbor
+        CUDA.@atomic vals[idx] += valueLower    # x
+        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
+        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
+
+        idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
+        cols[idx] = iNeighbor
+        rows[idx] = iOwner
+        vals[idx] += valueUpper    # x
+        vals[idx+entriesNeeded] += valueUpper  # y
+        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
+    else
+        relativeFaceIndex = numBoundaryFaces + numInternalFaces - iFace + 1
+        convection = bFaceValues[relativeFaceIndex] .* dot(Sf[iFace], bFaceValues[relativeFaceIndex])
+        diffusion = bFaceValues[relativeFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+        idx = offsets[iOwner]
+        CUDA.@atomic vals[idx] -= diffusion[1]    # x
+        CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
+        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+
+        # RHS/Source
+        value = convection .+ diffusion
+        CUDA.@atomic RHS[iOwner] -= value[1]
+        CUDA.@atomic RHS[iOwner+nCells] -= value[2]
+        CUDA.@atomic RHS[iOwner+nCells+nCells] -= value[3]
+    end
+    return nothing
+end
+
+##### Proven to be inferior to joined kernel with branches
+
+function SplitfaceBasedRunner(
+    iOwners::CuArray{Int32},
+    iNeighbors::CuArray{Int32},
+    gDiffs::CuArray{Float32},
+    offsets::CuArray{Int32},
+    nu_g::CuArray{Float32},
+    rows::CuArray{Int32},
+    cols::CuArray{Int32},
+    vals::CuArray{Float32},
+    entriesNeeded::Int32,
+    relativeToOwners::CuArray{Int32},
+    N::Int32,
+    relativeToNbs::CuArray{Int32},
+    internalblocks::Int32,
+    bblocks::Int32,
+    bFaceValues::CuArray{SVector{3,Float32}},
+    RHS::CuArray{Float32},
+    nCells::Int32,
+    M::Int32,
+    U::CuArray{SVector{3,Float32}},
+    Sf::CuArray{SVector{3,Float32}}
+)
+    CUDA.@sync @cuda threads = 256 blocks = internalblocks kernel_internalFace(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, U, Sf)
+    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M, Sf)
 end
 
 function kernel_internalFace(
@@ -60,7 +196,9 @@ function kernel_internalFace(
     entriesNeeded,
     relativeToOwner,
     numInteriorFaces,
-    relativeToNeighbor
+    relativeToNeighbor,
+    U,
+    Sf,
 )
     iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if iFace > numInteriorFaces
@@ -68,36 +206,45 @@ function kernel_internalFace(
     end
     iOwner = iOwners[iFace]
     iNeighbor = iNeighbors[iFace]
-    fluxCn = nus[iOwner] * gDiffs[iFace]
-    fluxFn = -fluxCn
+
+    # Diffusion
+    diffusion = nus[iOwner] * gDiffs[iFace]
+
+    # Convection
+    Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+    ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+    weights_f = upwind(ϕf)                              # get weight of transport variable interpolation 
+    # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+    valueUpper::Float32 = ϕf * weights_f + diffusion
+    valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
 
     idx = offsets[iOwner]
     cols[idx] = iOwner
     rows[idx] = iOwner
-    CUDA.@atomic vals[idx] += fluxCn    # x
-    CUDA.@atomic vals[idx+entriesNeeded] += fluxCn  # y
-    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += fluxCn  # z
+    CUDA.@atomic vals[idx] += valueUpper    # x
+    CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
+    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
     idx = offsets[iOwner] + relativeToOwner[iFace]
     cols[idx] = iOwner
     rows[idx] = iNeighbor
-    vals[idx] += fluxFn    # x
-    vals[idx+entriesNeeded] += fluxFn  # y
-    vals[idx+entriesNeeded+entriesNeeded] += fluxFn  # z
+    vals[idx] += valueLower    # x
+    vals[idx+entriesNeeded] += valueLower  # y
+    vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
-    CUDA.@atomic vals[idx] += fluxCn    # x
-    CUDA.@atomic vals[idx+entriesNeeded] += fluxCn  # y
-    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += fluxCn  # z
+    CUDA.@atomic vals[idx] += valueLower    # x
+    CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
+    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
-    vals[idx] += fluxFn    # x
-    vals[idx+entriesNeeded] += fluxFn  # y
-    vals[idx+entriesNeeded+entriesNeeded] += fluxFn  # z
+    vals[idx] += valueUpper    # x
+    vals[idx+entriesNeeded] += valueUpper  # y
+    vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     return nothing
 end
 
@@ -113,7 +260,8 @@ function kernel_boundaryFace(
     RHS,
     numInternalFaces,
     nCells,
-    numBoundaryFaces
+    numBoundaryFaces,
+    Sf
 )
     localBFaceIndex = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     globalFaceIndex = numInternalFaces + localBFaceIndex
@@ -123,24 +271,21 @@ function kernel_boundaryFace(
     if globalFaceIndex <= numInternalFaces
         return
     end
+    if localBFaceIndex > length(bFaceValues)
+        return
+    end
     iOwner = iOwners[globalFaceIndex]
-    fluxCb = nus[iOwner] * gDiffs[globalFaceIndex]
-    boundaryValueIndex = (localBFaceIndex - 1) * 3 + 1  # one based indexing :grr:
-    x = bFaceValues[boundaryValueIndex]
-    y = bFaceValues[boundaryValueIndex+1]
-    z = bFaceValues[boundaryValueIndex+2]
-    fluxVbx = x * -fluxCb
-    fluxVby = y * -fluxCb
-    fluxVbz = z * -fluxCb
+    convection = bFaceValues[localBFaceIndex] .* dot(Sf[globalFaceIndex], bFaceValues[localBFaceIndex])
+    diffusion = bFaceValues[localBFaceIndex] .* nus[iOwner] * gDiffs[globalFaceIndex]
     idx = offsets[iOwner]
-    CUDA.@atomic vals[idx] += fluxCb    # x
-    CUDA.@atomic vals[idx+entriesNeeded] += fluxCb  # y
-    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += fluxCb  # z
-    # if fluxVbz != 0.0
-    #     @cuprintln("fluxVbz != 0.0: $fluxVbz, gdiff: $(gDiffs[globalFaceIndex]), [$x, $y, $z], [$(bFaceValues[1]), $(bFaceValues[2]), $(bFaceValues[3])]")
-    # end
-    CUDA.@atomic RHS[iOwner] -= fluxVbx
-    CUDA.@atomic RHS[iOwner+nCells] -= fluxVby
-    CUDA.@atomic RHS[iOwner+nCells+nCells] -= fluxVbz
+    CUDA.@atomic vals[idx] -= diffusion[1]    # x
+    CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
+    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+
+    # RHS/Source
+    value = convection .+ diffusion
+    CUDA.@atomic RHS[iOwner] -= value[1]
+    CUDA.@atomic RHS[iOwner+nCells] -= value[2]
+    CUDA.@atomic RHS[iOwner+nCells+nCells] -= value[3]
     return nothing
 end

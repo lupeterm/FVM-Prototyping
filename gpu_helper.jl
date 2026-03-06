@@ -57,22 +57,14 @@ function gpu_prepareFaceBased(input::MatrixAssemblyInput)::Tuple
     prepareRelativeIndices!(input)
     M = mesh.numBoundaryFaces
     bblocks = cld(M, threads)
-    bFaceValues = gpu_getBoundaryFaceValues(input)
-    iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs = facesToGPUarrays(mesh.faces)
-    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M
+    bFaceValues, U = gpu_getFaceValues(input)
+    iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs, Sf = facesToGPUarrays(mesh.faces)
+    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, U, Sf
 end
 
-function gpu_getBoundaryFaceValues(input::MatrixAssemblyInput)
+function gpu_getFaceValues(input::MatrixAssemblyInput)
     velocities = [b.values for b in input.U[1]]
-    bFaceValues = zeros(Float32, (length(input.mesh.faces) - input.mesh.numInteriorFaces) * 3)
-    i = 1
-    for bvelocities in velocities
-        for fVelocity in bvelocities
-            bFaceValues[i:i+2] = fVelocity
-            i += 3
-        end
-    end
-    return CuArray(bFaceValues)
+    return CuArray(reduce(vcat, velocities)), CuArray(input.U[2].values)
 end
 
 function gpu_estimate_data_facebased(input::MatrixAssemblyInput)
@@ -95,18 +87,21 @@ function gpu_estimate_data_facebased(input::MatrixAssemblyInput)
     return gpu_offsets, vals_g
 end
 
-function facesToGPUarrays(faces)::Tuple{CuArray{Int32},CuArray{Int32},CuArray{Float32},CuArray{Int32},CuArray{Int32}}
+function facesToGPUarrays(faces)
     numFaces = length(faces)
     iOwners = CuArray{Int32}(undef, numFaces)
     iNeighbors = CuArray{Int32}(undef, numFaces)
     gDiffs = CuArray{Float32}(undef, numFaces)
     relativesO = CuArray{Int32}(undef, numFaces)
     relativesN = CuArray{Int32}(undef, numFaces)
+    Sf = CuArray{SVector{3, Float32}}(undef, numFaces)
 
     relativesN[1:numFaces] = [f.relativeToNeighbor for f in faces]
     relativesO[1:numFaces] = [f.relativeToOwner for f in faces]
     iOwners[1:numFaces] = [f.iOwner for f in faces]
     iNeighbors[1:numFaces] = [f.iNeighbor for f in faces]
     gDiffs[1:numFaces] = [f.gDiff for f in faces]
-    return iOwners, iNeighbors, gDiffs, relativesO, relativesN
+    Sf[1:numFaces] = [SVector(f.Sf) for f in faces]
+
+    return iOwners, iNeighbors, gDiffs, relativesO, relativesN, Sf
 end
