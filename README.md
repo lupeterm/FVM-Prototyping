@@ -20,7 +20,7 @@ Cases:
 
    ![benchmark](figures/memory_julia.svg)
 
-## Single Kernel vs Split kernel
+## Single Kernel vs Split kernel (facebased strategy)
 
 (putting this here for now)
 
@@ -60,3 +60,19 @@ BenchmarkTools.Trial: 397 samples with 1 evaluation per sample.
 
 ### Lid-Driven Cavity S
 Dataset is too small (difference of <0.05ms)
+
+### Colored Batches Strategy
+```
+BenchmarkTools.Trial: 104 samples with 1 evaluation per sample.
+ Range (min … max):  47.989 ms … 60.630 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     48.215 ms              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   48.416 ms ±  1.284 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+```
+```
+BenchmarkTools.Trial: 104 samples with 1 evaluation per sample.
+ Range (min … max):  47.683 ms … 60.834 ms  ┊ GC (min … max): 0.00% … 0.00%
+ Time  (median):     48.121 ms              ┊ GC (median):    0.00%
+ Time  (mean ± σ):   48.298 ms ±  1.308 ms  ┊ GC (mean ± σ):  0.00% ± 0.00%
+```
+
+Since we need to dispatch multiple kernels anyways, joining the kernel does not really make difference.
