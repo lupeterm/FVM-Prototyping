@@ -2,29 +2,179 @@ include("init.jl")
 include("gpu_faceBased.jl")
 
 function gpu_BatchedFaceBasedAssembly(input::MatrixAssemblyInput)
-    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping = gpu_prepareBatchedFaceBased(input)
-    batchedFaceBasedRunner(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping)
+    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping, U, Sf, bFaceMapping = gpu_prepareBatchedFaceBased(input)
+    batchedFaceBasedRunner(
+        iOwners,
+        iNeighbors,
+        gDiffs,
+        offsets,
+        nu_g,
+        rows,
+        cols,
+        vals,
+        entriesNeeded,
+        relativeToOwners,
+        N,
+        relativeToNbs,
+        numBlocks,
+        bFaceValues,
+        RHS,
+        nCells,
+        M,
+        numBatches,
+        faceColorMapping,
+        U,
+        Sf,
+        bFaceMapping
+    )
     # return Vector(rows), Vector(cols), Vector(vals), Vector(RHS)
     return rows, cols, vals, RHS
 end
 
-function gpu_DivOnlyFaceBasedAssembly(input::MatrixAssemblyInput)
+function batchedFaceBasedAllRunner(
+    iOwners::CuArray{Int32},
+    iNeighbors::CuArray{Int32},
+    gDiffs::CuArray{Float32},
+    offsets::CuArray{Int32},
+    nu_g::CuArray{Float32},
+    rows::CuArray{Int32},
+    cols::CuArray{Int32},
+    vals::CuArray{Float32},
+    entriesNeeded::Int32,
+    relativeToOwners::CuArray{Int32},
+    N::Int32,
+    relativeToNbs::CuArray{Int32},
+    numBlocks::Int32,
+    bFaceValues::CuArray{SVector{3,Float32}},
+    RHS::CuArray{Float32},
+    nCells::Int32,
+    M::Int32,
+    numBatches::Int32,
+    faceColorMapping::CuArray{Int32},
+    U::CuArray{SVector{3,Float32}},
+    Sf::CuArray{SVector{3,Float32}},
+    bFaceMapping::CuArray{Int32}
+)
+    for color in 1:numBatches
+        CUDA.@sync @cuda threads = 256 blocks = numBlocks kernel_all_colored(
+            iOwners,
+            iNeighbors,
+            gDiffs,
+            offsets,
+            nu_g,
+            rows,
+            cols,
+            vals,
+            entriesNeeded,
+            relativeToOwners,
+            relativeToNbs,
+            U,
+            Sf,
+            bFaceValues,
+            RHS,
+            N,
+            nCells,
+            M,
+            faceColorMapping,
+            color,
+            bFaceMapping
+        )
+    end
+    return rows, cols, vals, RHS
 end
-function gpu_LaplaceOnlyFaceBasedAssembly(input::MatrixAssemblyInput)
-end
-function gpu_PrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
-end
-function gpu_PrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput)
-end
-function gpu_HardCodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
-end
-function gpu_HardCodedCDFFaceBasedAssembly(input::MatrixAssemblyInput)
-end
-function gpu_DynamicCDFFaceBasedAssembly(input::MatrixAssemblyInput)
-end
-function gpu_DynamicUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
-end
+function kernel_all_colored(
+    iOwners,
+    iNeighbors,
+    gDiffs,
+    offsets,
+    nus,
+    rows,
+    cols,
+    vals,
+    entriesNeeded,
+    relativeToOwner,
+    relativeToNeighbor,
+    U,
+    Sf,
+    bFaceValues,
+    RHS,
+    numInternalFaces,
+    nCells,
+    numBoundaryFaces,
+    faceColors,
+    color,
+    bFaceMapping
+)
+    iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if iFace > numInternalFaces + numBoundaryFaces
+        return
+    end
+    iOwner = iOwners[iFace]
+    if faceColors[iFace] != color
+        return
+    end
+    if iFace <= numInternalFaces
+        iNeighbor = iNeighbors[iFace]
 
+        # Diffusion
+        diffusion = nus[iOwner] * gDiffs[iFace]
+
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = 0.5                              # get weight of transport variable interpolation 
+        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        valueUpper::Float32 = ϕf * weights_f + diffusion
+        valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
+
+        idx = offsets[iOwner]
+        cols[idx] = iOwner
+        rows[idx] = iOwner
+        CUDA.@atomic vals[idx] += valueUpper    # x
+        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
+        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
+
+        idx = offsets[iOwner] + relativeToOwner[iFace]
+        cols[idx] = iOwner
+        rows[idx] = iNeighbor
+        vals[idx] += valueLower    # x
+        vals[idx+entriesNeeded] += valueLower  # y
+        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
+
+        idx = offsets[iNeighbor]
+        cols[idx] = iNeighbor
+        rows[idx] = iNeighbor
+        CUDA.@atomic vals[idx] += valueLower    # x
+        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
+        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
+
+        idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
+        cols[idx] = iNeighbor
+        rows[idx] = iOwner
+        vals[idx] += valueUpper    # x
+        vals[idx+entriesNeeded] += valueUpper  # y
+        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex == -1 # boundarytype != fixed
+            return
+        end
+        convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
+        diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+        idx = offsets[iOwner]
+        CUDA.@atomic vals[idx] -= diffusion[1]    # x
+        CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
+        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+
+        # RHS/Source
+        value = convection .+ diffusion
+        CUDA.@atomic RHS[iOwner] -= value[1]
+        CUDA.@atomic RHS[iOwner+nCells] -= value[2]
+        CUDA.@atomic RHS[iOwner+nCells+nCells] -= value[3]
+    end
+    return nothing
+end
 function batchedFaceBasedRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
@@ -38,19 +188,24 @@ function batchedFaceBasedRunner(
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
-    internalblocks::Int32,
-    bblocks::Int32,
-    bFaceValues::CuArray{Float32},
+    numBlocks::Int32,
+    bFaceValues::CuArray{SVector{3,Float32}},
     RHS::CuArray{Float32},
     nCells::Int32,
     M::Int32,
     numBatches::Int32,
-    faceColorMapping::CuArray{Int32}
+    faceColorMapping::CuArray{Int32},
+    U::CuArray{SVector{3,Float32}},
+    Sf::CuArray{SVector{3,Float32}},
+    bFaceMapping::CuArray{Int32}
 )
     for color in 1:numBatches
-        CUDA.@sync @cuda threads = 256 blocks = internalblocks kernel_internalFace_coloured(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, faceColorMapping, color)
+        iblocks = cld(N, 256)
+        CUDA.@sync @cuda threads = 256 blocks = iblocks kernel_internalFace_coloured(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, faceColorMapping, color, U, Sf)
     end
-    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M)
+    bblocks = cld(M, 256)
+
+    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M, Sf, bFaceMapping)
 end
 
 function kernel_internalFace_coloured(
@@ -67,7 +222,9 @@ function kernel_internalFace_coloured(
     numInteriorFaces,
     relativeToNeighbor,
     faceColors,
-    color
+    color,
+    U,
+    Sf
 )
     iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     if iFace > numInteriorFaces
@@ -79,35 +236,45 @@ function kernel_internalFace_coloured(
     end
     iOwner = iOwners[iFace]
     iNeighbor = iNeighbors[iFace]
-    fluxCn = nus[iOwner] * gDiffs[iFace]
-    fluxFn = -fluxCn
+
+    # Diffusion
+    diffusion = nus[iOwner] * gDiffs[iFace]
+
+    # Convection
+    Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+    ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+    weights_f = 0.5                              # get weight of transport variable interpolation 
+    # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+    valueUpper::Float32 = ϕf * weights_f + diffusion
+    valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
+
     idx = offsets[iOwner]
     cols[idx] = iOwner
     rows[idx] = iOwner
-    vals[idx] += fluxCn    # x
-    vals[idx+entriesNeeded] += fluxCn  # y
-    vals[idx+entriesNeeded+entriesNeeded] += fluxCn  # z
+    CUDA.@atomic vals[idx] += valueUpper    # x
+    CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
+    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
     idx = offsets[iOwner] + relativeToOwner[iFace]
     cols[idx] = iOwner
     rows[idx] = iNeighbor
-    vals[idx] += fluxFn    # x
-    vals[idx+entriesNeeded] += fluxFn  # y
-    vals[idx+entriesNeeded+entriesNeeded] += fluxFn  # z
+    vals[idx] += valueLower    # x
+    vals[idx+entriesNeeded] += valueLower  # y
+    vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
-    vals[idx] += fluxCn    # x
-    vals[idx+entriesNeeded] += fluxCn  # y
-    vals[idx+entriesNeeded+entriesNeeded] += fluxCn  # z
+    CUDA.@atomic vals[idx] += valueLower    # x
+    CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
+    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
-    vals[idx] += fluxFn    # x
-    vals[idx+entriesNeeded] += fluxFn  # y
-    vals[idx+entriesNeeded+entriesNeeded] += fluxFn  # z
+    vals[idx] += valueUpper    # x
+    vals[idx+entriesNeeded] += valueUpper  # y
+    vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     return nothing
 end
 
@@ -115,9 +282,9 @@ end
 
 
 function gpu_prepareBatchedFaceBased(input::MatrixAssemblyInput)
-    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M = gpu_prepareFaceBased(input)
+    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping = gpu_prepareFaceBased(input)
     numBatches, faceColorMapping = getGreedyEdgeColoring(input)
-    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping
+    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping, U, Sf, bFaceMapping
 end
 
 
@@ -126,10 +293,10 @@ function getGreedyEdgeColoring(input::MatrixAssemblyInput)
     for face::Face in mesh.faces
         face.batchId = -1
     end
-    faceColorMapping = zeros(Int32, mesh.numInteriorFaces)
+    faceColorMapping = zeros(Int32, length(mesh.faces))
     for cell::Cell in mesh.cells
         usedColors = []
-        for iFace in cell.iFaces[1:cell.nInternalFaces]
+        for iFace in cell.iFaces
             face::Face = mesh.faces[iFace]
             if face.batchId == -1
                 continue
@@ -137,7 +304,7 @@ function getGreedyEdgeColoring(input::MatrixAssemblyInput)
             push!(usedColors, face.batchId)
         end
         id = 1
-        for iFace in cell.iFaces[1:cell.nInternalFaces]
+        for iFace in cell.iFaces
             face::Face = mesh.faces[iFace]
             if face.batchId != -1
                 continue

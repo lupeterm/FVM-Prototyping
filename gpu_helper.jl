@@ -42,7 +42,7 @@ end
 function gpu_prepareFaceBased(input::MatrixAssemblyInput)::Tuple
     mesh = input.mesh
     nu = input.nu
-    nu_g = CuArray{Float32}(undef, nu.size[1])
+    nu_g = CuArray{Float32}(undef, length(nu))
     copyto!(nu_g, nu)
     nCells::Int32 = length(mesh.cells)
     RHS = CUDA.zeros(Float32, nCells * 3)
@@ -51,20 +51,34 @@ function gpu_prepareFaceBased(input::MatrixAssemblyInput)::Tuple
     vals = gpu_prepareValues(input)
     rows::CuArray{Int32} = CUDA.zeros(Int32, entriesNeeded)
     cols = CUDA.zeros(Int32, entriesNeeded)
-    N = mesh.numInteriorFaces
-    threads::Int32 = 256
-    internal_blocks::Int32 = cld(N, threads)
-    prepareRelativeIndices!(input)
+    N::Int32 = length(mesh.faces)
     M = mesh.numBoundaryFaces
-    bblocks = cld(M, threads)
-    bFaceValues, U = gpu_getFaceValues(input)
+    threads::Int32 = 256
+    numBlocks::Int32 = cld(N, threads)
+    println("numblocks: $numBlocks")
+    prepareRelativeIndices!(input)
+    bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
     iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs, Sf = facesToGPUarrays(mesh.faces)
-    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, internal_blocks, bblocks, bFaceValues, RHS, nCells, M, U, Sf
+    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, mesh.numInteriorFaces, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping
 end
 
 function gpu_getFaceValues(input::MatrixAssemblyInput)
+    useBfaces::Vector{Int32} = fill(-1, input.mesh.numBoundaryFaces)
+    i = 1
+    for iBoundary in eachindex(input.mesh.boundaries)
+        theBoundary = input.mesh.boundaries[iBoundary]
+        startFace = theBoundary.startFace + 1
+        endFace = startFace + theBoundary.nFaces
+        for iFace in startFace:endFace-1
+            theFace = input.mesh.faces[iFace]
+            if input.U[1][iBoundary].type == "fixedValue"
+                useBfaces[theFace.index - input.mesh.numInteriorFaces] = i
+                i += 1
+            end
+        end
+    end
     velocities = [b.values for b in input.U[1]]
-    return CuArray(reduce(vcat, velocities)), CuArray(input.U[2].values)
+    return CuArray(reduce(vcat, velocities)), CuArray(input.U[2].values), CuArray(useBfaces)
 end
 
 function gpu_estimate_data_facebased(input::MatrixAssemblyInput)
@@ -94,7 +108,7 @@ function facesToGPUarrays(faces)
     gDiffs = CuArray{Float32}(undef, numFaces)
     relativesO = CuArray{Int32}(undef, numFaces)
     relativesN = CuArray{Int32}(undef, numFaces)
-    Sf = CuArray{SVector{3, Float32}}(undef, numFaces)
+    Sf = CuArray{SVector{3,Float32}}(undef, numFaces)
 
     relativesN[1:numFaces] = [f.relativeToNeighbor for f in faces]
     relativesO[1:numFaces] = [f.relativeToOwner for f in faces]
