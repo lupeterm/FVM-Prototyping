@@ -55,7 +55,6 @@ function gpu_prepareFaceBased(input::MatrixAssemblyInput)::Tuple
     M = mesh.numBoundaryFaces
     threads::Int32 = 256
     numBlocks::Int32 = cld(N, threads)
-    println("numblocks: $numBlocks")
     prepareRelativeIndices!(input)
     bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
     iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs, Sf = facesToGPUarrays(mesh.faces)
@@ -119,3 +118,18 @@ function facesToGPUarrays(faces)
 
     return iOwners, iNeighbors, gDiffs, relativesO, relativesN, Sf
 end
+
+# Idea was to precalculate corner and edge cells and only do atomic operations for those faces.
+# these faces would be 2% for the LDC-M case
+# ended up being slower than just using the atomics for all faces 
+# function findCornerCells(input::MatrixAssemblyInput)
+#     useAtomics = falses(input.mesh.numBoundaryFaces)
+#     for cell::Cell in input.mesh.cells
+#         if length(cell.iFaces) - cell.nInternalFaces > 1
+#             for bFace in cell.nInternalFaces+1:length(cell.iFaces)
+#                 useAtomics[cell.iFaces[bFace] - input.mesh.numInteriorFaces] = true
+#             end
+#         end
+#     end
+#     return CuArray(useAtomics)
+# end

@@ -1104,7 +1104,7 @@ function kernel_LaplaceOnlyFaceBasedAssembly(
 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
         valueUpper::Float32 = diffusion
-        valueLower::Float32 = - diffusion
+        valueLower::Float32 = -diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -1425,5 +1425,79 @@ function kernel_boundaryFace(
     CUDA.@atomic RHS[iOwner] -= value[1]
     CUDA.@atomic RHS[iOwner+nCells] -= value[2]
     CUDA.@atomic RHS[iOwner+nCells+nCells] -= value[3]
+    return nothing
+end
+
+
+function kernel_boundaryFace_LaplaceOnly(
+    iOwners,
+    gDiffs,
+    offsets,
+    nus,
+    vals,
+    entriesNeeded,
+    bFaceValues,
+    RHS,
+    numInternalFaces,
+    nCells,
+    numBoundaryFaces,
+    bFaceMapping
+)
+    iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    globalFaceIndex = numInternalFaces + iFace
+    if globalFaceIndex > numInternalFaces + numBoundaryFaces
+        return
+    end
+    if globalFaceIndex <= numInternalFaces
+        return
+    end
+    bFaceIndex = bFaceMapping[iFace]
+    if bFaceIndex == -1
+        return
+    end
+    iOwner = iOwners[globalFaceIndex]
+    diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[globalFaceIndex]
+    idx = offsets[iOwner]
+    CUDA.@atomic vals[idx] -= diffusion[1]    # x
+    CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
+    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+
+    # RHS/Source
+    CUDA.@atomic RHS[iOwner] -= diffusion[1]
+    CUDA.@atomic RHS[iOwner+nCells] -= diffusion[2]
+    CUDA.@atomic RHS[iOwner+nCells+nCells] -= diffusion[3]
+    return nothing
+end
+
+
+function kernel_boundaryFace_DivOnly(
+    iOwners,
+    bFaceValues,
+    RHS,
+    numInternalFaces,
+    nCells,
+    numBoundaryFaces,
+    Sf,
+    bFaceMapping
+)
+    iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    globalFaceIndex = numInternalFaces + iFace
+    if globalFaceIndex > numInternalFaces + numBoundaryFaces
+        return
+    end
+    if globalFaceIndex <= numInternalFaces
+        return
+    end
+    bFaceIndex = bFaceMapping[iFace]
+    if bFaceIndex == -1
+        return
+    end
+    iOwner = iOwners[globalFaceIndex]
+    convection = bFaceValues[bFaceIndex] .* dot(Sf[globalFaceIndex], bFaceValues[bFaceIndex])
+
+    # RHS/Source
+    CUDA.@atomic RHS[iOwner] -= convection[1]
+    CUDA.@atomic RHS[iOwner+nCells] -= convection[2]
+    CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
     return nothing
 end
