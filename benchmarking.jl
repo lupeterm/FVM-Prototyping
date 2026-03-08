@@ -169,11 +169,11 @@ function bench_all()
         # suite["gpu"][case_short]["batchedFace"]["HardCodedCDF"] = @benchmarkable gpu_HardcodedCDFBatchedFaceAssembly($input)
         # suite["gpu"][case_short]["batchedFace"]["DynamicCDF"] = @benchmarkable gpu_DynamicCDFBatchedFaceAssembly($input)
         # suite["gpu"][case_short]["batchedFace"]["DynamicUpwind"] = @benchmarkable gpu_DynamicUpwindBatchedFaceAssembly($input)
-
+        
         # suite["gpu"][case_short]["faceBased"] = BenchmarkGroup(["gpu", "faceBased", case_long])
         # suite["gpu"][case_short]["faceBased"]["LaplaceOnly"] = @benchmarkable gpu_LaplaceOnlyFaceBasedAssembly($input)
-        # suite["gpu"][case_short]["faceBased"]["DivOnlyPrecalculatedWeightsUpwind"] = @benchmarkable gpu_DivOnlyPrecalculatedWeightsUpwindFaceBasedAssembly($input)
-        # suite["gpu"][case_short]["faceBased"]["DivOnlyPrecalculatedWeightsCDF"] = @benchmarkable gpu_DivOnlyPrecalculatedWeightsCDFFaceBasedAssembly($input)
+        # suite["gpu"][case_short]["faceBased"]["DivOnlyPrecalculatedWeightsUpwind"] = @benchmarkable gpu_DivOnlyPrecalculatedWeightsFaceBasedAssemblyRunner($prep..., CuArray(input.weightsUpwind))
+        # suite["gpu"][case_short]["faceBased"]["DivOnlyPrecalculatedWeightsCDF"] = @benchmarkable gpu_DivOnlyPrecalculatedWeightsCDFFaceBasedAssembly($prep..., CuArray(input.weightsUpwind))
         # suite["gpu"][case_short]["faceBased"]["DivOnlyHardCodedUpwind"] = @benchmarkable gpu_DivOnlyHardcodedUpwindFaceBasedAssembly($input)
         # suite["gpu"][case_short]["faceBased"]["DivOnlyHardCodedCDF"] = @benchmarkable gpu_DivOnlyHardcodedCDFFaceBasedAssembly($input)
         # suite["gpu"][case_short]["faceBased"]["DivOnlyDynamicCDF"] = @benchmarkable gpu_DivOnlyDynamicCDFFaceBasedAssembly($input)
@@ -184,7 +184,7 @@ function bench_all()
         # suite["gpu"][case_short]["faceBased"]["HardCodedCDF"] = @benchmarkable gpu_HardcodedCDFFaceBasedAssembly($input)
         # suite["gpu"][case_short]["faceBased"]["DynamicCDF"] = @benchmarkable gpu_DynamicCDFFaceBasedAssembly($input)
         # suite["gpu"][case_short]["faceBased"]["DynamicUpwind"] = @benchmarkable gpu_DynamicUpwindFaceBasedAssembly($input)
-
+        
         # suite["gpu"][case_short]["cellBased"] = BenchmarkGroup(["gpu", "cellBased", case_long])
         # suite["gpu"][case_short]["cellBased"]["LaplaceOnly"] = @benchmarkable LaplaceOnlyCellBasedAssembly($input)
         # suite["gpu"][case_short]["cellBased"]["DivOnlyPrecalculatedWeightsUpwind"] = @benchmarkable DivOnlyPrecalculatedWeightsUpwindCellBasedAssembly($input)
@@ -199,11 +199,10 @@ function bench_all()
         # suite["gpu"][case_short]["cellBased"]["HardCodedCDF"] = @benchmarkable HardcodedCDFCellBasedAssembly($input)
         # suite["gpu"][case_short]["cellBased"]["DynamicCDF"] = @benchmarkable DynamicCDFCellBasedAssembly($input)
         # suite["gpu"][case_short]["cellBased"]["DynamicUpwind"] = @benchmarkable DynamicUpwindCellBasedAssembly($input)
-        break
-
+        results = run(suite, verbose = true)
+        processResults(results)
     end
-    return suite
-    # results = run(suite, verbose = true)
+    # return suite
 end
 
 

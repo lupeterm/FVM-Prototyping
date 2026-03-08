@@ -31,3 +31,13 @@ function setIndex!(ic::Int32, ir::Int32, val::MVector{3,Float32}, rows::Vector{I
     vals[idx+entries] += val[2]  # y
     vals[idx+entries+entries] += val[3]  # z
 end
+
+
+function setIndex!(ic::Int32, ir::Int32, val::SVector{3,Float32}, rows::Vector{Int32}, cols::Vector{Int32}, vals::Vector{Float32}, idx::Int32, entries::Int32)
+    # coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxC
+    cols[idx] = ic
+    rows[idx] = ir
+    vals[idx] += val[1]    # x
+    vals[idx+entries] += val[2]  # y
+    vals[idx+entries+entries] += val[3]  # z
+end
