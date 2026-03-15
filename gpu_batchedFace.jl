@@ -949,6 +949,98 @@ function kernel_internalFace_coloured(
     return nothing
 end
 
+
+function fusedBatchedFaceBasedRunner(
+    iOwners::CuArray{Int32},
+    iNeighbors::CuArray{Int32},
+    gDiffs::CuArray{P},
+    offsets::CuArray{Int32},
+    nu_g::CuArray{P},
+    rows::CuArray{Int32},
+    cols::CuArray{Int32},
+    vals::CuArray{P},
+    entriesNeeded::Int32,
+    relativeToOwners::CuArray{Int32},
+    N::Int32,
+    relativeToNbs::CuArray{Int32},
+    numBlocks::Int32,
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
+    nCells::Int32,
+    M::Int32,
+    numBatches::Int32,
+    faceColorMapping::CuArray{Int32},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
+    bFaceMapping::CuArray{Int32},
+    ops
+) where {P<:AbstractFloat}
+    for color in 1:numBatches
+        iblocks = cld(N, 256)
+        CUDA.@sync @cuda threads = 256 blocks = iblocks fusedKernel_internal_colored(iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, relativeToOwners, N, relativeToNbs, faceColorMapping, color, U, Sf, ops)
+    end
+    bblocks = cld(M, 256)
+
+    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, bFaceValues, RHS, N, nCells, M, Sf, bFaceMapping)
+end
+
+function fusedKernel_internal_colored(
+    iOwners,
+    iNeighbors,
+    gDiffs,
+    offsets,
+    nus,
+    rows,
+    cols,
+    vals,
+    relativeToOwners,
+    numInteriorFaces,
+    relativeToNeighbor,
+    faceColors,
+    color,
+    U,
+    Sf,
+    ops
+)
+    iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if iFace > numInteriorFaces
+        return
+    end
+    faceColor = faceColors[iFace]
+    if faceColor != color
+        return
+    end
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+
+    upper = 0.0
+    lower = 0.0
+    upper, lower = ops(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
+
+    idx = offsets[iOwner]
+    cols[idx] = iOwner
+    rows[idx] = iOwner
+    vals[idx] += upper
+
+    idx = offsets[iOwner] + relativeToOwners[iFace]
+    cols[idx] = iOwner
+    rows[idx] = iNeighbor
+    vals[idx] += lower
+
+    idx = offsets[iNeighbor]
+    cols[idx] = iNeighbor
+    rows[idx] = iNeighbor
+    vals[idx] += lower
+
+    idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
+    cols[idx] = iNeighbor
+    rows[idx] = iOwner
+    vals[idx] += upper
+    
+    return nothing
+end
+
+
 ############################# helper 
 
 

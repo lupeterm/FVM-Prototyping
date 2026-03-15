@@ -51,7 +51,6 @@ end
 
 function gpu_prepFused(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
     iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping = gpu_prepareFaceBased(input)
-    println("type: $(typeof(N))")
     return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping
 end
 

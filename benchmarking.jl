@@ -117,7 +117,7 @@ function bench_gpu()
 end
 
 
-function bench_all()
+function bench_cpu()
     suite = BenchmarkGroup()
     suite["cpu"] = BenchmarkGroup(["cpu"])
     suite["gpu"] = BenchmarkGroup(["gpu"])

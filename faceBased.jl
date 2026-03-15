@@ -1,7 +1,7 @@
 include("init.jl")
 include("cpu_helper.jl")
 
-function _FaceBasedAssembly(input::MatrixAssemblyInput)
+function _FaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -54,7 +54,7 @@ function _FaceBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end # function batchedFaceBasedAssembly
 
-function DivOnlyPrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
+function DivOnlyPrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -118,7 +118,7 @@ function DivOnlyPrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssembl
     return rows, cols, vals, RHS
 end
 
-function DivOnlyPrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput)
+function DivOnlyPrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -182,7 +182,7 @@ function DivOnlyPrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyIn
     return rows, cols, vals, RHS
 end
 
-function DivOnlyHardcodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
+function DivOnlyHardcodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -245,7 +245,7 @@ function DivOnlyHardcodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end
 
-function DivOnlyHardcodedCDFFaceBasedAssembly(input::MatrixAssemblyInput)
+function DivOnlyHardcodedCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -433,7 +433,7 @@ function DivOnlyDynamicUpwindFaceBasedAssembly(input::MatrixAssemblyInput, div::
     return rows, cols, vals, RHS
 end
 
-function LaplaceOnlyFaceBasedAssembly(input::MatrixAssemblyInput)
+function LaplaceOnlyFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -491,7 +491,7 @@ function LaplaceOnlyFaceBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end
 
-function PrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput)
+function PrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -559,7 +559,7 @@ function PrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end
 
-function PrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput)
+function PrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -698,7 +698,7 @@ function HardcodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {
     return rows, cols, vals, RHS
 end
 
-function HardcodedCDFFaceBasedAssembly(input::MatrixAssemblyInput)
+function HardcodedCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
