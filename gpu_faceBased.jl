@@ -966,39 +966,31 @@ function kernel_DynamicFaceBasedAssembly(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = divFunc(ϕf)                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -1009,8 +1001,6 @@ function kernel_DynamicFaceBasedAssembly(
         diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
         CUDA.@atomic vals[idx] -= diffusion[1]    # x
-        CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
 
         # RHS/Source
         value = convection .+ diffusion

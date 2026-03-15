@@ -45,8 +45,14 @@ function gpu_prepareFaceBased(input::MatrixAssemblyInput{P})::Tuple where {P<:Ab
     numBlocks::Int32 = cld(N, threads)
     prepareRelativeIndices!(input)
     bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
-    iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs, Sf = facesToGPUarrays(P, mesh.faces)
+    iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs, Sf = facesToGPUarrays(mesh.faces)
     return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, mesh.numInteriorFaces, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping
+end
+
+function gpu_prepFused(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
+    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping = gpu_prepareFaceBased(input)
+    println("type: $(typeof(N))")
+    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping
 end
 
 function gpu_getFaceValues(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
@@ -58,14 +64,14 @@ function gpu_getFaceValues(input::MatrixAssemblyInput{P})::Tuple where {P<:Abstr
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             theFace = input.mesh.faces[iFace]
-            if input.U[1][iBoundary].type == "fixedValue"
+            if input.U_boundary[iBoundary].type == "fixedValue"
                 useBfaces[theFace.index - input.mesh.numInteriorFaces] = i
                 i += 1
             end
         end
     end
-    velocities = [b.values for b in input.U[1]]
-    return CuArray(reduce(vcat, velocities)), CuArray(input.U[2].values), CuArray(useBfaces)
+    velocities = [b.values for b in input.U_boundary]
+    return CuArray(reduce(vcat, velocities)), CuArray(input.U_internal), CuArray(useBfaces)
 end
 
 function gpu_estimate_data_facebased(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
@@ -85,7 +91,7 @@ function gpu_estimate_data_facebased(input::MatrixAssemblyInput{P})::Tuple where
     return gpu_offsets, vals_g
 end
 
-function facesToGPUarrays(P::Type{<:AbstractFloat}, faces::Vector{Face})
+function facesToGPUarrays(faces::Vector{Face{P}}) where {P<:AbstractFloat}
     numFaces = length(faces)
     iOwners = CuArray{Int32}(undef, numFaces)
     iNeighbors = CuArray{Int32}(undef, numFaces)

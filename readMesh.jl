@@ -24,7 +24,7 @@ function readOpenFoamMesh(P::Type{<:AbstractFloat}, caseDir::String)::Mesh
     # println("Constructing Cells..")
     mesh = constructCells(P, nodes, boundaries, faces, numCells, numNeighbors)
     # mesh = setupNodeConnectivities(mesh)
-    mesh = processOpenFoamMesh(mesh)
+    mesh = processOpenFoamMesh(mesh, faces)
     return mesh
 end # function readOpenFoamMesh
 
@@ -81,13 +81,13 @@ function readOwnersFile(polyMeshDir::String)
     return owners
 end # function readPointsFile
 
-function readFacesFile(P::Type{<:AbstractFloat}, polyMeshDir::String, owners::Vector{Int32})
+function readFacesFile(P::Type{<:AbstractFloat}, polyMeshDir::String, owners::Vector{Int32})::Vector{TmpFace}
     facesFileName = joinpath(polyMeshDir, "faces")
     if !isfile(facesFileName)
         throw(CaseDirError("Faces file '$(facesFileName)' does not exist."))
     end
     nFaces, start = getAmountAndStart(facesFileName)
-    faces = Vector{Face}(undef, nFaces)
+    faces = Vector{TmpFace}(undef, nFaces)
     i::Int32 = 1
     for (j, line) in enumerate(eachline(facesFileName))
         if j < start
@@ -96,19 +96,19 @@ function readFacesFile(P::Type{<:AbstractFloat}, polyMeshDir::String, owners::Ve
         if line == ")"
             break
         end
-        faces[i] = Face(
+        faces[i] = TmpFace(
             i,
             parse.(Int32, split(line[3:(end-1)], " ")) .+ one(Int32),
             owners[i],
             -one(Int32),
-            MVector{3,P}(0.0, 0.0, 0.0),
-            MVector{3,P}(0.0, 0.0, 0.0),
-            zero(P),
-            zero(P),
-            -one(Int32),
-            zero(Int32),
-            zero(Int32),
-            -one(Int32)
+            # MVector{3,P}(0.0, 0.0, 0.0),
+            # MVector{3,P}(0.0, 0.0, 0.0),
+            # zero(P),
+            # zero(P),
+            # -one(Int32),
+            # zero(Int32),
+            # zero(Int32),
+            # -one(Int32)
         )
         i += 1
     end
@@ -116,7 +116,7 @@ function readFacesFile(P::Type{<:AbstractFloat}, polyMeshDir::String, owners::Ve
 end # function readPointsFile
 
 
-function readNeighborsFile(polyMeshDir::String, faces::Vector{Face})::Tuple{Int32,Vector{Face}}
+function readNeighborsFile(polyMeshDir::String, faces::Vector{TmpFace})::Tuple{Int32,Vector{TmpFace}}
     neighborsFileName = joinpath(polyMeshDir, "neighbour")
     if !isfile(neighborsFileName)
         throw(CaseDirError("Neighbors file '$(neighborsFileName)' does not exist."))
@@ -192,7 +192,7 @@ function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
     return boundaries
 end # function readPointsFile
 
-function constructCells(P::Type{<:AbstractFloat}, nodes::Vector, boundaries::Vector{Boundary}, faces::Vector{Face}, numCells::Int32, numInteriorFaces::Int32)::Mesh{P}
+function constructCells(P::Type{<:AbstractFloat}, nodes::Vector, boundaries::Vector{Boundary}, faces::Vector{TmpFace}, numCells::Int32, numInteriorFaces::Int32)::Mesh{P}
     cells = [
         Cell(
             Int32(index),
@@ -234,7 +234,7 @@ function constructCells(P::Type{<:AbstractFloat}, nodes::Vector, boundaries::Vec
     # end
     numBoundaryCells = length(faces) - numInteriors
     numBoundaryFaces = length(faces) - numInteriors
-    return Mesh{P}(nodes, faces, boundaries, numCells, cells, numInteriors, numBoundaryCells, numBoundaryFaces)
+    return Mesh{P}(nodes, [], boundaries, numCells, cells, numInteriors, numBoundaryCells, numBoundaryFaces)
 end # function constructCells
 
 function setupNodeConnectivities(mesh::Mesh)::Mesh
@@ -260,8 +260,8 @@ end
 
 
 
-function processOpenFoamMesh(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
-    mesh = processBasicFaceGeometry(mesh)
+function processOpenFoamMesh(mesh::Mesh{P}, tmpFaces::Vector{TmpFace})::Mesh{P} where {P<:AbstractFloat}
+    mesh = processBasicFaceGeometry(mesh, tmpFaces)
     mesh = computeElementVolumeAndCentroid(mesh)
     mesh = processSecondaryFaceGeometry(mesh)
     # mesh = sortBoundaryNodesFromInteriorNodes(mesh)
@@ -274,15 +274,19 @@ function magnitude(vector::MVector{3,P})::P where {P<:AbstractFloat}
     return sqrt(d)
 end # function magnitude
 
-function processBasicFaceGeometry(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
-    for face in mesh.faces
+function processBasicFaceGeometry(mesh::Mesh{P}, tmpFaces::Vector{TmpFace})::Mesh{P} where {P<:AbstractFloat}
+    faces = Vector{Face}(undef, length(tmpFaces))
+    for face::TmpFace in tmpFaces
         # special case: triangle
+        centroid = MVector{3,P}(zeros(P, 3))
+        Sf = MVector{3,P}(zeros(P, 3))
+        area = zero(P)
         if length(face.iNodes) == 3
             # sum x,y,z and divide by 3
             triangleNodes = [mesh.nodes[i] for i in face.iNodes]
-            face.centroid .= sum(triangleNodes) / 3
-            face.Sf .= 0.5 * cross(triangleNodes[2] - triangleNodes[1], triangleNodes[3] - triangleNodes[1])
-            face.area = magnitude(face.Sf)
+            centroid .= sum(triangleNodes) / 3
+            Sf .= 0.5 * cross(triangleNodes[2] - triangleNodes[1], triangleNodes[3] - triangleNodes[1])
+            area = magnitude(Sf)
         else # general case, polygon is not a triangle
             nodes = [mesh.nodes[i] for i in face.iNodes]
             center = sum(nodes) / length(nodes)
@@ -302,14 +306,28 @@ function processBasicFaceGeometry(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloa
                 localSf = 0.5 .* cross(mesh.nodes[iNode] .- triangleNode1, triangleNode3 .- triangleNode1)
                 # Calculate the surface area of a given subtriangle
                 localArea = sqrt(dot(localSf, localSf))
-                face.centroid .+= localArea * localCentroid
-                face.Sf += localSf
+                centroid .+= localArea * localCentroid
+                Sf += localSf
             end
-            face.area = magnitude(face.Sf)
+            area = magnitude(Sf)
             # Compute centroid of the polygon
-            face.centroid ./= face.area
+            centroid ./= area
         end
+        faces[face.index] = Face{P}(
+            face.index,
+            face.iOwner,
+            face.iNeighbor,
+            centroid,
+            Sf,
+            area,
+            zero(P),
+            -one(Int32),
+            zero(Int32),
+            zero(Int32),
+            -one(Int32)
+        )
     end
+    mesh.faces = faces
     return mesh
 end # function processBasicFaceGeometry
 
@@ -403,26 +421,6 @@ function processSecondaryFaceGeometry(mesh::Mesh{P})::Mesh{P} where {P<:Abstract
     # end
     return mesh
 end # function processSecondaryFaceGeometry
-
-function sortBoundaryNodesFromInteriorNodes(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
-    for face in mesh.faces[1:mesh.numInteriorFaces]
-        for iNode in face.iNodes
-            mesh.nodes[iNode:iNode+2].flag = 1
-        end
-    end
-    for boundary in mesh.boundaries
-        startFace = boundary.startFace
-        nBFaces = boundary.nFaces
-        s1 = boundary.name == "frontAndBack"
-        s2 = boundary.name == "frontAndBackPlanes"
-        for face in mesh.faces[startFace:(startFace+nBFaces)]
-            for iNode in face.iNodes
-                mesh.nodes[iNode:iNode+2].flag = (s1 || s2) ? 1 : 0
-            end
-        end
-    end
-    return mesh
-end # function sortBoundaryNodesFromInteriorNodes
 
 function labelBoundaryFaces(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
     for (iBoundary, boundary) in enumerate(mesh.boundaries)
@@ -608,7 +606,12 @@ function readPropertiesFile(P::Type{<:AbstractFloat}, path::String)::P
     return val
 end
 
-
+function upwind2(ϕf)
+    if (ϕf >= 0)
+        return 1.0
+    end
+    return 0.0
+end
 
 function upwind(ϕf::P)::P where {P<:AbstractFloat}
     # ϕf Uf ⋅ Sf = 0
