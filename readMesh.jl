@@ -2,7 +2,7 @@ include("classes.jl")
 using LinearAlgebra
 using StaticArrays
 
-function readOpenFoamMesh(caseDir::String)::Mesh
+function readOpenFoamMesh(P::Type{<:AbstractFloat}, caseDir::String)::Mesh
     if !isdir(caseDir)
         throw(CaseDirError("Case Directory '$(caseDir)' does not exist"))
     end
@@ -11,18 +11,18 @@ function readOpenFoamMesh(caseDir::String)::Mesh
         throw(CaseDirError("PolyMesh Directory '$(caseDir)' does not exist"))
     end
     # println("Reading Points..")
-    nodes = readPointsFile(polymeshDir)
+    nodes = readPointsFile(P, polymeshDir)
     # println("Reading Owners..")
     owner = readOwnersFile(polymeshDir)
     # println("Reading Faces..")
-    faces = readFacesFile(polymeshDir, owner)
+    faces = readFacesFile(P, polymeshDir, owner)
     # println("Reading Neighbors..")
     numNeighbors, faces = readNeighborsFile(polymeshDir, faces)
     numCells = maximum(owner)
     # println("Reading Boundaries..")
     boundaries = readBoundaryFile(polymeshDir)
     # println("Constructing Cells..")
-    mesh = constructCells(nodes, boundaries, faces, numCells, numNeighbors)
+    mesh = constructCells(P, nodes, boundaries, faces, numCells, numNeighbors)
     # mesh = setupNodeConnectivities(mesh)
     mesh = processOpenFoamMesh(mesh)
     return mesh
@@ -38,13 +38,13 @@ function getAmountAndStart(file::String)::Tuple{Int32,Int32}
     end
 end
 
-function readPointsFile(polyMeshDir::String)
+function readPointsFile(P::Type{<:AbstractFloat}, polyMeshDir::String)::Vector{SVector{3, P}}
     pointsFileName = joinpath(polyMeshDir, "points")
     if !isfile(pointsFileName)
         throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
     end
     nNodes, start = getAmountAndStart(pointsFileName)
-    centroids = Vector{SVector{3,Float32}}(undef, nNodes)
+    centroids = Vector{SVector{3,P}}(undef, nNodes)
     i = 1
     for (j, line) in enumerate(eachline(pointsFileName))
         if j < start
@@ -54,7 +54,7 @@ function readPointsFile(polyMeshDir::String)
             break
         end
         s = split((line[2:(end-1)]), " ")
-        centroids[i] = SVector{3,Float32}(tryparse.(Float32, s))
+        centroids[i] = SVector{3,P}(tryparse.(P, s))
         i += 1
     end
     return centroids
@@ -81,14 +81,14 @@ function readOwnersFile(polyMeshDir::String)
     return owners
 end # function readPointsFile
 
-function readFacesFile(polyMeshDir::String, owners::Vector{Int32})
+function readFacesFile(P::Type{<:AbstractFloat}, polyMeshDir::String, owners::Vector{Int32})
     facesFileName = joinpath(polyMeshDir, "faces")
     if !isfile(facesFileName)
         throw(CaseDirError("Faces file '$(facesFileName)' does not exist."))
     end
     nFaces, start = getAmountAndStart(facesFileName)
     faces = Vector{Face}(undef, nFaces)
-    i = 1
+    i::Int32 = 1
     for (j, line) in enumerate(eachline(facesFileName))
         if j < start
             continue
@@ -98,17 +98,17 @@ function readFacesFile(polyMeshDir::String, owners::Vector{Int32})
         end
         faces[i] = Face(
             i,
-            parse.(Int32, split(line[3:(end-1)], " ")) .+ 1,
+            parse.(Int32, split(line[3:(end-1)], " ")) .+ one(Int32),
             owners[i],
-            -1,
-            MVector{3,Float32}(0.0, 0.0, 0.0),
-            MVector{3,Float32}(0.0, 0.0, 0.0),
-            0.0,
-            0.0,
-            -1,
-            0,
-            0,
-            -1
+            -one(Int32),
+            MVector{3,P}(0.0, 0.0, 0.0),
+            MVector{3,P}(0.0, 0.0, 0.0),
+            zero(P),
+            zero(P),
+            -one(Int32),
+            zero(Int32),
+            zero(Int32),
+            -one(Int32)
         )
         i += 1
     end
@@ -192,16 +192,16 @@ function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
     return boundaries
 end # function readPointsFile
 
-function constructCells(nodes::Vector, boundaries::Vector{Boundary}, faces::Vector{Face}, numCells::Int32, numInteriorFaces::Int32)::Mesh
+function constructCells(P::Type{<:AbstractFloat}, nodes::Vector, boundaries::Vector{Boundary}, faces::Vector{Face}, numCells::Int32, numInteriorFaces::Int32)::Mesh{P}
     cells = [
         Cell(
-            index,
-            0,
-            0.0,
-            [],
-            [],
-            [],
-            MVector{3,Float32}(0.0, 0.0, 0.0),
+            Int32(index),
+            zero(Int32),
+            zero(P),
+            Int32[],
+            Int32[],
+            Int32[],
+            MVector{3,P}(0.0, 0.0, 0.0),
         )
         for index in 1:numCells
     ]
@@ -234,7 +234,7 @@ function constructCells(nodes::Vector, boundaries::Vector{Boundary}, faces::Vect
     # end
     numBoundaryCells = length(faces) - numInteriors
     numBoundaryFaces = length(faces) - numInteriors
-    return Mesh(nodes, faces, boundaries, numCells, cells, numInteriors, numBoundaryCells, numBoundaryFaces)
+    return Mesh{P}(nodes, faces, boundaries, numCells, cells, numInteriors, numBoundaryCells, numBoundaryFaces)
 end # function constructCells
 
 function setupNodeConnectivities(mesh::Mesh)::Mesh
@@ -260,7 +260,7 @@ end
 
 
 
-function processOpenFoamMesh(mesh::Mesh)::Mesh
+function processOpenFoamMesh(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
     mesh = processBasicFaceGeometry(mesh)
     mesh = computeElementVolumeAndCentroid(mesh)
     mesh = processSecondaryFaceGeometry(mesh)
@@ -269,27 +269,27 @@ function processOpenFoamMesh(mesh::Mesh)::Mesh
     return mesh
 end # function processOpenFoamMesh
 
-function magnitude(vector::MVector{3,Float32})::Float32
-    return sqrt(vector'vector)
+function magnitude(vector::MVector{3,P})::P where {P<:AbstractFloat}
+    d = dot(vector, vector)
+    return sqrt(d)
 end # function magnitude
 
-function processBasicFaceGeometry(mesh::Mesh)::Mesh
+function processBasicFaceGeometry(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
     for face in mesh.faces
-        area = 0.0
         # special case: triangle
         if length(face.iNodes) == 3
             # sum x,y,z and divide by 3
             triangleNodes = [mesh.nodes[i] for i in face.iNodes]
             face.centroid .= sum(triangleNodes) / 3
             face.Sf .= 0.5 * cross(triangleNodes[2] - triangleNodes[1], triangleNodes[3] - triangleNodes[1])
-            area = magnitude(face.Sf)
+            face.area = magnitude(face.Sf)
         else # general case, polygon is not a triangle
             nodes = [mesh.nodes[i] for i in face.iNodes]
             center = sum(nodes) / length(nodes)
             # Using the center to compute the area and centroid of virtual
             # triangles based on the center and the face nodes
             triangleNode1 = center
-            triangleNode3 = MVector{3,Float32}(0.0, 0.0, 0.0)
+            triangleNode3 = MVector{3,P}(0.0, 0.0, 0.0)
             for (iNodeIndex, iNode) in enumerate(face.iNodes)
                 if iNodeIndex < length(face.iNodes)
                     triangleNode3 .= mesh.nodes[face.iNodes[iNodeIndex+1]]
@@ -305,19 +305,18 @@ function processBasicFaceGeometry(mesh::Mesh)::Mesh
                 face.centroid .+= localArea * localCentroid
                 face.Sf += localSf
             end
-            area = magnitude(face.Sf)
+            face.area = magnitude(face.Sf)
             # Compute centroid of the polygon
-            face.centroid ./= area
+            face.centroid ./= face.area
         end
-        face.area = area
     end
     return mesh
 end # function processBasicFaceGeometry
 
-function computeElementVolumeAndCentroid(mesh)::Mesh
+function computeElementVolumeAndCentroid(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
     for iElement in 1:(length(mesh.cells))
         iFaces = mesh.cells[iElement].iFaces
-        elementCenter = MVector{3,Float32}(0.0, 0.0, 0.0)
+        elementCenter = MVector{3,P}(0.0, 0.0, 0.0)
         for iFace in iFaces
             elementCenter .+= mesh.faces[iFace].centroid
         end
@@ -343,10 +342,10 @@ function computeElementVolumeAndCentroid(mesh)::Mesh
     return mesh
 end # function computeElementVolumeAndCentroid
 
-function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
+function processSecondaryFaceGeometry(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
     # Loop over Interior faces
-    eCN = MVector{3,Float32}(0.0, 0.0, 0.0)
-    CN = MVector{3,Float32}(0.0, 0.0, 0.0)
+    eCN = MVector{3,P}(0.0, 0.0, 0.0)
+    CN = MVector{3,P}(0.0, 0.0, 0.0)
 
     for iFace in 1:mesh.numInteriorFaces
         theFace::Face = mesh.faces[iFace]
@@ -356,7 +355,7 @@ function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
         neighborElement::Cell = mesh.cells[theFace.iNeighbor]
 
         # vector between cell centroids
-        CN = neighborElement.centroid .- ownerElement.centroid
+        CN::MVector{3, P} = neighborElement.centroid .- ownerElement.centroid
         # length of said vector / direct distance between cell centroids
         magCN = magnitude(CN)
         # normalized vector to neighbor
@@ -405,7 +404,7 @@ function processSecondaryFaceGeometry(mesh::Mesh)::Mesh
     return mesh
 end # function processSecondaryFaceGeometry
 
-function sortBoundaryNodesFromInteriorNodes(mesh::Mesh)::Mesh
+function sortBoundaryNodesFromInteriorNodes(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
     for face in mesh.faces[1:mesh.numInteriorFaces]
         for iNode in face.iNodes
             mesh.nodes[iNode:iNode+2].flag = 1
@@ -425,7 +424,7 @@ function sortBoundaryNodesFromInteriorNodes(mesh::Mesh)::Mesh
     return mesh
 end # function sortBoundaryNodesFromInteriorNodes
 
-function labelBoundaryFaces(mesh::Mesh)::Mesh
+function labelBoundaryFaces(mesh::Mesh{P})::Mesh{P} where {P<:AbstractFloat}
     for (iBoundary, boundary) in enumerate(mesh.boundaries)
         startFace = boundary.startFace + 1
         nBFaces = boundary.nFaces
@@ -436,7 +435,7 @@ function labelBoundaryFaces(mesh::Mesh)::Mesh
     return mesh
 end # function labelBoundaryFaces
 
-function readFields(dir::String, mesh::Mesh)::Tuple{Vector{Vector{BoundaryField}},Dict{Int32,String}}
+function readFields(dir::String, mesh::Mesh{P})::Tuple{Vector{Vector{BoundaryField}},Dict{Int32,String}} where {P<:AbstractFloat}
     files = readdir(dir)
     fields::Vector{Vector{BoundaryField}} = []
     mappings = Dict()
@@ -452,15 +451,22 @@ end # function readTemperatureField
 """
     parse '(0 0 0)' to [0.0, 0.0, 0.0]
 """
-function parseVec(string::String)::MVector{3,Float32}
+function parseVec(P::Type{<:AbstractFloat}, string::String)::MVector{3,P}
     cp = replace(string, "(" => "")
     cp = replace(cp, ")" => "")
     cp = replace(cp, ";" => "")
     cp = strip(cp)
-    return parse.(Float32, split(cp, " "))
+    return parse.(P, split(cp, " "))
 end
-parseVec(sub::SubString)::Vector{Float32} = parseVec(String(sub))
 
+function parseVec(P::Type{<:AbstractFloat}, sub::SubString)::MVector{3,P}
+    string = String(sub)
+    cp = replace(string, "(" => "")
+    cp = replace(cp, ")" => "")
+    cp = replace(cp, ";" => "")
+    cp = strip(cp)
+    return parse.(P, split(cp, " "))
+end
 function isUniforminternalField(file::String)::Bool
     for line in eachline(file)
         if startswith(line, "internalField")
@@ -469,27 +475,27 @@ function isUniforminternalField(file::String)::Bool
     end
 end
 
-function getFieldType(file::String)
+function getFieldType(P::Type{<:AbstractFloat}, file::String)
     for line in eachline(file)
         if contains(line, "class")
             if contains(line, "volVectorField")
-                return MVector{3,Float32}
+                return MVector{3,P}
             end
-            return Float32
+            return P
         end
     end
 end
 """
-returns either Float32 or MVector{3, Float32}
+returns either P or MVector{3, P}
 """
-function getUniformValue(file::String)
+function getUniformValue(P::Type{<:AbstractFloat}, file::String)
     for line in eachline(file)
         if startswith(line, "internalField")
             cpy = replace(line, r"internalField\s+uniform " => "")
             cpy = replace(cpy, "(" => "")
             cpy = replace(cpy, ")" => "")
             cpy = replace(cpy, ";" => "")
-            values = parse.(Float32, split(cpy, " "))
+            values = parse.(P, split(cpy, " "))
             if length(values) == 1
                 return values[1]
             end
@@ -498,7 +504,7 @@ function getUniformValue(file::String)
     end
 end
 
-function readField(filePath::String, mesh::Mesh)
+function readField(P::Type{<:AbstractFloat}, filePath::String, mesh::Mesh)::Tuple{Vector{BoundaryField{P}},Vector{SVector{3,P}}}
     fileName = rsplit(filePath, "/", limit=1)[1]
     if !isfile(filePath)
         throw(CaseDirError("Field file '$(filePath)' does not exist."))
@@ -507,11 +513,11 @@ function readField(filePath::String, mesh::Mesh)
     # TODO so far not used
     numCells = length(mesh.cells)
     joined = ""
-    fieldType = MVector{3,Float32} # getFieldType(filePath)
+    fieldType = SVector{3,P} # getFieldType(filePath)
     internalValues = Vector{fieldType}(undef, numCells)
     if isUniform
         # println("isuniform")
-        value = getUniformValue(filePath)
+        value = getUniformValue(P,filePath)
         internalValues = fill(value, numCells)
         lines = readlines(filePath)
         i = 16
@@ -524,7 +530,7 @@ function readField(filePath::String, mesh::Mesh)
         doBoundaries = false
         _, start = getAmountAndStart(filePath)
         index = 1
-        if fieldType == MVector{3,Float32}
+        if fieldType == SVector{3,P}
             for (j, line) in enumerate(eachline(filePath))
                 if j < start
                     continue
@@ -533,7 +539,7 @@ function readField(filePath::String, mesh::Mesh)
                     doBoundaries = true
                 end
                 if !doBoundaries
-                    internalValues[index] = parse.(Float32, split(line[2:end-1], " "))
+                    internalValues[index] = parse.(P, split(line[2:end-1], " "))
                     index += 1
                 else
                     joined = string(joined, line)
@@ -548,14 +554,13 @@ function readField(filePath::String, mesh::Mesh)
                     doBoundaries = true
                 end
                 if !doBoundaries
-                    internalValues[index] = parse(Float32, line)
+                    internalValues[index] = parse(P, line)
                 else
                     joined = string(joined, line)
                 end
             end
         end
     end
-    internalField = Field(internalValues)
     splitted = split(joined, "}")
     boundaryFields = []
     for boundary in mesh.boundaries
@@ -565,7 +570,7 @@ function readField(filePath::String, mesh::Mesh)
             if isnothing(matches)
                 continue
             end
-            values::Vector{MVector{3,Float32}} = []
+            values::Vector{SVector{3,P}} = []
             if boundary.name != matches[1]
                 continue
             end
@@ -578,47 +583,51 @@ function readField(filePath::String, mesh::Mesh)
 
             if !isnothing(matches[3])
                 if !isnothing(matches[4])  # scalars like temperature
-                    scalar = tryparse(Float32, matches[4])
+                    scalar = tryparse(P, matches[4])
                     values = fill(scalar, nFaces)
                 else  # vectors like velocity
-                    vector = parseVec(matches[5])
-                    values = [SVector{3,Float32}(vector) for _ in 1:nFaces]
+                    vector = parseVec(P, matches[5])
+                    values = [SVector{3,P}(vector) for _ in 1:nFaces]
                 end
             end
             bfield = BoundaryField(String(fileName), nFaces, values, String(type))
             push!(boundaryFields, bfield)
         end
     end
-    return boundaryFields, internalField
+    return boundaryFields, internalValues
 end
 
-function readPropertiesFile(path::String)::Float32
+function readPropertiesFile(P::Type{<:AbstractFloat}, path::String)::P
     # println("Reading $(path)")
     if !isfile(path)
         throw(CaseDirError("Field file '$(path)' does not exist."))
     end
     file = read(path, String)
     variable = match(r"nu\s*(?:\[[\s\d-]+\])?\s*([\.\d\-e]+(?:E-\d)?);", file)
-    val = tryparse(Float32, variable[1])
+    val = tryparse(P, variable[1])
     return val
 end
 
-function upwind(ϕf)
+
+
+function upwind(ϕf::P)::P where {P<:AbstractFloat}
     # ϕf Uf ⋅ Sf = 0
     # ϕf is ̇m in the non-versteeg book
     if (ϕf >= 0)
-        return 1.0
+        return one(P)
     end
-    return 0.0
+    return zero(P)
 end
+struct s_upwind{T<:AbstractFloat} end
+(u::s_upwind)(ϕf) = ϕf >= 0.0 ? 1.0 : 0.0
 
-function centralDifferencing(_)
+function centralDifferencing(_)::AbstractFloat
     return 0.5
 end
 
-function precalcWeights!(input::MatrixAssemblyInput)
+function precalcWeights!(P::Type{<:AbstractFloat}, input::MatrixAssemblyInput)
     mesh = input.mesh
-    U = input.U[2].values
+    U = input.U_internal
     @inbounds for iFace in 1:mesh.numInteriorFaces
         theFace = mesh.faces[iFace]
         iOwner = theFace.iOwner
@@ -626,7 +635,7 @@ function precalcWeights!(input::MatrixAssemblyInput)
         U_P = U[iOwner]
         U_N = U[iNeighbor]
         Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-        ϕf::Float32 = Uf ⋅ theFace.Sf                   # flux through the face
+        ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
         input.weightsCdf[iFace] = centralDifferencing(ϕf)
         input.weightsUpwind[iFace] = upwind(ϕf)
     end
@@ -686,24 +695,25 @@ function getOffsetsAndValues!(input::MatrixAssemblyInput)
     end
 end
 
-function ProcessCase(caseDirectory::String)::MatrixAssemblyInput
-    mesh = readOpenFoamMesh(caseDirectory)
+function ProcessCase(T::Type{<:AbstractFloat}, caseDirectory::String)::MatrixAssemblyInput
+    mesh = readOpenFoamMesh(T, caseDirectory)
     # Define the thermal conductivity and source term
-    nu = readPropertiesFile(joinpath(caseDirectory, "constant/transportProperties"))
+    nu = readPropertiesFile(T, joinpath(caseDirectory, "constant/transportProperties"))
     # Read initial condition and boundary conditions
     # p = readField(joinpath(caseDirectory, "0/p"), mesh)
-    U = readField(joinpath(caseDirectory, "0/U"), mesh)
+    u_b, u_i = readField(T, joinpath(caseDirectory, "0/U"), mesh)
     # Assemble the coefficient matrix and RHS vector
     i = MatrixAssemblyInput(
         mesh,
         fill(nu, length(mesh.cells)),
-        U,
-        zeros(Float32, mesh.numInteriorFaces),
-        zeros(Float32, mesh.numInteriorFaces),
+        u_b,
+        u_i,
+        zeros(T, mesh.numInteriorFaces),
+        zeros(T, mesh.numInteriorFaces),
         ones(Int32, length(mesh.cells)),
         zeros(Int32, length(mesh.cells))
     )
-    precalcWeights!(i)
+    precalcWeights!(T, i)
     prepareRelativeIndices!(i)
     getOffsetsAndValues!(i)
     return i

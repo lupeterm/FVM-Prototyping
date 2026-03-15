@@ -1,196 +1,196 @@
-time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language,cpu,gpu
-99.81278,101.69672,4.0985184,0.0,LDC-S,LDC-S,faceBased,DivOnlyDynamicCDF,julia,true,false
-105.4092,103.057816,8.083513,0.0,LDC-S,LDC-S,faceBased,PrecalculatedWeightsUpwind,julia,true,false
-102.97825,101.66729,3.0298357,0.0,LDC-S,LDC-S,faceBased,DivOnlyHardCodedUpwind,julia,true,false
-42.974182,33.386826,9.064015,0.0,LDC-S,LDC-S,faceBased,LaplaceOnly,julia,true,false
-101.436844,96.292114,4.461367,0.0,LDC-S,LDC-S,faceBased,DynamicCDF,julia,true,false
-97.60041,94.639046,2.2635348,0.0,LDC-S,LDC-S,faceBased,DivOnlyHardCodedCDF,julia,true,false
-107.740364,105.830284,2.0717957,0.0,LDC-S,LDC-S,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,true,false
-113.69413,111.92299,4.249827,0.0,LDC-S,LDC-S,faceBased,HardCodedUpwind,julia,true,false
-107.04339,103.7506,2.0586722,0.0,LDC-S,LDC-S,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,true,false
-111.25146,109.67613,2.1973982,0.0,LDC-S,LDC-S,faceBased,DivOnlyDynamicUpwind,julia,true,false
-102.538,96.49391,4.9946847,0.0,LDC-S,LDC-S,faceBased,PrecalculatedWeightsCDF,julia,true,false
-102.51867,97.2109,5.0560226,0.0,LDC-S,LDC-S,faceBased,HardCodedCDF,julia,true,false
-113.01719,107.462036,4.427753,0.0,LDC-S,LDC-S,faceBased,DynamicUpwind,julia,true,false
-98.138504,95.409805,2.2843053,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyDynamicCDF,julia,true,false
-119.42646,114.79905,4.1690044,0.0,LDC-S,LDC-S,globalFaceBased,PrecalculatedWeightsUpwind,julia,true,false
-110.580315,109.22819,2.125856,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyHardCodedUpwind,julia,true,false
-43.394638,34.0,8.766634,0.0,LDC-S,LDC-S,globalFaceBased,LaplaceOnly,julia,true,false
-114.27092,108.67649,3.4712114,0.0,LDC-S,LDC-S,globalFaceBased,DynamicCDF,julia,true,false
-99.1891,97.739235,2.3201544,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyHardCodedCDF,julia,true,false
-111.12895,107.9873,1.9438074,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyPrecalculatedWeightsCDF,julia,true,false
-116.83589,111.536224,4.088986,0.0,LDC-S,LDC-S,globalFaceBased,HardCodedUpwind,julia,true,false
-110.503494,108.309074,2.1229966,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyPrecalculatedWeightsUpwind,julia,true,false
-112.21041,110.895164,2.2008104,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyDynamicUpwind,julia,true,false
-119.82996,115.56918,4.1592484,0.0,LDC-S,LDC-S,globalFaceBased,PrecalculatedWeightsCDF,julia,true,false
-115.747955,111.59677,5.0397615,0.0,LDC-S,LDC-S,globalFaceBased,HardCodedCDF,julia,true,false
-117.03802,113.474144,4.320362,0.0,LDC-S,LDC-S,globalFaceBased,DynamicUpwind,julia,true,false
-174.78192,176.9659,1.220662,0.0,LDC-S,LDC-S,cellBased,DivOnlyDynamicCDF,julia,true,false
-200.6783,200.07503,3.0993147,0.0,LDC-S,LDC-S,cellBased,PrecalculatedWeightsUpwind,julia,true,false
-173.36476,175.37686,1.2966427,0.0,LDC-S,LDC-S,cellBased,DivOnlyHardCodedUpwind,julia,true,false
-72.33852,70.09299,7.5146756,0.0,LDC-S,LDC-S,cellBased,LaplaceOnly,julia,true,false
-196.0165,196.36536,2.19666,0.0,LDC-S,LDC-S,cellBased,DynamicCDF,julia,true,false
-174.29303,176.16905,1.2916886,0.0,LDC-S,LDC-S,cellBased,DivOnlyHardCodedCDF,julia,true,false
-190.75346,191.44331,1.3950826,0.0,LDC-S,LDC-S,cellBased,DivOnlyPrecalculatedWeightsCDF,julia,true,false
-190.7126,191.3527,3.0258849,0.0,LDC-S,LDC-S,cellBased,HardCodedUpwind,julia,true,false
-188.82117,191.36554,1.2808979,0.0,LDC-S,LDC-S,cellBased,DivOnlyPrecalculatedWeightsUpwind,julia,true,false
-173.0226,175.34335,1.5949985,0.0,LDC-S,LDC-S,cellBased,DivOnlyDynamicUpwind,julia,true,false
-199.16731,198.88855,3.0908434,0.0,LDC-S,LDC-S,cellBased,PrecalculatedWeightsCDF,julia,true,false
-191.1071,191.40317,2.9573581,0.0,LDC-S,LDC-S,cellBased,DynamicUpwind,julia,true,false
-196.68799,196.57855,3.1329453,0.0,LDC-S,LDC-S,cellBased,HardCodedCDF,julia,true,false
-759.035,804.94763,15.626095,0.0,Wind,Wind,faceBased,DivOnlyDynamicCDF,julia,true,false
-712.0317,696.3376,10.915696,0.0,Wind,Wind,faceBased,PrecalculatedWeightsUpwind,julia,true,false
-776.6408,752.034,4.6691103,0.0,Wind,Wind,faceBased,DivOnlyHardCodedUpwind,julia,true,false
-284.25732,284.66296,18.960917,30.502832,Wind,Wind,faceBased,LaplaceOnly,julia,true,false
-701.0549,678.83887,3.945565,0.0,Wind,Wind,faceBased,DynamicCDF,julia,true,false
-680.2223,662.9335,3.963004,0.0,Wind,Wind,faceBased,DivOnlyHardCodedCDF,julia,true,false
-765.7218,762.02234,4.84182,0.0,Wind,Wind,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,true,false
-795.2234,790.1169,4.6833715,0.0,Wind,Wind,faceBased,HardCodedUpwind,julia,true,false
-752.6351,748.22577,4.583425,0.0,Wind,Wind,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,true,false
-754.7332,750.1244,4.682712,0.0,Wind,Wind,faceBased,DivOnlyDynamicUpwind,julia,true,false
-684.6424,674.9611,3.9528396,0.0,Wind,Wind,faceBased,PrecalculatedWeightsCDF,julia,true,false
-682.2653,673.0098,4.1045523,0.0,Wind,Wind,faceBased,HardCodedCDF,julia,true,false
-793.67236,789.05273,4.5731616,0.0,Wind,Wind,faceBased,DynamicUpwind,julia,true,false
-756.0366,750.887,5.292581,0.0,Wind,Wind,globalFaceBased,DivOnlyDynamicCDF,julia,true,false
-805.64734,800.4259,4.782013,0.0,Wind,Wind,globalFaceBased,PrecalculatedWeightsUpwind,julia,true,false
-831.9135,826.8114,4.897168,0.0,Wind,Wind,globalFaceBased,DivOnlyHardCodedUpwind,julia,true,false
-276.4147,288.20264,15.545298,0.0,Wind,Wind,globalFaceBased,LaplaceOnly,julia,true,false
-785.70544,775.6537,4.652456,0.0,Wind,Wind,globalFaceBased,DynamicCDF,julia,true,false
-749.8519,745.2748,5.027587,0.0,Wind,Wind,globalFaceBased,DivOnlyHardCodedCDF,julia,true,false
-778.7925,771.7048,5.5309997,0.0,Wind,Wind,globalFaceBased,DivOnlyPrecalculatedWeightsCDF,julia,true,false
-854.26874,851.37445,5.7915215,0.0,Wind,Wind,globalFaceBased,HardCodedUpwind,julia,true,false
-765.8721,761.4386,4.7839375,0.0,Wind,Wind,globalFaceBased,DivOnlyPrecalculatedWeightsUpwind,julia,true,false
-839.2658,831.7191,6.459561,0.0,Wind,Wind,globalFaceBased,DivOnlyDynamicUpwind,julia,true,false
-801.539,798.9653,4.5841093,0.0,Wind,Wind,globalFaceBased,PrecalculatedWeightsCDF,julia,true,false
-782.7923,778.4895,4.900061,0.0,Wind,Wind,globalFaceBased,HardCodedCDF,julia,true,false
-844.8003,837.72,5.6796565,0.0,Wind,Wind,globalFaceBased,DynamicUpwind,julia,true,false
-1224.0183,1226.398,6.5965943,0.0,Wind,Wind,cellBased,DivOnlyDynamicCDF,julia,true,false
-1377.161,1370.9468,8.12042,0.0,Wind,Wind,cellBased,PrecalculatedWeightsUpwind,julia,true,false
-1290.2622,1281.9012,8.178858,0.0,Wind,Wind,cellBased,DivOnlyHardCodedUpwind,julia,true,false
-491.50348,453.61945,16.824352,0.0,Wind,Wind,cellBased,LaplaceOnly,julia,true,false
-1341.1882,1336.1661,8.777873,0.0,Wind,Wind,cellBased,DynamicCDF,julia,true,false
-1246.2296,1240.8975,6.8035893,0.0,Wind,Wind,cellBased,DivOnlyHardCodedCDF,julia,true,false
-1385.471,1377.6158,8.719542,0.0,Wind,Wind,cellBased,DivOnlyPrecalculatedWeightsCDF,julia,true,false
-1368.5828,1353.2842,8.482413,0.0,Wind,Wind,cellBased,HardCodedUpwind,julia,true,false
-1372.6487,1364.5048,8.687982,0.0,Wind,Wind,cellBased,DivOnlyPrecalculatedWeightsUpwind,julia,true,false
-1344.0865,1334.5562,9.078656,0.0,Wind,Wind,cellBased,DivOnlyDynamicUpwind,julia,true,false
-1424.1499,1410.5769,8.627335,0.0,Wind,Wind,cellBased,PrecalculatedWeightsCDF,julia,true,false
-1340.069,1331.9132,8.460118,0.0,Wind,Wind,cellBased,DynamicUpwind,julia,true,false
-1324.5038,1324.256,9.407407,0.0,Wind,Wind,cellBased,HardCodedCDF,julia,true,false
-1447.8757,1372.1995,38.487904,0.0,LDC-M,LDC-M,faceBased,DivOnlyDynamicCDF,julia,true,false
-1041.1382,1088.2637,19.440218,0.0,LDC-M,LDC-M,faceBased,PrecalculatedWeightsUpwind,julia,true,false
-1005.6062,1038.4985,25.793808,0.0,LDC-M,LDC-M,faceBased,DivOnlyHardCodedUpwind,julia,true,false
-386.6331,369.41495,29.814062,44.64008,LDC-M,LDC-M,faceBased,LaplaceOnly,julia,true,false
-927.044,916.244,8.674178,0.0,LDC-M,LDC-M,faceBased,DynamicCDF,julia,true,false
-875.25415,843.7831,7.715521,0.0,LDC-M,LDC-M,faceBased,DivOnlyHardCodedCDF,julia,true,false
-983.1072,962.0695,7.6683316,0.0,LDC-M,LDC-M,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,true,false
-951.9162,944.3288,7.851199,0.0,LDC-M,LDC-M,faceBased,HardCodedUpwind,julia,true,false
-1008.2002,991.9211,10.804586,0.0,LDC-M,LDC-M,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,true,false
-919.84454,918.7821,8.4704075,0.0,LDC-M,LDC-M,faceBased,DivOnlyDynamicUpwind,julia,true,false
-897.1361,893.5331,7.873068,0.0,LDC-M,LDC-M,faceBased,PrecalculatedWeightsCDF,julia,true,false
-886.4885,880.3963,8.363156,0.0,LDC-M,LDC-M,faceBased,HardCodedCDF,julia,true,false
-967.974,959.9641,7.744519,0.0,LDC-M,LDC-M,faceBased,DynamicUpwind,julia,true,false
-978.96466,963.04114,8.879326,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyDynamicCDF,julia,true,false
-1007.95496,990.57983,8.46414,0.0,LDC-M,LDC-M,globalFaceBased,PrecalculatedWeightsUpwind,julia,true,false
-959.935,947.63544,8.452151,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyHardCodedUpwind,julia,true,false
-358.06744,346.4044,29.89775,24.026606,LDC-M,LDC-M,globalFaceBased,LaplaceOnly,julia,true,false
-960.72485,953.44086,8.266462,0.0,LDC-M,LDC-M,globalFaceBased,DynamicCDF,julia,true,false
-925.5117,917.31683,8.406565,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyHardCodedCDF,julia,true,false
-945.44635,937.00586,8.2741995,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyPrecalculatedWeightsCDF,julia,true,false
-987.7498,977.58044,8.382843,0.0,LDC-M,LDC-M,globalFaceBased,HardCodedUpwind,julia,true,false
-942.46454,934.58765,8.311189,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyPrecalculatedWeightsUpwind,julia,true,false
-967.00134,959.11127,8.52645,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyDynamicUpwind,julia,true,false
-988.1693,979.9884,8.409437,0.0,LDC-M,LDC-M,globalFaceBased,PrecalculatedWeightsCDF,julia,true,false
-973.0918,965.0782,8.839681,0.0,LDC-M,LDC-M,globalFaceBased,HardCodedCDF,julia,true,false
-988.4403,980.7966,8.429371,0.0,LDC-M,LDC-M,globalFaceBased,DynamicUpwind,julia,true,false
-1488.111,1479.1565,12.6211195,0.0,LDC-M,LDC-M,cellBased,DivOnlyDynamicCDF,julia,true,false
-1708.4204,1702.7429,0.0,0.0,LDC-M,LDC-M,cellBased,PrecalculatedWeightsUpwind,julia,true,false
-1524.2528,1518.4911,12.464203,0.0,LDC-M,LDC-M,cellBased,DivOnlyHardCodedUpwind,julia,true,false
-555.82886,524.5974,13.572176,0.0,LDC-M,LDC-M,cellBased,LaplaceOnly,julia,true,false
-1532.7705,1520.433,12.738599,0.0,LDC-M,LDC-M,cellBased,DynamicCDF,julia,true,false
-1480.5853,1469.0872,12.881939,0.0,LDC-M,LDC-M,cellBased,DivOnlyHardCodedCDF,julia,true,false
-1668.6676,1655.5925,12.599942,0.0,LDC-M,LDC-M,cellBased,DivOnlyPrecalculatedWeightsCDF,julia,true,false
-1541.105,1520.9401,12.588779,0.0,LDC-M,LDC-M,cellBased,HardCodedUpwind,julia,true,false
-1671.0276,1670.8658,0.0,0.0,LDC-M,LDC-M,cellBased,DivOnlyPrecalculatedWeightsUpwind,julia,true,false
-1549.805,1538.7888,14.03223,0.0,LDC-M,LDC-M,cellBased,DivOnlyDynamicUpwind,julia,true,false
-1722.432,1720.6033,0.0,0.0,LDC-M,LDC-M,cellBased,PrecalculatedWeightsCDF,julia,true,false
-1565.5669,1552.2704,13.411845,0.0,LDC-M,LDC-M,cellBased,DynamicUpwind,julia,true,false
-1548.681,1551.7816,12.534647,0.0,LDC-M,LDC-M,cellBased,HardCodedCDF,julia,true,false
-21.75631,21.687,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,false,true
-22.653421,22.59891,0.0,0.0,LDC-M,LDC-M,faceBased,PrecalculatedWeightsUpwind,julia,false,true
-22.667229,22.60798,0.0,0.0,LDC-M,LDC-M,faceBased,PrecalculatedWeightsCDF,julia,false,true
-22.225712,21.767853,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,false,true
-12.309047,12.244214,0.0,0.0,LDC-M,LDC-M,faceBased,HardCodedCDF,julia,false,true
-21.564909,21.524872,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyDynamicCDF,julia,false,true
-22.351492,22.321032,0.0,0.0,LDC-M,LDC-M,faceBased,DynamicUpwind,julia,false,true
-22.388628,22.33191,0.0,0.0,LDC-M,LDC-M,faceBased,DynamicCDF,julia,false,true
-21.576939,21.520355,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyHardCodedUpwind,julia,false,true
-21.56047,21.521938,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyHardCodedCDF,julia,false,true
-21.56694,21.529472,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyDynamicUpwind,julia,false,true
-22.384613,22.329433,0.0,0.0,LDC-M,LDC-M,faceBased,LaplaceOnly,julia,false,true
-22.343922,22.304338,0.0,0.0,LDC-M,LDC-M,faceBased,HardCodedUpwind,julia,false,true
-1.6276747,1.555673,0.0,0.0,LDC-S,LDC-S,faceBased,HardCodedCDF,julia,false,true
-1.5691341,1.5009565,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyDynamicCDF,julia,false,true
-1.6195102,1.5606275,0.0,0.0,LDC-S,LDC-S,faceBased,DynamicUpwind,julia,false,true
-1.6282886,1.563003,0.0,0.0,LDC-S,LDC-S,faceBased,DynamicCDF,julia,false,true
-1.5729213,1.509295,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyHardCodedUpwind,julia,false,true
-1.5738024,1.509251,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyHardCodedCDF,julia,false,true
-1.5752704,1.5091265,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyDynamicUpwind,julia,false,true
-1.6337817,1.563958,0.0,0.0,LDC-S,LDC-S,faceBased,LaplaceOnly,julia,false,true
-1.6279713,1.560842,0.0,0.0,LDC-S,LDC-S,faceBased,HardCodedUpwind,julia,false,true
-1.5640674,1.499545,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,false,true
-1.6253929,1.5655925,0.0,0.0,LDC-S,LDC-S,faceBased,PrecalculatedWeightsUpwind,julia,false,true
-1.6251941,1.556733,0.0,0.0,LDC-S,LDC-S,faceBased,PrecalculatedWeightsCDF,julia,false,true
-1.5455359,1.503986,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,false,true
-9.687488,9.741406,0.0,0.0,Wind,Wind,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,false,true
-9.884724,9.981359,0.0,0.0,Wind,Wind,faceBased,PrecalculatedWeightsUpwind,julia,false,true
-10.076825,10.000886,0.0,0.0,Wind,Wind,faceBased,PrecalculatedWeightsCDF,julia,false,true
-9.562288,9.448832,0.0,0.0,Wind,Wind,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,false,true
-9.980091,10.100476,0.0,0.0,Wind,Wind,faceBased,HardCodedCDF,julia,false,true
-9.750077,9.726449,0.0,0.0,Wind,Wind,faceBased,DivOnlyDynamicCDF,julia,false,true
-10.025816,10.125411,0.0,0.0,Wind,Wind,faceBased,DynamicUpwind,julia,false,true
-10.019525,10.139936,0.0,0.0,Wind,Wind,faceBased,DynamicCDF,julia,false,true
-9.746615,9.737746,0.0,0.0,Wind,Wind,faceBased,DivOnlyHardCodedUpwind,julia,false,true
-9.478638,9.438524,0.0,0.0,Wind,Wind,faceBased,DivOnlyHardCodedCDF,julia,false,true
-9.525521,9.460677,0.0,0.0,Wind,Wind,faceBased,DivOnlyDynamicUpwind,julia,false,true
-9.753788,9.709754,0.0,0.0,Wind,Wind,faceBased,LaplaceOnly,julia,false,true
-9.734225,9.689289,0.0,0.0,Wind,Wind,faceBased,HardCodedUpwind,julia,false,true
-0.12074531,0.1141915,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyDynamicCDF,julia,false,true
-0.11900061,0.114746,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyHardCodedUpwind,julia,false,true
-0.13272648,0.1279275,0.0,0.0,LDC-S,LDC-S,batchedFace,LaplaceOnly,julia,false,true
-0.13394795,0.130066,0.0,0.0,LDC-S,LDC-S,batchedFace,DynamicCDF,julia,false,true
-0.11834955,0.114524,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyHardCodedCDF,julia,false,true
-0.13428745,0.130069,0.0,0.0,LDC-S,LDC-S,batchedFace,HardCodedUpwind,julia,false,true
-0.11861289,0.114351,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyDynamicUpwind,julia,false,true
-0.13504271,0.1303655,0.0,0.0,LDC-S,LDC-S,batchedFace,HardCodedCDF,julia,false,true
-0.13474733,0.130341,0.0,0.0,LDC-S,LDC-S,batchedFace,DynamicUpwind,julia,false,true
-0.11723927,0.11478,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyPrecalculatedWeightsUpwind,julia,false,true
-0.13534425,0.130847,0.0,0.0,LDC-S,LDC-S,batchedFace,PrecalculatedWeightsUpwind,julia,false,true
-0.13305299,0.130783,0.0,0.0,LDC-S,LDC-S,batchedFace,PrecalculatedWeightsCDF,julia,false,true
-0.11788562,0.1151305,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyPrecalculatedWeightsCDF,julia,false,true
-3.8183846,3.773364,0.0,0.0,Wind,Wind,batchedFace,DivOnlyDynamicCDF,julia,false,true
-3.8719637,3.789082,0.0,0.0,Wind,Wind,batchedFace,DivOnlyHardCodedUpwind,julia,false,true
-4.0270715,3.978329,0.0,0.0,Wind,Wind,batchedFace,LaplaceOnly,julia,false,true
-4.0322638,3.985215,0.0,0.0,Wind,Wind,batchedFace,DynamicCDF,julia,false,true
-3.8565984,3.784152,0.0,0.0,Wind,Wind,batchedFace,DivOnlyHardCodedCDF,julia,false,true
-4.012751,3.982377,0.0,0.0,Wind,Wind,batchedFace,HardCodedUpwind,julia,false,true
-3.9564795,3.793235,0.0,0.0,Wind,Wind,batchedFace,DivOnlyDynamicUpwind,julia,false,true
-4.1244206,4.000426,0.0,0.0,Wind,Wind,batchedFace,HardCodedCDF,julia,false,true
-4.0266185,3.979983,0.0,0.0,Wind,Wind,batchedFace,DynamicUpwind,julia,false,true
-3.8200173,3.777613,0.0,0.0,Wind,Wind,batchedFace,DivOnlyPrecalculatedWeightsUpwind,julia,false,true
-4.0425363,3.992933,0.0,0.0,Wind,Wind,batchedFace,PrecalculatedWeightsUpwind,julia,false,true
-4.0530705,4.0064316,0.0,0.0,Wind,Wind,batchedFace,PrecalculatedWeightsCDF,julia,false,true
-3.854754,3.78945,0.0,0.0,Wind,Wind,batchedFace,DivOnlyPrecalculatedWeightsCDF,julia,false,true
-1.4952123,1.488582,0.0,0.0,LDC-M,LDC-M,batchedFace,DivOnlyDynamicCDF,julia,false,true
-1.5368528,1.489129,0.0,0.0,LDC-M,LDC-M,batchedFace,DivOnlyHardCodedUpwind,julia,false,true
-1.952498,1.9402175,0.0,0.0,LDC-M,LDC-M,batchedFace,LaplaceOnly,julia,false,true
-1.9588994,1.9503576,0.0,0.0,LDC-M,LDC-M,batchedFace,DynamicCDF,julia,false,true
-1.4965888,1.488973,0.0,0.0,LDC-M,LDC-M,batchedFace,DivOnlyHardCodedCDF,julia,false,true
-1.9606563,1.950397,0.0,0.0,LDC-M,LDC-M,batchedFace,HardCodedUpwind,julia,false,true
-1.4983504,1.48861,0.0,0.0,LDC-M,LDC-M,batchedFace,DivOnlyDynamicUpwind,julia,false,true
-1.9643009,1.95069,0.0,0.0,LDC-M,LDC-M,batchedFace,HardCodedCDF,julia,false,true
-1.9637228,1.950337,0.0,0.0,LDC-M,LDC-M,batchedFace,DynamicUpwind,julia,false,true
-1.7580386,1.4811676,0.21689601,0.0,LDC-M,LDC-M,batchedFace,DivOnlyPrecalculatedWeightsUpwind,julia,false,true
-2.235661,1.917953,0.22893722,0.0,LDC-M,LDC-M,batchedFace,PrecalculatedWeightsUpwind,julia,false,true
-2.2095525,1.918242,0.24558383,0.0,LDC-M,LDC-M,batchedFace,PrecalculatedWeightsCDF,julia,false,true
-1.6703721,1.479105,0.17912027,0.0,LDC-M,LDC-M,batchedFace,DivOnlyPrecalculatedWeightsCDF,julia,false,true
+time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language,precision,executor,use_kernelAbstractions,use_fusing
+99.81278,101.69672,4.0985184,0.0,LDC-S,LDC-S,faceBased,DivOnlyDynamicCDF,julia,single,cpu, false, false,
+105.4092,103.057816,8.083513,0.0,LDC-S,LDC-S,faceBased,PrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+102.97825,101.66729,3.0298357,0.0,LDC-S,LDC-S,faceBased,DivOnlyHardCodedUpwind,julia,single,cpu, false, false,
+42.974182,33.386826,9.064015,0.0,LDC-S,LDC-S,faceBased,LaplaceOnly,julia,single,cpu, false, false,
+101.436844,96.292114,4.461367,0.0,LDC-S,LDC-S,faceBased,DynamicCDF,julia,single,cpu, false, false,
+97.60041,94.639046,2.2635348,0.0,LDC-S,LDC-S,faceBased,DivOnlyHardCodedCDF,julia,single,cpu, false, false,
+107.740364,105.830284,2.0717957,0.0,LDC-S,LDC-S,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,single,cpu, false, false,
+113.69413,111.92299,4.249827,0.0,LDC-S,LDC-S,faceBased,HardCodedUpwind,julia,single,cpu, false, false,
+107.04339,103.7506,2.0586722,0.0,LDC-S,LDC-S,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+111.25146,109.67613,2.1973982,0.0,LDC-S,LDC-S,faceBased,DivOnlyDynamicUpwind,julia,single,cpu, false, false,
+102.538,96.49391,4.9946847,0.0,LDC-S,LDC-S,faceBased,PrecalculatedWeightsCDF,julia,single,cpu, false, false,
+102.51867,97.2109,5.0560226,0.0,LDC-S,LDC-S,faceBased,HardCodedCDF,julia,single,cpu, false, false,
+113.01719,107.462036,4.427753,0.0,LDC-S,LDC-S,faceBased,DynamicUpwind,julia,single,cpu, false, false,
+98.138504,95.409805,2.2843053,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyDynamicCDF,julia,single,cpu, false, false,
+119.42646,114.79905,4.1690044,0.0,LDC-S,LDC-S,globalFaceBased,PrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+110.580315,109.22819,2.125856,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyHardCodedUpwind,julia,single,cpu, false, false,
+43.394638,34.0,8.766634,0.0,LDC-S,LDC-S,globalFaceBased,LaplaceOnly,julia,single,cpu, false, false,
+114.27092,108.67649,3.4712114,0.0,LDC-S,LDC-S,globalFaceBased,DynamicCDF,julia,single,cpu, false, false,
+99.1891,97.739235,2.3201544,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyHardCodedCDF,julia,single,cpu, false, false,
+111.12895,107.9873,1.9438074,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyPrecalculatedWeightsCDF,julia,single,cpu, false, false,
+116.83589,111.536224,4.088986,0.0,LDC-S,LDC-S,globalFaceBased,HardCodedUpwind,julia,single,cpu, false, false,
+110.503494,108.309074,2.1229966,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+112.21041,110.895164,2.2008104,0.0,LDC-S,LDC-S,globalFaceBased,DivOnlyDynamicUpwind,julia,single,cpu, false, false,
+119.82996,115.56918,4.1592484,0.0,LDC-S,LDC-S,globalFaceBased,PrecalculatedWeightsCDF,julia,single,cpu, false, false,
+115.747955,111.59677,5.0397615,0.0,LDC-S,LDC-S,globalFaceBased,HardCodedCDF,julia,single,cpu, false, false,
+117.03802,113.474144,4.320362,0.0,LDC-S,LDC-S,globalFaceBased,DynamicUpwind,julia,single,cpu, false, false,
+174.78192,176.9659,1.220662,0.0,LDC-S,LDC-S,cellBased,DivOnlyDynamicCDF,julia,single,cpu, false, false,
+200.6783,200.07503,3.0993147,0.0,LDC-S,LDC-S,cellBased,PrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+173.36476,175.37686,1.2966427,0.0,LDC-S,LDC-S,cellBased,DivOnlyHardCodedUpwind,julia,single,cpu, false, false,
+72.33852,70.09299,7.5146756,0.0,LDC-S,LDC-S,cellBased,LaplaceOnly,julia,single,cpu, false, false,
+196.0165,196.36536,2.19666,0.0,LDC-S,LDC-S,cellBased,DynamicCDF,julia,single,cpu, false, false,
+174.29303,176.16905,1.2916886,0.0,LDC-S,LDC-S,cellBased,DivOnlyHardCodedCDF,julia,single,cpu, false, false,
+190.75346,191.44331,1.3950826,0.0,LDC-S,LDC-S,cellBased,DivOnlyPrecalculatedWeightsCDF,julia,single,cpu, false, false,
+190.7126,191.3527,3.0258849,0.0,LDC-S,LDC-S,cellBased,HardCodedUpwind,julia,single,cpu, false, false,
+188.82117,191.36554,1.2808979,0.0,LDC-S,LDC-S,cellBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+173.0226,175.34335,1.5949985,0.0,LDC-S,LDC-S,cellBased,DivOnlyDynamicUpwind,julia,single,cpu, false, false,
+199.16731,198.88855,3.0908434,0.0,LDC-S,LDC-S,cellBased,PrecalculatedWeightsCDF,julia,single,cpu, false, false,
+191.1071,191.40317,2.9573581,0.0,LDC-S,LDC-S,cellBased,DynamicUpwind,julia,single,cpu, false, false,
+196.68799,196.57855,3.1329453,0.0,LDC-S,LDC-S,cellBased,HardCodedCDF,julia,single,cpu, false, false,
+759.035,804.94763,15.626095,0.0,Wind,Wind,faceBased,DivOnlyDynamicCDF,julia,single,cpu, false, false,
+712.0317,696.3376,10.915696,0.0,Wind,Wind,faceBased,PrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+776.6408,752.034,4.6691103,0.0,Wind,Wind,faceBased,DivOnlyHardCodedUpwind,julia,single,cpu, false, false,
+284.25732,284.66296,18.960917,30.502832,Wind,Wind,faceBased,LaplaceOnly,julia,single,cpu, false, false,
+701.0549,678.83887,3.945565,0.0,Wind,Wind,faceBased,DynamicCDF,julia,single,cpu, false, false,
+680.2223,662.9335,3.963004,0.0,Wind,Wind,faceBased,DivOnlyHardCodedCDF,julia,single,cpu, false, false,
+765.7218,762.02234,4.84182,0.0,Wind,Wind,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,single,cpu, false, false,
+795.2234,790.1169,4.6833715,0.0,Wind,Wind,faceBased,HardCodedUpwind,julia,single,cpu, false, false,
+752.6351,748.22577,4.583425,0.0,Wind,Wind,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+754.7332,750.1244,4.682712,0.0,Wind,Wind,faceBased,DivOnlyDynamicUpwind,julia,single,cpu, false, false,
+684.6424,674.9611,3.9528396,0.0,Wind,Wind,faceBased,PrecalculatedWeightsCDF,julia,single,cpu, false, false,
+682.2653,673.0098,4.1045523,0.0,Wind,Wind,faceBased,HardCodedCDF,julia,single,cpu, false, false,
+793.67236,789.05273,4.5731616,0.0,Wind,Wind,faceBased,DynamicUpwind,julia,single,cpu, false, false,
+756.0366,750.887,5.292581,0.0,Wind,Wind,globalFaceBased,DivOnlyDynamicCDF,julia,single,cpu, false, false,
+805.64734,800.4259,4.782013,0.0,Wind,Wind,globalFaceBased,PrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+831.9135,826.8114,4.897168,0.0,Wind,Wind,globalFaceBased,DivOnlyHardCodedUpwind,julia,single,cpu, false, false,
+276.4147,288.20264,15.545298,0.0,Wind,Wind,globalFaceBased,LaplaceOnly,julia,single,cpu, false, false,
+785.70544,775.6537,4.652456,0.0,Wind,Wind,globalFaceBased,DynamicCDF,julia,single,cpu, false, false,
+749.8519,745.2748,5.027587,0.0,Wind,Wind,globalFaceBased,DivOnlyHardCodedCDF,julia,single,cpu, false, false,
+778.7925,771.7048,5.5309997,0.0,Wind,Wind,globalFaceBased,DivOnlyPrecalculatedWeightsCDF,julia,single,cpu, false, false,
+854.26874,851.37445,5.7915215,0.0,Wind,Wind,globalFaceBased,HardCodedUpwind,julia,single,cpu, false, false,
+765.8721,761.4386,4.7839375,0.0,Wind,Wind,globalFaceBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+839.2658,831.7191,6.459561,0.0,Wind,Wind,globalFaceBased,DivOnlyDynamicUpwind,julia,single,cpu, false, false,
+801.539,798.9653,4.5841093,0.0,Wind,Wind,globalFaceBased,PrecalculatedWeightsCDF,julia,single,cpu, false, false,
+782.7923,778.4895,4.900061,0.0,Wind,Wind,globalFaceBased,HardCodedCDF,julia,single,cpu, false, false,
+844.8003,837.72,5.6796565,0.0,Wind,Wind,globalFaceBased,DynamicUpwind,julia,single,cpu, false, false,
+1224.0183,1226.398,6.5965943,0.0,Wind,Wind,cellBased,DivOnlyDynamicCDF,julia,single,cpu, false, false,
+1377.161,1370.9468,8.12042,0.0,Wind,Wind,cellBased,PrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+1290.2622,1281.9012,8.178858,0.0,Wind,Wind,cellBased,DivOnlyHardCodedUpwind,julia,single,cpu, false, false,
+491.50348,453.61945,16.824352,0.0,Wind,Wind,cellBased,LaplaceOnly,julia,single,cpu, false, false,
+1341.1882,1336.1661,8.777873,0.0,Wind,Wind,cellBased,DynamicCDF,julia,single,cpu, false, false,
+1246.2296,1240.8975,6.8035893,0.0,Wind,Wind,cellBased,DivOnlyHardCodedCDF,julia,single,cpu, false, false,
+1385.471,1377.6158,8.719542,0.0,Wind,Wind,cellBased,DivOnlyPrecalculatedWeightsCDF,julia,single,cpu, false, false,
+1368.5828,1353.2842,8.482413,0.0,Wind,Wind,cellBased,HardCodedUpwind,julia,single,cpu, false, false,
+1372.6487,1364.5048,8.687982,0.0,Wind,Wind,cellBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+1344.0865,1334.5562,9.078656,0.0,Wind,Wind,cellBased,DivOnlyDynamicUpwind,julia,single,cpu, false, false,
+1424.1499,1410.5769,8.627335,0.0,Wind,Wind,cellBased,PrecalculatedWeightsCDF,julia,single,cpu, false, false,
+1340.069,1331.9132,8.460118,0.0,Wind,Wind,cellBased,DynamicUpwind,julia,single,cpu, false, false,
+1324.5038,1324.256,9.407407,0.0,Wind,Wind,cellBased,HardCodedCDF,julia,single,cpu, false, false,
+1447.8757,1372.1995,38.487904,0.0,LDC-M,LDC-M,faceBased,DivOnlyDynamicCDF,julia,single,cpu, false, false,
+1041.1382,1088.2637,19.440218,0.0,LDC-M,LDC-M,faceBased,PrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+1005.6062,1038.4985,25.793808,0.0,LDC-M,LDC-M,faceBased,DivOnlyHardCodedUpwind,julia,single,cpu, false, false,
+386.6331,369.41495,29.814062,44.64008,LDC-M,LDC-M,faceBased,LaplaceOnly,julia,single,cpu, false, false,
+927.044,916.244,8.674178,0.0,LDC-M,LDC-M,faceBased,DynamicCDF,julia,single,cpu, false, false,
+875.25415,843.7831,7.715521,0.0,LDC-M,LDC-M,faceBased,DivOnlyHardCodedCDF,julia,single,cpu, false, false,
+983.1072,962.0695,7.6683316,0.0,LDC-M,LDC-M,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,single,cpu, false, false,
+951.9162,944.3288,7.851199,0.0,LDC-M,LDC-M,faceBased,HardCodedUpwind,julia,single,cpu, false, false,
+1008.2002,991.9211,10.804586,0.0,LDC-M,LDC-M,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+919.84454,918.7821,8.4704075,0.0,LDC-M,LDC-M,faceBased,DivOnlyDynamicUpwind,julia,single,cpu, false, false,
+897.1361,893.5331,7.873068,0.0,LDC-M,LDC-M,faceBased,PrecalculatedWeightsCDF,julia,single,cpu, false, false,
+886.4885,880.3963,8.363156,0.0,LDC-M,LDC-M,faceBased,HardCodedCDF,julia,single,cpu, false, false,
+967.974,959.9641,7.744519,0.0,LDC-M,LDC-M,faceBased,DynamicUpwind,julia,single,cpu, false, false,
+978.96466,963.04114,8.879326,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyDynamicCDF,julia,single,cpu, false, false,
+1007.95496,990.57983,8.46414,0.0,LDC-M,LDC-M,globalFaceBased,PrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+959.935,947.63544,8.452151,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyHardCodedUpwind,julia,single,cpu, false, false,
+358.06744,346.4044,29.89775,24.026606,LDC-M,LDC-M,globalFaceBased,LaplaceOnly,julia,single,cpu, false, false,
+960.72485,953.44086,8.266462,0.0,LDC-M,LDC-M,globalFaceBased,DynamicCDF,julia,single,cpu, false, false,
+925.5117,917.31683,8.406565,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyHardCodedCDF,julia,single,cpu, false, false,
+945.44635,937.00586,8.2741995,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyPrecalculatedWeightsCDF,julia,single,cpu, false, false,
+987.7498,977.58044,8.382843,0.0,LDC-M,LDC-M,globalFaceBased,HardCodedUpwind,julia,single,cpu, false, false,
+942.46454,934.58765,8.311189,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+967.00134,959.11127,8.52645,0.0,LDC-M,LDC-M,globalFaceBased,DivOnlyDynamicUpwind,julia,single,cpu, false, false,
+988.1693,979.9884,8.409437,0.0,LDC-M,LDC-M,globalFaceBased,PrecalculatedWeightsCDF,julia,single,cpu, false, false,
+973.0918,965.0782,8.839681,0.0,LDC-M,LDC-M,globalFaceBased,HardCodedCDF,julia,single,cpu, false, false,
+988.4403,980.7966,8.429371,0.0,LDC-M,LDC-M,globalFaceBased,DynamicUpwind,julia,single,cpu, false, false,
+1488.111,1479.1565,12.6211195,0.0,LDC-M,LDC-M,cellBased,DivOnlyDynamicCDF,julia,single,cpu, false, false,
+1708.4204,1702.7429,0.0,0.0,LDC-M,LDC-M,cellBased,PrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+1524.2528,1518.4911,12.464203,0.0,LDC-M,LDC-M,cellBased,DivOnlyHardCodedUpwind,julia,single,cpu, false, false,
+555.82886,524.5974,13.572176,0.0,LDC-M,LDC-M,cellBased,LaplaceOnly,julia,single,cpu, false, false,
+1532.7705,1520.433,12.738599,0.0,LDC-M,LDC-M,cellBased,DynamicCDF,julia,single,cpu, false, false,
+1480.5853,1469.0872,12.881939,0.0,LDC-M,LDC-M,cellBased,DivOnlyHardCodedCDF,julia,single,cpu, false, false,
+1668.6676,1655.5925,12.599942,0.0,LDC-M,LDC-M,cellBased,DivOnlyPrecalculatedWeightsCDF,julia,single,cpu, false, false,
+1541.105,1520.9401,12.588779,0.0,LDC-M,LDC-M,cellBased,HardCodedUpwind,julia,single,cpu, false, false,
+1671.0276,1670.8658,0.0,0.0,LDC-M,LDC-M,cellBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,cpu, false, false,
+1549.805,1538.7888,14.03223,0.0,LDC-M,LDC-M,cellBased,DivOnlyDynamicUpwind,julia,single,cpu, false, false,
+1722.432,1720.6033,0.0,0.0,LDC-M,LDC-M,cellBased,PrecalculatedWeightsCDF,julia,single,cpu, false, false,
+1565.5669,1552.2704,13.411845,0.0,LDC-M,LDC-M,cellBased,DynamicUpwind,julia,single,cpu, false, false,
+1548.681,1551.7816,12.534647,0.0,LDC-M,LDC-M,cellBased,HardCodedCDF,julia,single,cpu, false, false,
+21.75631,21.687,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+22.653421,22.59891,0.0,0.0,LDC-M,LDC-M,faceBased,PrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+22.667229,22.60798,0.0,0.0,LDC-M,LDC-M,faceBased,PrecalculatedWeightsCDF,julia,single,gpu, false, false,
+22.225712,21.767853,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,single,gpu, false, false,
+12.309047,12.244214,0.0,0.0,LDC-M,LDC-M,faceBased,HardCodedCDF,julia,single,gpu, false, false,
+21.564909,21.524872,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyDynamicCDF,julia,single,gpu, false, false,
+22.351492,22.321032,0.0,0.0,LDC-M,LDC-M,faceBased,DynamicUpwind,julia,single,gpu, false, false,
+22.388628,22.33191,0.0,0.0,LDC-M,LDC-M,faceBased,DynamicCDF,julia,single,gpu, false, false,
+21.576939,21.520355,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyHardCodedUpwind,julia,single,gpu, false, false,
+21.56047,21.521938,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyHardCodedCDF,julia,single,gpu, false, false,
+21.56694,21.529472,0.0,0.0,LDC-M,LDC-M,faceBased,DivOnlyDynamicUpwind,julia,single,gpu, false, false,
+22.384613,22.329433,0.0,0.0,LDC-M,LDC-M,faceBased,LaplaceOnly,julia,single,gpu, false, false,
+22.343922,22.304338,0.0,0.0,LDC-M,LDC-M,faceBased,HardCodedUpwind,julia,single,gpu, false, false,
+1.6276747,1.555673,0.0,0.0,LDC-S,LDC-S,faceBased,HardCodedCDF,julia,single,gpu, false, false,
+1.5691341,1.5009565,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyDynamicCDF,julia,single,gpu, false, false,
+1.6195102,1.5606275,0.0,0.0,LDC-S,LDC-S,faceBased,DynamicUpwind,julia,single,gpu, false, false,
+1.6282886,1.563003,0.0,0.0,LDC-S,LDC-S,faceBased,DynamicCDF,julia,single,gpu, false, false,
+1.5729213,1.509295,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyHardCodedUpwind,julia,single,gpu, false, false,
+1.5738024,1.509251,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyHardCodedCDF,julia,single,gpu, false, false,
+1.5752704,1.5091265,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyDynamicUpwind,julia,single,gpu, false, false,
+1.6337817,1.563958,0.0,0.0,LDC-S,LDC-S,faceBased,LaplaceOnly,julia,single,gpu, false, false,
+1.6279713,1.560842,0.0,0.0,LDC-S,LDC-S,faceBased,HardCodedUpwind,julia,single,gpu, false, false,
+1.5640674,1.499545,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+1.6253929,1.5655925,0.0,0.0,LDC-S,LDC-S,faceBased,PrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+1.6251941,1.556733,0.0,0.0,LDC-S,LDC-S,faceBased,PrecalculatedWeightsCDF,julia,single,gpu, false, false,
+1.5455359,1.503986,0.0,0.0,LDC-S,LDC-S,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,single,gpu, false, false,
+9.687488,9.741406,0.0,0.0,Wind,Wind,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+9.884724,9.981359,0.0,0.0,Wind,Wind,faceBased,PrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+10.076825,10.000886,0.0,0.0,Wind,Wind,faceBased,PrecalculatedWeightsCDF,julia,single,gpu, false, false,
+9.562288,9.448832,0.0,0.0,Wind,Wind,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,single,gpu, false, false,
+9.980091,10.100476,0.0,0.0,Wind,Wind,faceBased,HardCodedCDF,julia,single,gpu, false, false,
+9.750077,9.726449,0.0,0.0,Wind,Wind,faceBased,DivOnlyDynamicCDF,julia,single,gpu, false, false,
+10.025816,10.125411,0.0,0.0,Wind,Wind,faceBased,DynamicUpwind,julia,single,gpu, false, false,
+10.019525,10.139936,0.0,0.0,Wind,Wind,faceBased,DynamicCDF,julia,single,gpu, false, false,
+9.746615,9.737746,0.0,0.0,Wind,Wind,faceBased,DivOnlyHardCodedUpwind,julia,single,gpu, false, false,
+9.478638,9.438524,0.0,0.0,Wind,Wind,faceBased,DivOnlyHardCodedCDF,julia,single,gpu, false, false,
+9.525521,9.460677,0.0,0.0,Wind,Wind,faceBased,DivOnlyDynamicUpwind,julia,single,gpu, false, false,
+9.753788,9.709754,0.0,0.0,Wind,Wind,faceBased,LaplaceOnly,julia,single,gpu, false, false,
+9.734225,9.689289,0.0,0.0,Wind,Wind,faceBased,HardCodedUpwind,julia,single,gpu, false, false,
+0.12074531,0.1141915,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyDynamicCDF,julia,single,gpu, false, false,
+0.11900061,0.114746,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyHardCodedUpwind,julia,single,gpu, false, false,
+0.13272648,0.1279275,0.0,0.0,LDC-S,LDC-S,batchedFace,LaplaceOnly,julia,single,gpu, false, false,
+0.13394795,0.130066,0.0,0.0,LDC-S,LDC-S,batchedFace,DynamicCDF,julia,single,gpu, false, false,
+0.11834955,0.114524,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyHardCodedCDF,julia,single,gpu, false, false,
+0.13428745,0.130069,0.0,0.0,LDC-S,LDC-S,batchedFace,HardCodedUpwind,julia,single,gpu, false, false,
+0.11861289,0.114351,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyDynamicUpwind,julia,single,gpu, false, false,
+0.13504271,0.1303655,0.0,0.0,LDC-S,LDC-S,batchedFace,HardCodedCDF,julia,single,gpu, false, false,
+0.13474733,0.130341,0.0,0.0,LDC-S,LDC-S,batchedFace,DynamicUpwind,julia,single,gpu, false, false,
+0.11723927,0.11478,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyPrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+0.13534425,0.130847,0.0,0.0,LDC-S,LDC-S,batchedFace,PrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+0.13305299,0.130783,0.0,0.0,LDC-S,LDC-S,batchedFace,PrecalculatedWeightsCDF,julia,single,gpu, false, false,
+0.11788562,0.1151305,0.0,0.0,LDC-S,LDC-S,batchedFace,DivOnlyPrecalculatedWeightsCDF,julia,single,gpu, false, false,
+3.8183846,3.773364,0.0,0.0,Wind,Wind,batchedFace,DivOnlyDynamicCDF,julia,single,gpu, false, false,
+3.8719637,3.789082,0.0,0.0,Wind,Wind,batchedFace,DivOnlyHardCodedUpwind,julia,single,gpu, false, false,
+4.0270715,3.978329,0.0,0.0,Wind,Wind,batchedFace,LaplaceOnly,julia,single,gpu, false, false,
+4.0322638,3.985215,0.0,0.0,Wind,Wind,batchedFace,DynamicCDF,julia,single,gpu, false, false,
+3.8565984,3.784152,0.0,0.0,Wind,Wind,batchedFace,DivOnlyHardCodedCDF,julia,single,gpu, false, false,
+4.012751,3.982377,0.0,0.0,Wind,Wind,batchedFace,HardCodedUpwind,julia,single,gpu, false, false,
+3.9564795,3.793235,0.0,0.0,Wind,Wind,batchedFace,DivOnlyDynamicUpwind,julia,single,gpu, false, false,
+4.1244206,4.000426,0.0,0.0,Wind,Wind,batchedFace,HardCodedCDF,julia,single,gpu, false, false,
+4.0266185,3.979983,0.0,0.0,Wind,Wind,batchedFace,DynamicUpwind,julia,single,gpu, false, false,
+3.8200173,3.777613,0.0,0.0,Wind,Wind,batchedFace,DivOnlyPrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+4.0425363,3.992933,0.0,0.0,Wind,Wind,batchedFace,PrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+4.0530705,4.0064316,0.0,0.0,Wind,Wind,batchedFace,PrecalculatedWeightsCDF,julia,single,gpu, false, false,
+3.854754,3.78945,0.0,0.0,Wind,Wind,batchedFace,DivOnlyPrecalculatedWeightsCDF,julia,single,gpu, false, false,
+1.4952123,1.488582,0.0,0.0,LDC-M,LDC-M,batchedFace,DivOnlyDynamicCDF,julia,single,gpu, false, false,
+1.5368528,1.489129,0.0,0.0,LDC-M,LDC-M,batchedFace,DivOnlyHardCodedUpwind,julia,single,gpu, false, false,
+1.952498,1.9402175,0.0,0.0,LDC-M,LDC-M,batchedFace,LaplaceOnly,julia,single,gpu, false, false,
+1.9588994,1.9503576,0.0,0.0,LDC-M,LDC-M,batchedFace,DynamicCDF,julia,single,gpu, false, false,
+1.4965888,1.488973,0.0,0.0,LDC-M,LDC-M,batchedFace,DivOnlyHardCodedCDF,julia,single,gpu, false, false,
+1.9606563,1.950397,0.0,0.0,LDC-M,LDC-M,batchedFace,HardCodedUpwind,julia,single,gpu, false, false,
+1.4983504,1.48861,0.0,0.0,LDC-M,LDC-M,batchedFace,DivOnlyDynamicUpwind,julia,single,gpu, false, false,
+1.9643009,1.95069,0.0,0.0,LDC-M,LDC-M,batchedFace,HardCodedCDF,julia,single,gpu, false, false,
+1.9637228,1.950337,0.0,0.0,LDC-M,LDC-M,batchedFace,DynamicUpwind,julia,single,gpu, false, false,
+1.7580386,1.4811676,0.21689601,0.0,LDC-M,LDC-M,batchedFace,DivOnlyPrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+2.235661,1.917953,0.22893722,0.0,LDC-M,LDC-M,batchedFace,PrecalculatedWeightsUpwind,julia,single,gpu, false, false,
+2.2095525,1.918242,0.24558383,0.0,LDC-M,LDC-M,batchedFace,PrecalculatedWeightsCDF,julia,single,gpu, false, false,
+1.6703721,1.479105,0.17912027,0.0,LDC-M,LDC-M,batchedFace,DivOnlyPrecalculatedWeightsCDF,julia,single,gpu, false, false,

@@ -27,28 +27,16 @@ function gpu_precalcOffsets(input::MatrixAssemblyInput)::CuArray{Int32}
     return gpu_offsets
 end
 
-function gpu_prepareValues(input::MatrixAssemblyInput)::CuArray{Float32}
-    mesh = input.mesh
-    nCells = length(mesh.cells)
-    velocity_internal = input.U[2].values
-    entries = nCells + 2 * mesh.numInteriorFaces
-    vals_g = CuArray{Float32}(undef, entries * 3)
-    vals_g[1:nCells] = getindex.(velocity_internal, 1)
-    vals_g[entries+1:entries+nCells] = getindex.(velocity_internal, 2)
-    vals_g[entries+entries+1:entries+entries+nCells] = getindex.(velocity_internal, 3)
-    return vals_g
-end
-
-function gpu_prepareFaceBased(input::MatrixAssemblyInput)::Tuple
+function gpu_prepareFaceBased(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
-    nu_g = CuArray{Float32}(undef, length(nu))
+    nu_g = CuArray{P}(undef, length(nu))
     copyto!(nu_g, nu)
     nCells::Int32 = length(mesh.cells)
-    RHS = CUDA.zeros(Float32, nCells * 3)
+    RHS = CUDA.zeros(P, nCells * 3)
     entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
     offsets = gpu_precalcOffsets(input)
-    vals = gpu_prepareValues(input)
+    vals = CUDA.zeros(P, entriesNeeded)
     rows::CuArray{Int32} = CUDA.zeros(Int32, entriesNeeded)
     cols = CUDA.zeros(Int32, entriesNeeded)
     N::Int32 = length(mesh.faces)
@@ -57,11 +45,11 @@ function gpu_prepareFaceBased(input::MatrixAssemblyInput)::Tuple
     numBlocks::Int32 = cld(N, threads)
     prepareRelativeIndices!(input)
     bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
-    iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs, Sf = facesToGPUarrays(mesh.faces)
+    iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs, Sf = facesToGPUarrays(P, mesh.faces)
     return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, mesh.numInteriorFaces, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping
 end
 
-function gpu_getFaceValues(input::MatrixAssemblyInput)
+function gpu_getFaceValues(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
     useBfaces::Vector{Int32} = fill(-1, input.mesh.numBoundaryFaces)
     i = 1
     for iBoundary in eachindex(input.mesh.boundaries)
@@ -80,34 +68,31 @@ function gpu_getFaceValues(input::MatrixAssemblyInput)
     return CuArray(reduce(vcat, velocities)), CuArray(input.U[2].values), CuArray(useBfaces)
 end
 
-function gpu_estimate_data_facebased(input::MatrixAssemblyInput)
+function gpu_estimate_data_facebased(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
     mesh = input.mesh
-    velocity_internal::Vector{MVector{3,Float32}} = input.U[2].values
+    velocity_internal::Vector{MVector{3,P}} = input.U[2].values
     entries = length(mesh.cells) + 2 * mesh.numInteriorFaces
     nCells = length(mesh.cells)
-    vals_g = CuArray{Float32}(undef, entries * 3)
+    vals_g = CuArray{P}(undef, entries)
 
     offsets::Vector{Int32} = ones(Int32, nCells)
     gpu_offsets = CuArray{Int32}(undef, nCells)
     for iElement in 2:nCells
         offsets[iElement] += offsets[iElement-1] + mesh.cells[iElement-1].nInternalFaces
     end
-    vals_g[1:nCells] = getindex.(velocity_internal, 1)
-    vals_g[entries+1:entries+nCells] = getindex.(velocity_internal, 2)
-    vals_g[entries+entries+1:entries+entries+nCells] = getindex.(velocity_internal, 3)
     copyto!(gpu_offsets, offsets)
     offsets = []
     return gpu_offsets, vals_g
 end
 
-function facesToGPUarrays(faces)
+function facesToGPUarrays(P::Type{<:AbstractFloat}, faces::Vector{Face})
     numFaces = length(faces)
     iOwners = CuArray{Int32}(undef, numFaces)
     iNeighbors = CuArray{Int32}(undef, numFaces)
-    gDiffs = CuArray{Float32}(undef, numFaces)
+    gDiffs = CuArray{P}(undef, numFaces)
     relativesO = CuArray{Int32}(undef, numFaces)
     relativesN = CuArray{Int32}(undef, numFaces)
-    Sf = CuArray{SVector{3,Float32}}(undef, numFaces)
+    Sf = CuArray{SVector{3,P}}(undef, numFaces)
 
     relativesN[1:numFaces] = [f.relativeToNeighbor for f in faces]
     relativesO[1:numFaces] = [f.relativeToOwner for f in faces]

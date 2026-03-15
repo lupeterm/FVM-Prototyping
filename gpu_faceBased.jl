@@ -11,26 +11,26 @@ end
 function gpu_DivOnlyPrecalculatedWeightsFaceBasedAssemblyRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{Float32},
+    gDiffs::CuArray{P},
     offsets::CuArray{Int32},
-    nu_g::CuArray{Float32},
+    nu_g::CuArray{P},
     rows::CuArray{Int32},
     cols::CuArray{Int32},
-    vals::CuArray{Float32},
+    vals::CuArray{P},
     entriesNeeded::Int32,
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
     numBlocks::Int32,
-    bFaceValues::CuArray{SVector{3,Float32}},
-    RHS::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
     nCells::Int32,
     M::Int32,
-    U::CuArray{SVector{3,Float32}},
-    Sf::CuArray{SVector{3,Float32}},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
     bFaceMapping::CuArray{Int32},
-    weights::CuArray{Float32}
-)
+    weights::CuArray{P}
+) where {P<:AbstractFloat}
     CUDA.@sync @cuda threads = 256 blocks = numBlocks kernel_DivOnlyPrecalculatedWeightsFaceBasedAssembly(
         iOwners,
         iNeighbors,
@@ -87,11 +87,11 @@ function kernel_DivOnlyPrecalculatedWeightsFaceBasedAssembly(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = weights[iFace]                          # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = ϕf * weights_f
-        valueLower::Float32 = -ϕf * (1 - weights_f)
+        valueUpper::P = ϕf * weights_f
+        valueLower::P = -ϕf * (1 - weights_f)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -140,26 +140,26 @@ end
 function gpu_DivOnlyHardcodedDivFaceBasedAssemblyRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{Float32},
+    gDiffs::CuArray{P},
     offsets::CuArray{Int32},
-    nu_g::CuArray{Float32},
+    nu_g::CuArray{P},
     rows::CuArray{Int32},
     cols::CuArray{Int32},
-    vals::CuArray{Float32},
+    vals::CuArray{P},
     entriesNeeded::Int32,
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
     numBlocks::Int32,
-    bFaceValues::CuArray{SVector{3,Float32}},
-    RHS::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
     nCells::Int32,
     M::Int32,
-    U::CuArray{SVector{3,Float32}},
-    Sf::CuArray{SVector{3,Float32}},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
     bFaceMapping::CuArray{Int32},
     upwindOrCdf::String
-)
+) where {P<:AbstractFloat}
     if upwindOrCdf == "CDF"
         CUDA.@sync @cuda threads = 256 blocks = numBlocks kernel_DivOnlyHardcodedUpwindFaceBasedAssembly(
             iOwners,
@@ -237,11 +237,11 @@ function kernel_DivOnlyHardcodedUpwindFaceBasedAssembly(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = upwind(ϕf)                          # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = ϕf * weights_f
-        valueLower::Float32 = -ϕf * (1 - weights_f)
+        valueUpper::P = ϕf * weights_f
+        valueLower::P = -ϕf * (1 - weights_f)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -318,11 +318,11 @@ function kernel_DivOnlyHardcodedCDFFaceBasedAssembly(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = centralDifferencing(ϕf)                          # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = ϕf * weights_f
-        valueLower::Float32 = -ϕf * (1 - weights_f)
+        valueUpper::P = ϕf * weights_f
+        valueLower::P = -ϕf * (1 - weights_f)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -370,26 +370,26 @@ end
 function gpu_DivOnlyDynamicFaceBasedAssemblyRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{Float32},
+    gDiffs::CuArray{P},
     offsets::CuArray{Int32},
-    nu_g::CuArray{Float32},
+    nu_g::CuArray{P},
     rows::CuArray{Int32},
     cols::CuArray{Int32},
-    vals::CuArray{Float32},
+    vals::CuArray{P},
     entriesNeeded::Int32,
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
     numBlocks::Int32,
-    bFaceValues::CuArray{SVector{3,Float32}},
-    RHS::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
     nCells::Int32,
     M::Int32,
-    U::CuArray{SVector{3,Float32}},
-    Sf::CuArray{SVector{3,Float32}},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
     bFaceMapping::CuArray{Int32},
     divFunc::Function
-)
+) where {P<:AbstractFloat}
     CUDA.@sync @cuda threads = 256 blocks = numBlocks kernel_DivOnlyDynamicFaceBasedAssembly(
         iOwners,
         iNeighbors,
@@ -446,11 +446,11 @@ function kernel_DivOnlyDynamicFaceBasedAssembly(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = divFunc(ϕf)                          # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = ϕf * weights_f
-        valueLower::Float32 = -ϕf * (1 - weights_f)
+        valueUpper::P = ϕf * weights_f
+        valueLower::P = -ϕf * (1 - weights_f)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -497,26 +497,26 @@ end
 function gpu_PrecalculatedWeightsFaceBasedAssemblyRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{Float32},
+    gDiffs::CuArray{P},
     offsets::CuArray{Int32},
-    nu_g::CuArray{Float32},
+    nu_g::CuArray{P},
     rows::CuArray{Int32},
     cols::CuArray{Int32},
-    vals::CuArray{Float32},
+    vals::CuArray{P},
     entriesNeeded::Int32,
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
     numBlocks::Int32,
-    bFaceValues::CuArray{SVector{3,Float32}},
-    RHS::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
     nCells::Int32,
     M::Int32,
-    U::CuArray{SVector{3,Float32}},
-    Sf::CuArray{SVector{3,Float32}},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
     bFaceMapping::CuArray{Int32},
-    weights::CuArray{Float32}
-)
+    weights::CuArray{P}
+) where {P<:AbstractFloat}
     CUDA.@sync @cuda threads = 256 blocks = numBlocks kernel_PrecalculatedWeightsFaceBasedAssembly(
         iOwners,
         iNeighbors,
@@ -578,11 +578,11 @@ function kernel_PrecalculatedWeightsFaceBasedAssembly(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = weights[iFace]                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = ϕf * weights_f + diffusion
-        valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
+        valueUpper::P = ϕf * weights_f + diffusion
+        valueLower::P = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -636,26 +636,26 @@ end
 function gpu_HardcodedFaceBasedAssemblyRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{Float32},
+    gDiffs::CuArray{P},
     offsets::CuArray{Int32},
-    nu_g::CuArray{Float32},
+    nu_g::CuArray{P},
     rows::CuArray{Int32},
     cols::CuArray{Int32},
-    vals::CuArray{Float32},
+    vals::CuArray{P},
     entriesNeeded::Int32,
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
     numBlocks::Int32,
-    bFaceValues::CuArray{SVector{3,Float32}},
-    RHS::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
     nCells::Int32,
     M::Int32,
-    U::CuArray{SVector{3,Float32}},
-    Sf::CuArray{SVector{3,Float32}},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
     bFaceMapping::CuArray{Int32},
     upwindOrCdf::String
-)
+) where {P<:AbstractFloat}
     if upwindOrCdf == "CDF"
         CUDA.@sync @cuda threads = 256 blocks = numBlocks kernel_HardcodedUpwindFaceBasedAssembly(
             iOwners,
@@ -739,11 +739,11 @@ function kernel_HardcodedUpwindFaceBasedAssembly(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = upwind(ϕf)                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = ϕf * weights_f + diffusion
-        valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
+        valueUpper::P = ϕf * weights_f + diffusion
+        valueLower::P = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -829,11 +829,11 @@ function kernel_HardcodedCDFFaceBasedAssembly(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = centralDifferencing(ϕf)                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = ϕf * weights_f + diffusion
-        valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
+        valueUpper::P = ϕf * weights_f + diffusion
+        valueLower::P = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -887,26 +887,26 @@ end
 function gpu_DynamicFaceBasedAssemblyRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{Float32},
+    gDiffs::CuArray{P},
     offsets::CuArray{Int32},
-    nu_g::CuArray{Float32},
+    nu_g::CuArray{P},
     rows::CuArray{Int32},
     cols::CuArray{Int32},
-    vals::CuArray{Float32},
+    vals::CuArray{P},
     entriesNeeded::Int32,
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
     numBlocks::Int32,
-    bFaceValues::CuArray{SVector{3,Float32}},
-    RHS::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
     nCells::Int32,
     M::Int32,
-    U::CuArray{SVector{3,Float32}},
-    Sf::CuArray{SVector{3,Float32}},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
     bFaceMapping::CuArray{Int32},
     divFunc::Function
-)
+) where {P<:AbstractFloat}
     CUDA.@sync @cuda threads = 256 blocks = numBlocks kernel_DynamicFaceBasedAssembly(
         iOwners,
         iNeighbors,
@@ -966,11 +966,11 @@ function kernel_DynamicFaceBasedAssembly(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = divFunc(ϕf)                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = ϕf * weights_f + diffusion
-        valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
+        valueUpper::P = ϕf * weights_f + diffusion
+        valueLower::P = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -1026,25 +1026,25 @@ end
 function gpu_LaplaceOnlyFaceBasedAssemblyRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{Float32},
+    gDiffs::CuArray{P},
     offsets::CuArray{Int32},
-    nu_g::CuArray{Float32},
+    nu_g::CuArray{P},
     rows::CuArray{Int32},
     cols::CuArray{Int32},
-    vals::CuArray{Float32},
+    vals::CuArray{P},
     entriesNeeded::Int32,
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
     numBlocks::Int32,
-    bFaceValues::CuArray{SVector{3,Float32}},
-    RHS::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
     nCells::Int32,
     M::Int32,
-    U::CuArray{SVector{3,Float32}},
-    Sf::CuArray{SVector{3,Float32}},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
     bFaceMapping::CuArray{Int32}
-)
+) where {P<:AbstractFloat}
     CUDA.@sync @cuda threads = 256 blocks = cld(length(iOwners), 256) kernel_all(
         iOwners,
         iNeighbors,
@@ -1103,8 +1103,8 @@ function kernel_LaplaceOnlyFaceBasedAssembly(
         diffusion = nus[iOwner] * gDiffs[iFace]
 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = diffusion
-        valueLower::Float32 = -diffusion
+        valueUpper::P = diffusion
+        valueLower::P = -diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -1157,25 +1157,25 @@ end
 function faceBasedAllRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{Float32},
+    gDiffs::CuArray{P},
     offsets::CuArray{Int32},
-    nu_g::CuArray{Float32},
+    nu_g::CuArray{P},
     rows::CuArray{Int32},
     cols::CuArray{Int32},
-    vals::CuArray{Float32},
+    vals::CuArray{P},
     entriesNeeded::Int32,
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
     numBlocks::Int32,
-    bFaceValues::CuArray{SVector{3,Float32}},
-    RHS::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
     nCells::Int32,
     M::Int32,
-    U::CuArray{SVector{3,Float32}},
-    Sf::CuArray{SVector{3,Float32}},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
     bFaceMapping::CuArray{Int32}
-)
+) where {P<:AbstractFloat}
     CUDA.@sync @cuda threads = 256 blocks = cld(length(iOwners), 256) kernel_all(
         iOwners,
         iNeighbors,
@@ -1234,11 +1234,11 @@ function kernel_all(
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = 0.5                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::Float32 = ϕf * weights_f + diffusion
-        valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
+        valueUpper::P = ϕf * weights_f + diffusion
+        valueLower::P = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -1294,25 +1294,25 @@ end
 function SplitfaceBasedRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{Float32},
+    gDiffs::CuArray{P},
     offsets::CuArray{Int32},
-    nu_g::CuArray{Float32},
+    nu_g::CuArray{P},
     rows::CuArray{Int32},
     cols::CuArray{Int32},
-    vals::CuArray{Float32},
+    vals::CuArray{P},
     entriesNeeded::Int32,
     relativeToOwners::CuArray{Int32},
     N::Int32,
     relativeToNbs::CuArray{Int32},
     bblocks::Int32,
-    bFaceValues::CuArray{SVector{3,Float32}},
-    RHS::CuArray{Float32},
+    bFaceValues::CuArray{SVector{3,P}},
+    RHS::CuArray{P},
     nCells::Int32,
     M::Int32,
-    U::CuArray{SVector{3,Float32}},
-    Sf::CuArray{SVector{3,Float32}},
+    U::CuArray{SVector{3,P}},
+    Sf::CuArray{SVector{3,P}},
     bFaceMapping::CuArray{Int32}
-)
+) where {P<:AbstractFloat}
     iblocks = cld(N, 256)
     bblocks = cld(M, 256)
 
@@ -1348,11 +1348,11 @@ function kernel_internalFace(
 
     # Convection
     Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-    ϕf::Float32 = dot(Uf, Sf[iFace])                    # flux through the face
+    ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
     weights_f = upwind(ϕf)                              # get weight of transport variable interpolation 
     # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-    valueUpper::Float32 = ϕf * weights_f + diffusion
-    valueLower::Float32 = -ϕf * (1 - weights_f) - diffusion
+    valueUpper::P = ϕf * weights_f + diffusion
+    valueLower::P = -ϕf * (1 - weights_f) - diffusion
 
     idx = offsets[iOwner]
     cols[idx] = iOwner
@@ -1391,7 +1391,6 @@ function kernel_boundaryFace(
     offsets,
     nus,
     vals,
-    entriesNeeded,
     bFaceValues,
     RHS,
     numInternalFaces,
@@ -1417,8 +1416,6 @@ function kernel_boundaryFace(
     diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[globalFaceIndex]
     idx = offsets[iOwner]
     CUDA.@atomic vals[idx] -= diffusion[1]    # x
-    CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
-    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
 
     # RHS/Source
     value = convection .+ diffusion

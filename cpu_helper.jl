@@ -14,30 +14,8 @@ function getOffsets(input::MatrixAssemblyInput)
 end
 
 
-function setIndex!(ic::Int32, ir::Int32, val::Float32, rows::Vector{Int32}, cols::Vector{Int32}, vals::Vector{Float32}, idx::Int32, entries::Int32)
-    # coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxC
+@inline function setIndex!(ic::Int32, ir::Int32, val::P, rows::Vector{Int32}, cols::Vector{Int32}, vals::Vector{P}, idx::Int32) where {P<:AbstractFloat}
     cols[idx] = ic
     rows[idx] = ir
-    vals[idx] += val    # x
-    vals[idx+entries] += val  # y
-    vals[idx+entries+entries] += val  # z
-end
-
-function setIndex!(ic::Int32, ir::Int32, val::MVector{3,Float32}, rows::Vector{Int32}, cols::Vector{Int32}, vals::Vector{Float32}, idx::Int32, entries::Int32)
-    # coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxC
-    cols[idx] = ic
-    rows[idx] = ir
-    vals[idx] += val[1]    # x
-    vals[idx+entries] += val[2]  # y
-    vals[idx+entries+entries] += val[3]  # z
-end
-
-
-function setIndex!(ic::Int32, ir::Int32, val::SVector{3,Float32}, rows::Vector{Int32}, cols::Vector{Int32}, vals::Vector{Float32}, idx::Int32, entries::Int32)
-    # coeffMatrix[theFace.iOwner, theFace.iOwner] += fluxC
-    cols[idx] = ic
-    rows[idx] = ir
-    vals[idx] += val[1]    # x
-    vals[idx+entries] += val[2]  # y
-    vals[idx+entries+entries] += val[3]  # z
+    vals[idx] += val   
 end

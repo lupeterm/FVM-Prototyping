@@ -1,5 +1,6 @@
 include("init.jl")
 include("faceBased.jl")
+include("fusedFace.jl")
 include("globalFaceBased.jl")
 include("cellBased.jl")
 include("gpu_faceBased.jl")
@@ -7,16 +8,32 @@ include("gpu_batchedFace.jl")
 include("gpu_cellBased.jl")
 using BenchmarkTools
 const CASES = [
-    ("cases/LDC-S/", "LDC-S", "Lid-Driven-Cavity S")
-    # ("cases/Wind", "Wind", "WindsorBody"),
-    # ("cases/LDC-M", "LDC-M", "Lid-Driven-Cavity M")
+    # ("cases/LDC-S/", "LDC-S", "Lid-Driven-Cavity S")
+# ("cases/Wind", "Wind", "WindsorBody"),
+    ("cases/LDC-M", "LDC-M", "Lid-Driven-Cavity M")
 ]
 
+# function (t::FvmOperator)(U_c::Vector{T}, U_n::Vector{T}, Sf::Vector{T}) where {T<:AbstractFloat}
+#     Uf = 0.5(U_c + U_n)                  # interpolate velocity to face 
+#     ϕf::P = dot(Uf, Sf)                    # flux through the face
+#     weights_f = t.scheme(ϕf)                              # get weight of transport variable interpolation 
+#     valueUpper::P = ϕf * weights_f
+#     valueLower::P = -ϕf * (1 - weights_f)
+#     t.valueLower = valueLower
+#     t.valueUpper = valueUpper
+# end
+
+# function (t::FvmOperator)(ν::P, gdiff::P)
+#     diffusion = ν * gdiff
+#     t.valueLower = diffusion
+#     t.valueUpper = -diffusion
+# end
+
 struct Result
-    time_mean_ms::Float32
-    time_median_ms::Float32
-    gc_time_mean_ms::Float32
-    gc_time_median_ms::Float32
+    time_mean_ms::P
+    time_median_ms::P
+    gc_time_mean_ms::P
+    gc_time_median_ms::P
     case_short::String
     case_long::String
     strategy::String
@@ -24,7 +41,7 @@ struct Result
     language::String
 end
 
-ResultToCsvRow(r::Result,cpu::Bool) = "$(r.time_mean_ms),$(r.time_median_ms),$(r.gc_time_mean_ms),$(r.gc_time_median_ms),$(r.case_short),$(r.case_long),$(r.strategy),$(r.variant),$(r.language),$cpu,$(!cpu)\n"
+ResultToCsvRow(r::Result, cpu::Bool) = "$(r.time_mean_ms),$(r.time_median_ms),$(r.gc_time_mean_ms),$(r.gc_time_median_ms),$(r.case_short),$(r.case_long),$(r.strategy),$(r.variant),$(r.language),$cpu,$(!cpu)\n"
 
 function bench()
     open("results.csv", "a") do io
@@ -56,8 +73,8 @@ function bench()
     end
 end
 struct GpuResult
-    time_mean::Float32
-    time_median::Float32
+    time_mean::P
+    time_median::P
     case_short::String
     case_long::String
     algorithm::String
@@ -154,23 +171,63 @@ function bench_all()
         suite["cpu"][case_short]["globalFaceBased"]["DynamicCDF"] = @benchmarkable DynamicCDFGlobalFaceBasedAssembly($input, centralDifferencing)
         suite["cpu"][case_short]["globalFaceBased"]["DynamicUpwind"] = @benchmarkable DynamicUpwindGlobalFaceBasedAssembly($input, upwind)
 
-        results = run(suite, verbose = true)
+        results = run(suite, verbose=true)
         processResults(results)
     end
     # return suite
 end
 
 
-function bench_gpu(i = nothing)
+
+function bench_fused(i=nothing)
+    suite = BenchmarkGroup()
+    suite["fused-cpu"] = BenchmarkGroup(["fused-cpu"])
+    for (case_path, case_short, case_long) in CASES
+        println("loading $case_short")
+        input = if !isnothing(i)
+            i
+        else
+            ProcessCase(case_path)
+        end
+
+        upwindDivLap::Vector{FVMOP} = [DIV(UpwindScheme(), 1.0), LAPLACE(1.0)]
+        cDFDivLap::Vector{FVMOP} = [DIV(CentralDiffScheme(), 1.0), LAPLACE(1.0)]
+        divOnlyUpwind::Vector{FVMOP} = [DIV(UpwindScheme(), 1.0)]
+        divOnlyCDF::Vector{FVMOP} = [DIV(CentralDiffScheme(), 1.0)]
+        laplaceOnly::Vector{FVMOP} = [LAPLACE(1.0)]
+
+
+
+        suite["fused-cpu"][case_short] = BenchmarkGroup(["fused-cpu", case_short])
+        suite["fused-cpu"][case_short]["faceBased"] = BenchmarkGroup(["fused-cpu", "faceBased", case_long])
+        suite["fused-cpu"][case_short]["faceBased"]["UpwindDivLap"] = @benchmarkable FusedFaceBasedAssembly($input, $upwindDivLap)
+        suite["fused-cpu"][case_short]["faceBased"]["CDFDivLap"] = @benchmarkable FusedFaceBasedAssembly($input, $cDFDivLap)
+        suite["fused-cpu"][case_short]["faceBased"]["DivOnlyUpwind"] = @benchmarkable FusedFaceBasedAssembly($input, $divOnlyUpwind)
+        suite["fused-cpu"][case_short]["faceBased"]["DivOnlyCDF"] = @benchmarkable FusedFaceBasedAssembly($input, $divOnlyCDF)
+        suite["fused-cpu"][case_short]["faceBased"]["LaplaceOnly"] = @benchmarkable FusedFaceBasedAssembly($input, $laplaceOnly)
+
+        results = run(suite, verbose=true)
+        processResults(results, "results_fused.csv")
+        return
+    end
+    # return suite
+end
+
+
+function bench_gpu(i=nothing)
     suite = BenchmarkGroup()
     for (case_path, case_short, case_long) in CASES
         suite["gpu"] = BenchmarkGroup(["gpu"])
         println("loading $case_short")
-        input = if !isnothing(i) i else ProcessCase(case_path) end
+        input = if !isnothing(i)
+            i
+        else
+            ProcessCase(case_path)
+        end
         # input = ProcessCase(case_path)
 
         suite["gpu"][case_short] = BenchmarkGroup(["gpu", case_short])
-       
+
         # prep = gpu_prepareFaceBased(input)
         prep = gpu_prepareBatchedFaceBased(input)
         wUp = CuArray(input.weightsUpwind)
@@ -205,7 +262,7 @@ function bench_gpu(i = nothing)
         # suite["gpu"][case_short]["faceBased"]["HardCodedCDF"] = @benchmarkable gpu_HardcodedFaceBasedAssemblyRunner($prep2..., $"CDF")
         # suite["gpu"][case_short]["faceBased"]["DynamicCDF"] = @benchmarkable gpu_DynamicFaceBasedAssemblyRunner($prep2..., $centralDifferencing)
         # suite["gpu"][case_short]["faceBased"]["DynamicUpwind"] = @benchmarkable gpu_DynamicFaceBasedAssemblyRunner($prep2..., $upwind)
-        
+
         # suite["gpu"][case_short]["cellBased"] = BenchmarkGroup(["gpu", "cellBased", case_long])
         # suite["gpu"][case_short]["cellBased"]["LaplaceOnly"] = @benchmarkable LaplaceOnlyCellBasedAssembly($input)
         # suite["gpu"][case_short]["cellBased"]["DivOnlyPrecalculatedWeightsUpwind"] = @benchmarkable DivOnlyPrecalculatedWeightsUpwindCellBasedAssembly($input)
@@ -221,8 +278,8 @@ function bench_gpu(i = nothing)
         # suite["gpu"][case_short]["cellBased"]["DynamicCDF"] = @benchmarkable DynamicCDFCellBasedAssembly($input)
         # suite["gpu"][case_short]["cellBased"]["DynamicUpwind"] = @benchmarkable DynamicUpwindCellBasedAssembly($input)
     end
-    results = run(suite, verbose = true)
-    processResults(results)
+    results = run(suite, verbose=true)
+    processResults(results, "results_gpu.csv")
     return suite
 end
 
@@ -238,10 +295,10 @@ function count_benchmarks(group)
     return total
 end
 
-function processResults(results::BenchmarkGroup)
-    # open("results.csv", "a") do io
-    #     write(io, join("time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language\n"))
-    # end
+function processResults(results::BenchmarkGroup, file::String)
+    open("results/$(file)", "a") do io
+        write(io, join("time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language\n"))
+    end
     for (cpu_gpu, perDataset) in results
         println("[CPU, GPU]: $cpu_gpu ")
         for (case, perStrategy) in perDataset
@@ -263,7 +320,7 @@ function processResults(results::BenchmarkGroup)
                     println("\t\t\t[VARIATION]: $variation ")
                     println("\t\t\t --> time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language")
                     println("\t\t\t --> $(ResultToCsvRow(r, false))\n")
-                    open("results/results_new.csv", "a") do io
+                    open("results/$(file)", "a") do io
                         write(io, ResultToCsvRow(r, false))
                     end
                 end
@@ -271,3 +328,5 @@ function processResults(results::BenchmarkGroup)
         end
     end
 end
+
+
