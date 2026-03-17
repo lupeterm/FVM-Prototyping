@@ -1,7 +1,7 @@
 include("init.jl")
 include("cpu_helper.jl")
+include("operators.jl")
 
-Base.:+(a::Tuple{P, P}, b::Tuple{P, P}) where {P<:AbstractFloat} = (a[1]+b[1], a[2]+b[2])
 
 function prep(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh
@@ -14,29 +14,21 @@ function prep(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     cols = zeros(Int32, entriesNeeded)
     return rows, vals, cols, RHS, offsets
 end
-function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P},rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, ops::Vector{FVMOP{P}}) where {P<:AbstractFloat}
+function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, ops::DiffEq) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
-    velocity_boundary::Vector{BoundaryField{P}} = input.U_boundary
+    U_b::Vector{BoundaryField{P}} = input.U_boundary
     U = input.U_internal
     nCells = length(mesh.cells)
-    # entriesNeeded::Int32 = nCells + 2 * mesh.numInteriorFaces
-    # RHS = zeros(P, nCells * 3)
-    # offsets::Vector{Int32} = input.offsets
-    # vals = zeros(P, entriesNeeded)
-    # rows = zeros(Int32, entriesNeeded)
-    # cols = zeros(Int32, entriesNeeded)
-    values = MVector{2, P}(zero(P), zero(P))
     @inbounds for iFace in 1:mesh.numInteriorFaces
         theFace = mesh.faces[iFace]
         iOwner = theFace.iOwner
         iNeighbor = theFace.iNeighbor
-        values .= 0
-        for op in ops
-            op(U[iOwner], U[iNeighbor], theFace.Sf, nu[iOwner], theFace.gDiff, values)
-        end
-        valueUpper = values[1]
-        valueLower = values[2]
+        valueUpper = zero(P)
+        valueLower = zero(P)
+
+        valueUpper, valueLower = ops(U[iOwner], U[iNeighbor], Sf[iFace], nus[iFace], gDiffs[iFace], valueUpper, valueLower)
+
         # println("type: $(typeof(valueUpper))")
         # rowOwnStart + diagOffs[own]  -> (owner, owner)
         # println("type: $(typeof(valueUpper))")
@@ -52,7 +44,7 @@ function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P},rows::Vector{Int32
         setIndex!(iOwner, iNeighbor, valueLower, rows, cols, vals, offsets[iOwner] + theFace.relativeToOwner)
     end
     @inbounds for iBoundary in eachindex(mesh.boundaries)
-        if velocity_boundary[iBoundary].type != "fixedValue"
+        if U_b[iBoundary].type != "fixedValue"
             continue
         end
         @inbounds theBoundary = mesh.boundaries[iBoundary]
@@ -91,7 +83,7 @@ end
 
 function ff(ops)
     args = (Vec3(1.0, 1.0, 1.0), Vec3(34.41, 12.3, 123.3), MVec3(1.0, 1.0, 1.0), 0.1, 4.3)
-    [f(ops,args...)  for _ in 1:1000000]
+    [f(ops, args...) for _ in 1:1000000]
 end
 
 

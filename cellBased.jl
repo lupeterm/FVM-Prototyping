@@ -49,8 +49,8 @@ function CellBasedAssembly(input::MatrixAssemblyInput)
             relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
             U_b = velocity_boundary[iBoundary].values[relativeFaceIndex]
             diffusion = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
-            ϕf = theFace.Sf ⋅ U_b
             diag -= diffusion
+            ϕf = theFace.Sf ⋅ U_b
             @inbounds convection = U_b .* ϕf
             value = convection .+ diffusion
             RHS[iElement] -= value[1]

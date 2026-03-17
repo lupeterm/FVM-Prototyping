@@ -1,5 +1,6 @@
 using StaticArrays
 using KernelAbstractions
+using Adapt
 struct CaseDirError <: Exception
     message::String
 end # struct CaseDirError
@@ -27,6 +28,32 @@ mutable struct Face{P}
     batchId::Int32
 end # struct Face
 
+struct GpuFace{P}
+    index::Int32
+    iOwner::Int32
+    iNeighbor::Int32
+    Sf::SVector{3,P}
+    area::P
+    gDiff::P
+    patchIndex::Int32
+    relativeToOwner::Int32
+    relativeToNeighbor::Int32
+    batchId::Int32
+end
+
+(f::Face)() = GpuFace(
+    f.index,
+    f.iOwner,
+    f.iNeighbor,
+    f.Sf,
+    f.area,
+    f.gDiff,
+    f.patchIndex,
+    f.relativeToOwner,
+    f.relativeToNeighbor,
+    f.batchId
+)
+
 struct Boundary
     name::String
     type::String
@@ -34,6 +61,14 @@ struct Boundary
     startFace::Int32
     index::Int32
 end # struct Boundary
+
+struct GpuBoundary
+    isFixedValue::Bool
+    nFaces::Int32
+    startFace::Int32
+    index::Int32
+end
+(b::Boundary)() = GpuBoundary(b.type=="fixedValue", b.nFaces, b.startFace, b.index)
 
 mutable struct Cell{P<:AbstractFloat}
     index::Int32
@@ -48,6 +83,26 @@ mutable struct Cell{P<:AbstractFloat}
     # oldVolume::P
 end # struct Cell
 
+struct GpuCell{P}
+    index::Int32
+    nInternalFaces::Int32
+    volume::P
+    iFaces::SVector{6,Int32}
+    faceSigns::SVector{6,Int32}
+    centroid::SVector{3,P}
+    iNeighbors::SVector{6,Int32}
+end
+function (c::Cell{P})() where {P<:AbstractFloat}
+    return GpuCell{P}(
+        c.index,
+        c.nInternalFaces,
+        c.volume,
+        SVector{6,Int32}([c.iFaces; fill(-1, 6 - length(c.iFaces))]),
+        SVector{6,Int32}([c.faceSigns; fill(-1, 6 - length(c.faceSigns))]),
+        c.centroid,
+        SVector{6,Int32}([c.iNeighbors; fill(-1, 6 - length(c.iNeighbors))])
+    )
+end
 mutable struct Mesh{P<:AbstractFloat}
     nodes::Vector{SVector{3,P}}
     faces::Vector{Face{P}}
@@ -58,6 +113,7 @@ mutable struct Mesh{P<:AbstractFloat}
     numBoundaryCells::Int32
     numBoundaryFaces::Int32
 end # struct Mesh
+
 
 mutable struct Field{P<:AbstractFloat}
     values::Vector{SVector{3,P}}
@@ -80,6 +136,5 @@ struct MatrixAssemblyInput{P<:AbstractFloat}
     offsets::Vector{Int32}
     negOffsets::Vector{Int32}
 end
-
 
 
