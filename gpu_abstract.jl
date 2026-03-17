@@ -57,6 +57,55 @@ function run_faceBased_abstract(
 end
 
 
+function run_faceBased_abstract_mtl(
+    iOwners,
+    iNeighbors,
+    gDiffs,
+    offsets,
+    nu_g,
+    rows,
+    cols,
+    vals,
+    RHS,
+    entriesNeeded,
+    relativeToOwners,
+    N,
+    relativeToNbs,
+    U,
+    Sf,
+    bFaceMapping,
+    bFaceValues,
+    numBoundaryFaces,
+    nCells,
+    ops,
+) 
+    backend = get_backend(iOwners)
+    kernel_FusedFaceBasedAssembly(backend, 32)(
+        iOwners,
+        iNeighbors,
+        gDiffs,
+        offsets,
+        nu_g,
+        rows,
+        cols,
+        vals,
+        RHS,
+        entriesNeeded,
+        relativeToOwners,
+        N,
+        relativeToNbs,
+        U,
+        Sf,
+        bFaceMapping,
+        bFaceValues,
+        numBoundaryFaces,
+        nCells,
+        ops;
+        ndrange=N
+    )
+    KernelAbstractions.synchronize(backend)
+    # return rows, cols, vals, RHS
+end
 @kernel function kernel_FusedFaceBasedAssembly(
     @Const(iOwners),
     @Const(iNeighbors),
@@ -79,49 +128,49 @@ end
     @Const(nCells),
     ops, # TODO: differentiate between internal and boundary
 )
-    iFace = @index(Global)
-    iOwner = iOwners[iFace]
-    iNeighbor = iNeighbors[iFace]
-    if iFace <= numInteriorFaces
+    # iFace = @index(Global)
+    # iOwner = iOwners[iFace]
+    # iNeighbor = iNeighbors[iFace]
+    # if iFace <= numInteriorFaces
 
-        upper = 0.0
-        lower = 0.0
+    #     upper = 0.0
+    #     lower = 0.0
 
-        upper, lower = ops(U[iOwner], U[iNeighbor], Sf[iFace], nus[iFace], gDiffs[iFace], upper, lower)
+        # upper, lower = ops(U[iOwner], U[iNeighbor], Sf[iFace], nus[iFace], gDiffs[iFace], upper, lower)
 
-        idx = offsets[iOwner]
-        cols[idx] = iOwner
-        rows[idx] = iOwner
-        Atomix.@atomic vals[idx] += upper
+        # idx = offsets[iOwner]
+        # cols[idx] = iOwner
+        # rows[idx] = iOwner
+        # Atomix.@atomic vals[idx] += upper
 
-        idx = offsets[iOwner] + relativeToOwner[iFace]
-        cols[idx] = iOwner
-        rows[idx] = iNeighbor
-        vals[idx] += lower
+        # idx = offsets[iOwner] + relativeToOwner[iFace]
+        # cols[idx] = iOwner
+        # rows[idx] = iNeighbor
+        # vals[idx] += lower
 
-        idx = offsets[iNeighbor]
-        cols[idx] = iNeighbor
-        rows[idx] = iNeighbor
-        Atomix.@atomic vals[idx] += lower
+        # idx = offsets[iNeighbor]
+        # cols[idx] = iNeighbor
+        # rows[idx] = iNeighbor
+        # Atomix.@atomic vals[idx] += lower
 
-        idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
-        cols[idx] = iNeighbor
-        rows[idx] = iOwner
-        vals[idx] += upper
-    else
-        relativeFaceIndex = iFace - numInteriorFaces
-        bFaceIndex = bFaceMapping[relativeFaceIndex]
-        if bFaceIndex != -1
-            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-            diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
-            Atomix.@atomic vals[idx] -= diffusion[1]
+        # idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
+        # cols[idx] = iNeighbor
+        # rows[idx] = iOwner
+        # vals[idx] += upper
+    # else
+    #     relativeFaceIndex = iFace - numInteriorFaces
+    #     bFaceIndex = bFaceMapping[relativeFaceIndex]
+    #     if bFaceIndex != -1
+    #         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
+    #         diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+    #         Atomix.@atomic vals[idx] -= diffusion[1]
 
-            # RHS/Source
-            Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
-            Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
-            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
-        end
-    end
+    #         # RHS/Source
+    #         Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
+    #         Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
+    #         Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
+    #     end
+    # end
 end
 
 

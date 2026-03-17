@@ -588,7 +588,7 @@ function readField(P::Type{<:AbstractFloat}, filePath::String, mesh::Mesh)::Tupl
                     values = [SVector{3,P}(vector) for _ in 1:nFaces]
                 end
             end
-            bfield = BoundaryField(String(fileName), nFaces, values, String(type))
+            bfield = BoundaryField(String(fileName), Int32(nFaces), values, String(type))
             push!(boundaryFields, bfield)
         end
     end

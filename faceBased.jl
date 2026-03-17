@@ -40,15 +40,14 @@ function _FaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractflo
             # convection
             U_b = velocity_boundary[iBoundary].values[relativeFaceIndex]
             ϕf = theFace.Sf ⋅ U_b
-            @inbounds convection = velocity_boundary[iBoundary].values[relativeFaceIndex] .* ϕf
+            convection = velocity_boundary[iBoundary].values[relativeFaceIndex] .* ϕf
             # diffusion 
             diffusion = nu[theFace.iOwner] * theFace.gDiff
             setIndex!(theFace.iOwner, theFace.iOwner, -diffusion, rows, cols, vals, offsets[theFace.iOwner])
             # RHS/Source
-            value = convection .+ diffusion
-            @inbounds RHS[theFace.iOwner] -= value[1]
-            @inbounds RHS[theFace.iOwner+nCells] -= value[2]
-            @inbounds RHS[theFace.iOwner+nCells+nCells] -= value[3]
+            @inbounds RHS[theFace.iOwner] -= convection[1] - diffusion
+            @inbounds RHS[theFace.iOwner+nCells] -= convection[2] -diffusion
+            @inbounds RHS[theFace.iOwner+nCells+nCells] -= convection[3] - diffusion
         end
     end
     return rows, cols, vals, RHS
