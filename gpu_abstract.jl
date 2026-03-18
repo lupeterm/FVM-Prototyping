@@ -164,7 +164,7 @@ end
         if bFaceIndex != -1
             convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
             diffusion = nus[iOwner] * gDiffs[iFace]
-            Atomix.@atomic vals[idx] -= diffusion[1]
+            Atomix.@atomic vals[idx] -= diffusion[1] # FIXME local scope in julia is a myth 
 
             # RHS/Source
             Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
