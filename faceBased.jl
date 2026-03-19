@@ -685,7 +685,7 @@ function HardcodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {
             ϕf = theFace.Sf ⋅ U_b
             @inbounds convection = velocity_boundary[iBoundary].values[relativeFaceIndex] .* ϕf
             # diffusion 
-            diffusion =  nu[theFace.iOwner] * theFace.gDiff
+            diffusion = nu[theFace.iOwner] * theFace.gDiff
             setIndex!(theFace.iOwner, theFace.iOwner, -diffusion, rows, cols, vals, offsets[theFace.iOwner])
             # RHS/Source
             value = convection .+ diffusion

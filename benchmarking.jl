@@ -13,21 +13,6 @@ const CASES = [
     ("cases/LDC-M", "LDC-M", "Lid-Driven-Cavity M")
 ]
 
-# function (t::FvmOperator)(U_c::Vector{T}, U_n::Vector{T}, Sf::Vector{T}) where {T<:AbstractFloat}
-#     Uf = 0.5(U_c + U_n)                  # interpolate velocity to face 
-#     ϕf::P = dot(Uf, Sf)                    # flux through the face
-#     weights_f = t.scheme(ϕf)                              # get weight of transport variable interpolation 
-#     valueUpper::P = ϕf * weights_f
-#     valueLower::P = -ϕf * (1 - weights_f)
-#     t.valueLower = valueLower
-#     t.valueUpper = valueUpper
-# end
-
-# function (t::FvmOperator)(ν::P, gdiff::P)
-#     diffusion = ν * gdiff
-#     t.valueLower = diffusion
-#     t.valueUpper = -diffusion
-# end
 
 struct Result
     time_mean_ms::P
