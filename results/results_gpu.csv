@@ -1,0 +1,14 @@
+time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language,precision,executor,use_kernelAbstractions,use_fusing
+1.7286872073381792,1.710058,0.0,0.0,LDC-S,LDC-S,cellBased,DivOnlyDynamicCDF,julia,float64,gpu,false,false
+1.6398488424680013,1.629683,0.0,0.0,LDC-S,LDC-S,cellBased,PrecalculatedWeightsUpwind,julia,float64,gpu,false,false
+1.634661073274452,1.624604,0.0,0.0,LDC-S,LDC-S,cellBased,DivOnlyHardCodedUpwind,julia,float64,gpu,false,false
+1.573600421998109,1.558742,0.0,0.0,LDC-S,LDC-S,cellBased,LaplaceOnly,julia,float64,gpu,false,false
+1.6563943182874212,1.654265,0.0,0.0,LDC-S,LDC-S,cellBased,DynamicCDF,julia,float64,gpu,false,false
+1.6576026851544339,1.656757,0.0,0.0,LDC-S,LDC-S,cellBased,DivOnlyHardCodedCDF,julia,float64,gpu,false,false
+1.6500734656311962,1.6353135,0.0,0.0,LDC-S,LDC-S,cellBased,DivOnlyPrecalculatedWeightsCDF,julia,float64,gpu,false,false
+1.7187067014103887,1.705841,0.0,0.0,LDC-S,LDC-S,cellBased,HardCodedUpwind,julia,float64,gpu,false,false
+1.6331154681268387,1.623925,0.0,0.0,LDC-S,LDC-S,cellBased,DivOnlyPrecalculatedWeightsUpwind,julia,float64,gpu,false,false
+1.72171822226051,1.707312,0.0,0.0,LDC-S,LDC-S,cellBased,DivOnlyDynamicUpwind,julia,float64,gpu,false,false
+1.6443270072392235,1.633651,0.0,0.0,LDC-S,LDC-S,cellBased,PrecalculatedWeightsCDF,julia,float64,gpu,false,false
+1.7144925742710122,1.705499,0.0,0.0,LDC-S,LDC-S,cellBased,HardCodedCDF,julia,float64,gpu,false,false
+1.6349848321335079,1.6269875,0.0,0.0,LDC-S,LDC-S,cellBased,DynamicUpwind,julia,float64,gpu,false,false

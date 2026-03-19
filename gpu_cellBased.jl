@@ -20,7 +20,7 @@ function prepCellbased(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     return cells, faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS
 end
 
-function LaplaceOnlyCellBasedRunner(args...)
+function gpu_LaplaceOnlyCellBasedRunner(args...)
     backend = CUDABackend()
     kernel_LaplaceOnlyCellBased(backend, 256)(args...; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
@@ -82,7 +82,7 @@ end
     Atomix.@atomic vals[idx] += diag
 end
 
-function PrecalculatedWeightsCellBasedRunner(args, weights)
+function gpu_PrecalculatedWeightsCellBasedRunner(args, weights)
     backend = CUDABackend()
     kernel_PrecalculatedWeightsCellBased(backend, 256)(args..., weights; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
@@ -153,7 +153,7 @@ end
     Atomix.@atomic vals[idx] += diag
 end
 
-function DynamicCellBasedRunner(args, f)
+function gpu_DynamicCellBasedRunner(args, f)
     backend = CUDABackend()
     kernel_DynamicCellBased(backend, 256)(args..., f; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
@@ -224,7 +224,7 @@ end
     Atomix.@atomic vals[idx] += diag
 end
 
-function DivOnlyPrecalculatedWeightsCellBasedRunner(args, weights)
+function gpu_DivOnlyPrecalculatedWeightsCellBasedRunner(args, weights)
     backend = CUDABackend()
     kernel_DivOnlyPrecalculatedWeightsCellBased(backend, 256)(args..., weights; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
@@ -291,7 +291,7 @@ end
     Atomix.@atomic vals[idx] += diag
 end
 
-function DivOnlyHardCodedUpwindCellBasedRunner(args...)
+function gpu_DivOnlyHardcodedUpwindCellBasedRunner(args...)
     backend = CUDABackend()
     kernel_DivOnlyHardCodedUpwindCellBased(backend, 256)(args...; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
@@ -361,7 +361,7 @@ end
     Atomix.@atomic vals[idx] += diag
 end
 
-function DivOnlyHardCodedCDFCellBasedRunner(args...)
+function gpu_DivOnlyHardcodedCDFCellBasedRunner(args...)
     backend = CUDABackend()
     kernel_DivOnlyHardCodedCDFCellBased(backend, 256)(args...; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
@@ -431,7 +431,7 @@ end
     Atomix.@atomic vals[idx] += diag
 end
 
-function DivOnlyDynamicCellBasedRunner(args, f)
+function gpu_DivOnlyDynamicCellBasedRunner(args, f)
     backend = CUDABackend()
     kernel_DivOnlyDynamicCellBased(backend, 256)(args..., f; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
@@ -498,7 +498,7 @@ end
     Atomix.@atomic vals[idx] += diag
 end
 
-function HardCodedUpwindCellBasedRunner(args...)
+function gpu_HardcodedUpwindCellBasedRunner(args...)
     backend = CUDABackend()
     kernel_HardCodedUpwindCellBased(backend, 256)(args...; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
@@ -564,7 +564,7 @@ end
     Atomix.@atomic vals[idx] += diag
 end
 
-function HardCodedCDFCellBasedRunner(args...)
+function gpu_HardcodedCDFCellBasedRunner(args...)
     backend = CUDABackend()
     kernel_HardCodedCDFCellBased(backend, 256)(args...; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
