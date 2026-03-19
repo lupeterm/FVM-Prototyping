@@ -1,11 +1,12 @@
 include("init.jl")
 include("faceBased.jl")
-include("fusedFace.jl")
 include("globalFaceBased.jl")
 include("cellBased.jl")
+include("gpu_abstract.jl")
 include("gpu_faceBased.jl")
 include("gpu_batchedFace.jl")
 include("gpu_cellBased.jl")
+include("operators.jl")
 using BenchmarkTools
 const CASES = [
     # ("cases/LDC-S/", "LDC-S", "Lid-Driven-Cavity S")
@@ -209,7 +210,6 @@ function bench_gpu(i=nothing)
         else
             ProcessCase(case_path)
         end
-        # input = ProcessCase(case_path)
 
         suite["gpu"][case_short] = BenchmarkGroup(["gpu", case_short])
 
@@ -315,3 +315,26 @@ function processResults(results::BenchmarkGroup, file::String)
 end
 
 
+
+## TODO vergleich KernelAbstractions vs JuliaGPU
+function compare_KA_CUDA(i=nothing)
+    suite = BenchmarkGroup()
+    for (case_path, case_short, case_long) in CASES
+        println("loading $case_short")
+        suite[case_short] = BenchmarkGroup([case_short])
+
+        input = if !isnothing(i)
+            i
+        else
+            ProcessCase(case_path)
+        end
+        pde = Div{Float64, UpwindScheme{Float64}}(UpwindScheme{Float64}(), 1.0) + Laplace(1.0)
+        kaPrep = getBatchedFaceBasedGpuInput(input);
+        suite[case_short]["KernelAbstractions"] = BenchmarkGroup(["KernelAbstractions", case_short])
+        suite[case_short]["KernelAbstractions"]["FusedBatchedFace"] = @benchmarkable run_batchedFace_abstract($kaPrep..., $pde)
+
+        suite[case_short]["JuliaGPU"] = BenchmarkGroup(["JuliaGPU", case_short])
+        suite[case_short]["JuliaGPU"]["FusedBatchedFace"] = @benchmarkable run_batchedFace_abstract($kaPrep..., $pde)
+
+    end
+end

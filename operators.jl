@@ -1,3 +1,4 @@
+include("schemes.jl")
 #### Transient Term 
 # ddt(ϕ)
 
@@ -42,7 +43,7 @@ function (d::Div{P,S})(
     valueLower::P
 ) where {P<:AbstractFloat,S}
     Uf = 0.5(U_c + U_n)
-    ϕf = dot(Uf, Sf)
+    ϕf::P = dot(Uf, Sf)
     weights_f = d.scheme(ϕf)
     valueUpper += ϕf * weights_f
     valueLower += -ϕf * (1 - weights_f)
@@ -117,11 +118,11 @@ struct DiffEq{A,B}
 end
 
 # facebased inner first call 
-@inline function (o::DiffEq)(U_c, U_n, Sf, nu, gdiff)
-    valueUpper, valueLower = o.a(U_c, U_n, Sf, nu, gdiff, 0.0, 0.0)
-    valueUpper, valueLower = o.b(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
-    return valueUpper, valueLower
-end
+# @inline function (o::DiffEq)(U_c, U_n, Sf, nu, gdiff)
+#     valueUpper, valueLower = o.a(U_c, U_n, Sf, nu, gdiff, zero(typeof(nu)), zero(typeof(nu)))
+#     valueUpper, valueLower = o.b(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
+#     return valueUpper, valueLower
+# end
 # facebased inner 
 @inline function (o::DiffEq)(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
     valueUpper, valueLower = o.a(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
@@ -130,11 +131,12 @@ end
 end
 
 # facebased boundary first call
-@inline function (o::DiffEq)(U_b, Sf, nu, gdiff)
-    diag, rhsx, rhsy, rhsz = o.a(U_b, Sf, nu, gdiff, 0.0, 0.0, 0.0, 0.0)
-    diag, rhsx, rhsy, rhsz = o.b(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
-    return diag, rhsx, rhsy, rhsz
-end
+# @inline function (o::DiffEq)(U_b, Sf, nu, gdiff)
+#     t = typeof(nu)
+#     diag, rhsx, rhsy, rhsz = o.a(U_b, Sf, nu, gdiff, zero(t), zero(t), zero(t), zero(t))
+#     diag, rhsx, rhsy, rhsz = o.b(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
+#     return diag, rhsx, rhsy, rhsz
+# end
 
 # facebased boundary 
 @inline function (o::DiffEq)(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)

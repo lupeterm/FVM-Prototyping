@@ -108,7 +108,7 @@ mutable struct Mesh{P<:AbstractFloat}
     faces::Vector{Face{P}}
     boundaries::Vector{Boundary}
     numCells::Int32
-    cells::Vector{Cell}
+    cells::Vector{Cell{P}}
     numInteriorFaces::Int32
     numBoundaryCells::Int32
     numBoundaryFaces::Int32

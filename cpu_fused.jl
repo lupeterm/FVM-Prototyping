@@ -112,14 +112,16 @@ function FusedCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int3
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
             theFace = mesh.faces[iFaceIndex]
-            valueUpper, valueLower = fused_pde(U[iElement], U[theElement.iNeighbors[iFace]], theFace.Sf, nu[iFace], theFace.gDiff)
+            valueUpper = 0.0
+            valueLower = 0.0
+            valueUpper, valueLower = fused_pde(U[iElement], U[theElement.iNeighbors[iFace]], theFace.Sf, nu[iFace], theFace.gDiff, valueUpper, valueLower)
 
             offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
 
             idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
             cols[idx] = iElement
             rows[idx] = theElement.iNeighbors[iFace]
-            Atomix.@atomic vals[idx] += offdiag
+            vals[idx] += offdiag
 
             diag += valueUpper
         end
@@ -138,7 +140,7 @@ function FusedCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int3
             RHS[iElement+nCells] += rhsy
             RHS[iElement+nCells+nCells] += rhsz
         end
-        setIndex!(iElement, iElement, diag, rows, cols, vals, offsets[iElement])
+        setIndex!(theElement.index, theElement.index, diag, rows, cols, vals, offsets[iElement])
     end
     return rows, cols, vals, RHS
 end # function CellBasedAssembly
