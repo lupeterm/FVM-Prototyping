@@ -22,7 +22,7 @@ function getFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractF
     return faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS
 end
 
-function run_faceBased_abstract( # TODO -> Gpu Structs
+function run_faceBased_abstract(
     faces, # GpuFace[] 
     nus,
     offsets,
@@ -35,7 +35,7 @@ function run_faceBased_abstract( # TODO -> Gpu Structs
     RHS,
     fused_pde
 )
-    backend = KernelAbstractions.get_backend(iOwners)
+    backend = CUDABackend()
     kernel_FusedFaceBasedAssembly(backend, 256)(
         faces, # GpuFace[] 
         nus,
@@ -54,7 +54,7 @@ function run_faceBased_abstract( # TODO -> Gpu Structs
     return rows, cols, vals, RHS
 end
 
-@kernel function kernel_FusedFaceBasedAssembly( # TODO -> Gpu Structs
+@kernel function kernel_FusedFaceBasedAssembly(
     @Const(faces),      # CuArray{GpuFace}
     @Const(nus),
     @Const(offsets),
@@ -72,8 +72,8 @@ end
     iOwner = theFace.iOwner
     iNeighbor = theFace.iNeighbor
     if theFace.iNeighbor != -1
-
-        upper, lower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nus[iOwner], theFace.gDiff)
+        upper, lower = 0.0, 0.0
+        upper, lower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nus[iOwner], theFace.gDiff, upper ,lower)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -98,7 +98,8 @@ end
         iBoundary = theFace.patchIndex
         if boundaries[iBoundary].isFixedValue
             relativeFaceIndex = iFace - boundaries[iBoundary].startFace
-            diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[relativeFaceIndex], theFace.Sf, nus[iOwner], theFace.gDiff)
+            diag, rhsx, rhsy, rhsz = 0.0, 0.0, 0.0, 0.0
+            diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[relativeFaceIndex], theFace.Sf, nus[iOwner], theFace.gDiff, diag, rhsx, rhsy, rhsz)
             # Diagonal Entry        
             idx = offsets[iOwner]
             Atomix.@atomic vals[idx] += diag
@@ -114,11 +115,11 @@ end
 
 function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS = getFaceBasedGpuInput(input)
-    numBatches = getGreedyEdgeColoring(input)
+    numBatches, _= getGreedyEdgeColoring(input)
     return faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS, numBatches, input.mesh.numInteriorFaces, input.mesh.numBoundaryFaces
 end
 
-function run_batchedFace_abstract( # TODO -> Gpu Structs
+function run_batchedFace_abstract(
     faces, # GpuFace[] 
     nus,
     offsets,
@@ -179,12 +180,14 @@ end
     fused_pde
 )
     iFace = @index(Global)
+    t = typeof(nus[1])
     theFace = faces[iFace]
     iOwner = theFace.iOwner
     iNeighbor = theFace.iNeighbor
 
     if theFace.batchId == color[1]  # CuArray{Int32, 1, 1}
-        upper, lower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nus[iOwner], theFace.gDiff)
+        upper, lower = zero(t), zero(t)
+        upper, lower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nus[iOwner], theFace.gDiff, upper, lower)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
@@ -219,13 +222,16 @@ end
     RHS,
     fused_pde
 )
+    t = typeof(nus[1])
     iFace = @index(Global)
     theFace = faces[iFace]
     iOwner = theFace.iOwner
     iBoundary = theFace.patchIndex
     if boundaries[iBoundary].isFixedValue
-        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
-        diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[relativeFaceIndex], theFace.Sf, nus[iOwner], theFace.gDiff)
+        relativeFaceIndex = iFace - boundaries[iBoundary].startFace
+
+        diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
+        diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[relativeFaceIndex], theFace.Sf, nus[iOwner], theFace.gDiff, diag, rhsx, rhsy, rhsz)
 
         # Diagonal Entry        
         idx = offsets[iOwner]
@@ -260,11 +266,11 @@ end
 
 function runCellkernel(args...)
     backend = CUDABackend()
-    kernel_AllCellBasedAssemblyRunner(backend, 256)(args...; ndrange=length(args[1]))
+    kernel_FusedCellBasedAssembly(backend, 256)(args...; ndrange=length(args[1]))
     KernelAbstractions.synchronize(backend)
 end
 
-@kernel function kernel_AllCellBasedAssemblyRunner(
+@kernel function kernel_FusedCellBasedAssembly(
     @Const(cells),      # CuArray{GpuCell}
     @Const(faces),      # CuArray{GpuFace}
     @Const(nus),

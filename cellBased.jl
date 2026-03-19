@@ -879,7 +879,7 @@ function ThreadedCellBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals
 end
 
-function CellBasedHelper(chunk::UnitRange, input::MatrixAssemblyInput, RHS::Vector{P}, rows::Vector{Int32}, cols::Vector{Int32}, offsets, vals::Vector)
+function CellBasedHelper(chunk::UnitRange, input::MatrixAssemblyInput, RHS::Vector{P}, rows::Vector{Int32}, cols::Vector{Int32}, offsets, vals::Vector) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     nCells = length(mesh.cells)

@@ -1,59 +1,59 @@
 include("init.jl")
 include("cpu_helper.jl")
 
-function _FaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
-    mesh = input.mesh
-    nu = input.nu
-    velocity_boundary = input.U[1]
-    nCells = length(mesh.cells)
-    entriesNeeded::Int32 = nCells + 2 * mesh.numInteriorFaces
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
+# function _FaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+#     mesh = input.mesh
+#     nu = input.nu
+#     velocity_boundary = input.U[1]
+#     nCells = length(mesh.cells)
+#     entriesNeeded::Int32 = nCells + 2 * mesh.numInteriorFaces
+#     RHS = zeros(P, nCells * 3)
+#     offsets = input.offsets
+#     vals = zeros(P, entriesNeeded)
+#     rows = zeros(Int32, entriesNeeded)
+#     cols = zeros(Int32, entriesNeeded)
 
 
-    @inbounds for iFace in 1:mesh.numInteriorFaces
-        theFace = mesh.faces[iFace]
-        iOwner = theFace.iOwner
-        iNeighbor = theFace.iNeighbor
-        diffusion = nu[iOwner] * theFace.gDiff
-        fluxFn = -diffusion
-        # set diag and upper
-        setIndex!(iOwner, iOwner, diffusion, rows, cols, vals, offsets[iOwner])
-        setIndex!(iOwner, iNeighbor, fluxFn, rows, cols, vals, offsets[iOwner] + theFace.relativeToOwner)
-        # set diag and lower
-        setIndex!(iNeighbor, iNeighbor, diffusion, rows, cols, vals, offsets[iNeighbor])
-        setIndex!(iNeighbor, iOwner, fluxFn, rows, cols, vals, offsets[iNeighbor] + theFace.relativeToNeighbor)
-    end
-    @inbounds for iBoundary in eachindex(mesh.boundaries)
-        if velocity_boundary[iBoundary].type != "fixedValue"
-            continue
-        end
-        @inbounds theBoundary = mesh.boundaries[iBoundary]
-        startFace = theBoundary.startFace + 1
-        endFace = startFace + theBoundary.nFaces
-        @inbounds for iFace in startFace:endFace-1
-            @inbounds theFace = mesh.faces[iFace]
-            @inbounds relativeFaceIndex = iFace - mesh.boundaries[iBoundary].startFace
-            # convection
-            U_b = velocity_boundary[iBoundary].values[relativeFaceIndex]
-            ϕf = theFace.Sf ⋅ U_b
-            convection = velocity_boundary[iBoundary].values[relativeFaceIndex] .* ϕf
-            # diffusion 
-            diffusion = nu[theFace.iOwner] * theFace.gDiff
-            setIndex!(theFace.iOwner, theFace.iOwner, -diffusion, rows, cols, vals, offsets[theFace.iOwner])
-            # RHS/Source
-            @inbounds RHS[theFace.iOwner] -= convection[1] - diffusion
-            @inbounds RHS[theFace.iOwner+nCells] -= convection[2] -diffusion
-            @inbounds RHS[theFace.iOwner+nCells+nCells] -= convection[3] - diffusion
-        end
-    end
-    return rows, cols, vals, RHS
-end # function batchedFaceBasedAssembly
+#     @inbounds for iFace in 1:mesh.numInteriorFaces
+#         theFace = mesh.faces[iFace]
+#         iOwner = theFace.iOwner
+#         iNeighbor = theFace.iNeighbor
+#         diffusion = nu[iOwner] * theFace.gDiff
+#         fluxFn = -diffusion
+#         # set diag and upper
+#         setIndex!(iOwner, iOwner, diffusion, rows, cols, vals, offsets[iOwner])
+#         setIndex!(iOwner, iNeighbor, fluxFn, rows, cols, vals, offsets[iOwner] + theFace.relativeToOwner)
+#         # set diag and lower
+#         setIndex!(iNeighbor, iNeighbor, diffusion, rows, cols, vals, offsets[iNeighbor])
+#         setIndex!(iNeighbor, iOwner, fluxFn, rows, cols, vals, offsets[iNeighbor] + theFace.relativeToNeighbor)
+#     end
+#     @inbounds for iBoundary in eachindex(mesh.boundaries)
+#         if velocity_boundary[iBoundary].type != "fixedValue"
+#             continue
+#         end
+#         @inbounds theBoundary = mesh.boundaries[iBoundary]
+#         startFace = theBoundary.startFace + 1
+#         endFace = startFace + theBoundary.nFaces
+#         @inbounds for iFace in startFace:endFace-1
+#             @inbounds theFace = mesh.faces[iFace]
+#             @inbounds relativeFaceIndex = iFace - mesh.boundaries[iBoundary].startFace
+#             # convection
+#             U_b = velocity_boundary[iBoundary].values[relativeFaceIndex]
+#             ϕf = theFace.Sf ⋅ U_b
+#             convection = velocity_boundary[iBoundary].values[relativeFaceIndex] .* ϕf
+#             # diffusion 
+#             diffusion = nu[theFace.iOwner] * theFace.gDiff
+#             setIndex!(theFace.iOwner, theFace.iOwner, -diffusion, rows, cols, vals, offsets[theFace.iOwner])
+#             # RHS/Source
+#             RHS[theFace.iOwner] -= convection[1] - diffusion
+#             RHS[theFace.iOwner+nCells] -= convection[2] -diffusion
+#             RHS[theFace.iOwner+nCells+nCells] -= convection[3] - diffusion
+#         end
+#     end
+#     return rows, cols, vals, RHS
+# end # function batchedFaceBasedAssembly
 
-function DivOnlyPrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
+function DivOnlyPrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -117,7 +117,7 @@ function DivOnlyPrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssembl
     return rows, cols, vals, RHS
 end
 
-function DivOnlyPrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
+function DivOnlyPrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -181,7 +181,7 @@ function DivOnlyPrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyIn
     return rows, cols, vals, RHS
 end
 
-function DivOnlyHardcodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
+function DivOnlyHardcodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -244,7 +244,7 @@ function DivOnlyHardcodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) 
     return rows, cols, vals, RHS
 end
 
-function DivOnlyHardcodedCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
+function DivOnlyHardcodedCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -432,7 +432,7 @@ function DivOnlyDynamicUpwindFaceBasedAssembly(input::MatrixAssemblyInput, div::
     return rows, cols, vals, RHS
 end
 
-function LaplaceOnlyFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
+function LaplaceOnlyFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -490,7 +490,7 @@ function LaplaceOnlyFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:A
     return rows, cols, vals, RHS
 end
 
-function PrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
+function PrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -558,7 +558,7 @@ function PrecalculatedWeightsCDFFaceBasedAssembly(input::MatrixAssemblyInput{P})
     return rows, cols, vals, RHS
 end
 
-function PrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
+function PrecalculatedWeightsUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -697,7 +697,7 @@ function HardcodedUpwindFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {
     return rows, cols, vals, RHS
 end
 
-function HardcodedCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:Abstractfloat}
+function HardcodedCDFFaceBasedAssembly(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]

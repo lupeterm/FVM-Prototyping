@@ -12,3 +12,16 @@ time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_lo
 1.6443270072392235,1.633651,0.0,0.0,LDC-S,LDC-S,cellBased,PrecalculatedWeightsCDF,julia,float64,gpu,false,false
 1.7144925742710122,1.705499,0.0,0.0,LDC-S,LDC-S,cellBased,HardCodedCDF,julia,float64,gpu,false,false
 1.6349848321335079,1.6269875,0.0,0.0,LDC-S,LDC-S,cellBased,DynamicUpwind,julia,float64,gpu,false,false
+14.562828871720116,14.468539,0.0,0.0,LDC-M,LDC-M,cellBased,DivOnlyDynamicCDF,julia,float64,gpu,false,false
+13.687092420765028,13.6206885,0.0,0.0,LDC-M,LDC-M,cellBased,PrecalculatedWeightsUpwind,julia,float64,gpu,false,false
+13.608235828804348,13.5935805,0.0,0.0,LDC-M,LDC-M,cellBased,DivOnlyHardCodedUpwind,julia,float64,gpu,false,false
+13.013980111688312,13.015925,0.0,0.0,LDC-M,LDC-M,cellBased,LaplaceOnly,julia,float64,gpu,false,false
+13.607419298913044,13.598385,0.0,0.0,LDC-M,LDC-M,cellBased,DynamicCDF,julia,float64,gpu,false,false
+13.595113717391305,13.586037,0.0,0.0,LDC-M,LDC-M,cellBased,DivOnlyHardCodedCDF,julia,float64,gpu,false,false
+13.401576026809652,13.390968,0.0,0.0,LDC-M,LDC-M,cellBased,DivOnlyPrecalculatedWeightsCDF,julia,float64,gpu,false,false
+14.216591818181818,14.2115605,0.0,0.0,LDC-M,LDC-M,cellBased,HardCodedUpwind,julia,float64,gpu,false,false
+13.400710793565683,13.395057,0.0,0.0,LDC-M,LDC-M,cellBased,DivOnlyPrecalculatedWeightsUpwind,julia,float64,gpu,false,false
+14.233625403409091,14.2300795,0.0,0.0,LDC-M,LDC-M,cellBased,DivOnlyDynamicUpwind,julia,float64,gpu,false,false
+13.644714602179837,13.640173,0.0,0.0,LDC-M,LDC-M,cellBased,PrecalculatedWeightsCDF,julia,float64,gpu,false,false
+14.228731767045455,14.224235,0.0,0.0,LDC-M,LDC-M,cellBased,HardCodedCDF,julia,float64,gpu,false,false
+13.615355364130435,13.604811,0.0,0.0,LDC-M,LDC-M,cellBased,DynamicUpwind,julia,float64,gpu,false,false

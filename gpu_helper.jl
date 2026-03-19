@@ -99,7 +99,7 @@ end
 
 function gpu_prepFused(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
     iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping = gpu_prepareFaceBased(input)
-    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping
+    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, RHS, relativeToOwners, N, relativeToNbs, U, Sf, bFaceMapping, bFaceValues, M, nCells
 end
 
 function mtl_prepFused(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}

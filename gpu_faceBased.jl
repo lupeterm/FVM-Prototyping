@@ -54,7 +54,7 @@ function gpu_DivOnlyPrecalculatedWeightsFaceBasedAssemblyRunner(
     return rows, cols, vals, RHS
 end
 
-function kernel_DivOnlyPrecalculatedWeightsFaceBasedAssembly(
+function kernel_DivOnlyPrecalculatedWeightsFaceBasedAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     offsets,
@@ -205,7 +205,7 @@ function gpu_DivOnlyHardcodedDivFaceBasedAssemblyRunner(
 end
 
 
-function kernel_DivOnlyHardcodedUpwindFaceBasedAssembly(
+function kernel_DivOnlyHardcodedUpwindFaceBasedAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     offsets,
@@ -286,7 +286,7 @@ function kernel_DivOnlyHardcodedUpwindFaceBasedAssembly(
 end
 
 
-function kernel_DivOnlyHardcodedCDFFaceBasedAssembly(
+function kernel_DivOnlyHardcodedCDFFaceBasedAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     offsets,
@@ -413,7 +413,7 @@ function gpu_DivOnlyDynamicFaceBasedAssemblyRunner(
     return rows, cols, vals, RHS
 end
 
-function kernel_DivOnlyDynamicFaceBasedAssembly(
+function kernel_DivOnlyDynamicFaceBasedAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     offsets,
@@ -542,7 +542,7 @@ function gpu_PrecalculatedWeightsFaceBasedAssemblyRunner(
     return rows, cols, vals, RHS
 end
 
-function kernel_PrecalculatedWeightsFaceBasedAssembly(
+function kernel_PrecalculatedWeightsFaceBasedAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -618,7 +618,7 @@ function kernel_PrecalculatedWeightsFaceBasedAssembly(
             return
         end
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-        diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+        diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
         CUDA.@atomic vals[idx] -= diffusion[1]    # x
         CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
@@ -704,7 +704,7 @@ function gpu_HardcodedFaceBasedAssemblyRunner(
     return rows, cols, vals, RHS
 end
 
-function kernel_HardcodedUpwindFaceBasedAssembly(
+function kernel_HardcodedUpwindFaceBasedAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -779,7 +779,7 @@ function kernel_HardcodedUpwindFaceBasedAssembly(
             return
         end
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-        diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+        diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
         CUDA.@atomic vals[idx] -= diffusion[1]    # x
         CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
@@ -795,7 +795,7 @@ function kernel_HardcodedUpwindFaceBasedAssembly(
 end
 
 
-function kernel_HardcodedCDFFaceBasedAssembly(
+function kernel_HardcodedCDFFaceBasedAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -869,7 +869,7 @@ function kernel_HardcodedCDFFaceBasedAssembly(
             return
         end
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-        diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+        diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
         CUDA.@atomic vals[idx] -= diffusion[1]    # x
         CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
@@ -931,7 +931,7 @@ function gpu_DynamicFaceBasedAssemblyRunner(
     )
 end
 
-function kernel_DynamicFaceBasedAssembly(
+function kernel_DynamicFaceBasedAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -998,7 +998,7 @@ function kernel_DynamicFaceBasedAssembly(
             return
         end
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-        diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+        diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
         CUDA.@atomic vals[idx] -= diffusion[1]    # x
 
@@ -1059,7 +1059,7 @@ function gpu_LaplaceOnlyFaceBasedAssemblyRunner(
     return rows, cols, vals, RHS
 end
 
-function kernel_LaplaceOnlyFaceBasedAssembly(
+function kernel_LaplaceOnlyFaceBasedAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -1129,7 +1129,7 @@ function kernel_LaplaceOnlyFaceBasedAssembly(
         if bFaceIndex == -1
             return
         end
-        diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+        diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
         CUDA.@atomic vals[idx] -= diffusion[1]    # x
         CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
@@ -1189,7 +1189,7 @@ function faceBasedAllRunner(
     )
 end
 
-function kernel_all(
+function kernel_all( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -1264,7 +1264,7 @@ function kernel_all(
             return
         end
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-        diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+        diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
         CUDA.@atomic vals[idx] -= diffusion[1]    # x
         CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
@@ -1310,7 +1310,7 @@ function SplitfaceBasedRunner(
     CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M, Sf, bFaceMapping)
 end
 
-function kernel_internalFace(
+function kernel_internalFace( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -1375,7 +1375,7 @@ function kernel_internalFace(
 end
 
 
-function kernel_boundaryFace(
+function kernel_boundaryFace( # TODO -> Gpu Structs
     iOwners,
     gDiffs,
     offsets,
@@ -1403,7 +1403,7 @@ function kernel_boundaryFace(
     end
     iOwner = iOwners[globalFaceIndex]
     convection = bFaceValues[bFaceIndex] .* dot(Sf[globalFaceIndex], bFaceValues[bFaceIndex])
-    diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[globalFaceIndex]
+    diffusion = nus[iOwner] * gDiffs[globalFaceIndex]
     idx = offsets[iOwner]
     CUDA.@atomic vals[idx] -= diffusion[1]    # x
 
@@ -1416,7 +1416,7 @@ function kernel_boundaryFace(
 end
 
 
-function kernel_boundaryFace_LaplaceOnly(
+function kernel_boundaryFace_LaplaceOnly( # TODO -> Gpu Structs
     iOwners,
     gDiffs,
     offsets,
@@ -1443,7 +1443,7 @@ function kernel_boundaryFace_LaplaceOnly(
         return
     end
     iOwner = iOwners[globalFaceIndex]
-    diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[globalFaceIndex]
+    diffusion = nus[iOwner] * gDiffs[globalFaceIndex]
     idx = offsets[iOwner]
     CUDA.@atomic vals[idx] -= diffusion[1]    # x
     CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
@@ -1457,7 +1457,7 @@ function kernel_boundaryFace_LaplaceOnly(
 end
 
 
-function kernel_boundaryFace_DivOnly(
+function kernel_boundaryFace_DivOnly( # TODO -> Gpu Structs
     iOwners,
     bFaceValues,
     RHS,

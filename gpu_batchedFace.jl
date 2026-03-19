@@ -35,7 +35,7 @@ function gpu_LaplaceOnlyBatchedFaceAssemblyRunner(
     CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace_LaplaceOnly(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M, bFaceMapping)
 end
 
-function kernel_LaplaceOnlyBatchedFaceAssembly(
+function kernel_LaplaceOnlyBatchedFaceAssembly( # TODO -> Gpu Structs # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -121,7 +121,7 @@ function gpu_DivOnlyPrecalculatedWeightsBatchedFaceAssemblyRunner(
     CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace_DivOnly(iOwners, bFaceValues, RHS, N, nCells, M, Sf, bFaceMapping)
 end
 
-function kernel_DivOnlyPrecalculatedWeightsBatchedFaceAssembly(
+function kernel_DivOnlyPrecalculatedWeightsBatchedFaceAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     offsets,
@@ -172,13 +172,13 @@ function kernel_DivOnlyPrecalculatedWeightsBatchedFaceAssembly(
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
     CUDA.@atomic vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += valueUpper    # x
-    
+
     return nothing
 end
 
@@ -224,7 +224,7 @@ function gpu_DivOnlyHardcodedDivBatchedFaceAssemblyRunner(
 end
 
 
-function kernel_DivOnlyHardcodedDivCDFBatchedFaceAssembly(
+function kernel_DivOnlyHardcodedDivCDFBatchedFaceAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     offsets,
@@ -269,25 +269,25 @@ function kernel_DivOnlyHardcodedDivCDFBatchedFaceAssembly(
     cols[idx] = iOwner
     rows[idx] = iNeighbor
     vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
     CUDA.@atomic vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += valueUpper    # x
-    
+
     return nothing
 end
 
 
 
-function kernel_DivOnlyHardcodedDivUpwindBatchedFaceAssembly(
+function kernel_DivOnlyHardcodedDivUpwindBatchedFaceAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     offsets,
@@ -332,19 +332,19 @@ function kernel_DivOnlyHardcodedDivUpwindBatchedFaceAssembly(
     cols[idx] = iOwner
     rows[idx] = iNeighbor
     vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
     CUDA.@atomic vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += valueUpper    # x
-    
+
     return nothing
 end
 
@@ -383,7 +383,7 @@ function gpu_DivOnlyDynamicBatchedFaceAssemblyRunner(
     CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace_DivOnly(iOwners, bFaceValues, RHS, N, nCells, M, Sf, bFaceMapping)
 end
 
-function kernel_DivOnlyDynamicBatchedFaceAssembly(
+function kernel_DivOnlyDynamicBatchedFaceAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     offsets,
@@ -429,19 +429,19 @@ function kernel_DivOnlyDynamicBatchedFaceAssembly(
     cols[idx] = iOwner
     rows[idx] = iNeighbor
     vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
     CUDA.@atomic vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += valueUpper    # x
-    
+
     return nothing
 end
 
@@ -479,7 +479,7 @@ function gpu_PrecalculatedWeightsBatchedFaceAssemblyRunner(
     CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M, Sf, bFaceMapping)
 end
 
-function kernel_PrecalculatedWeightsBatchedFaceAssembly(
+function kernel_PrecalculatedWeightsBatchedFaceAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -530,19 +530,19 @@ function kernel_PrecalculatedWeightsBatchedFaceAssembly(
     cols[idx] = iOwner
     rows[idx] = iNeighbor
     vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
     CUDA.@atomic vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += valueUpper    # x
-    
+
     return nothing
 end
 
@@ -587,7 +587,7 @@ function gpu_HardcodedBatchedFaceAssemblyRunner(iOwners::CuArray{Int32},
     CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M, Sf, bFaceMapping)
 end
 
-function kernel_HardcodedCDFBatchedFaceAssembly(
+function kernel_HardcodedCDFBatchedFaceAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -637,7 +637,7 @@ function kernel_HardcodedCDFBatchedFaceAssembly(
     cols[idx] = iOwner
     rows[idx] = iNeighbor
     vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
@@ -648,12 +648,12 @@ function kernel_HardcodedCDFBatchedFaceAssembly(
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += valueUpper    # x
-    
+
     return nothing
 end
 
 
-function kernel_HardcodedUpwindBatchedFaceAssembly(
+function kernel_HardcodedUpwindBatchedFaceAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -703,22 +703,21 @@ function kernel_HardcodedUpwindBatchedFaceAssembly(
     cols[idx] = iOwner
     rows[idx] = iNeighbor
     vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
     CUDA.@atomic vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += valueUpper    # x
-    
+
     return nothing
 end
-
 function gpu_DynamicBatchedFaceAssemblyRunner(
     iOwners::CuArray{Int32},
     iNeighbors::CuArray{Int32},
@@ -755,7 +754,7 @@ end
 
 
 
-function kernel_DynamicBatchedFaceAssembly(
+function kernel_DynamicBatchedFaceAssembly( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -883,7 +882,7 @@ function batchedFaceBasedRunner(
     CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M, Sf, bFaceMapping)
 end
 
-function kernel_internalFace_coloured(
+function kernel_internalFace_coloured( # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -933,19 +932,19 @@ function kernel_internalFace_coloured(
     cols[idx] = iOwner
     rows[idx] = iNeighbor
     vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
     CUDA.@atomic vals[idx] += valueLower    # x
-    
+
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += valueUpper    # x
-    
+
     return nothing
 end
 
@@ -1036,7 +1035,6 @@ function fusedKernel_internal_colored(
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += upper
-    
     return nothing
 end
 
@@ -1148,7 +1146,7 @@ function batchedFaceBasedAllRunner(
     end
     return rows, cols, vals, RHS
 end
-function kernel_all_colored(
+function kernel_all_colored( # TODO -> Gpu Structs # TODO -> Gpu Structs
     iOwners,
     iNeighbors,
     gDiffs,
@@ -1197,7 +1195,7 @@ function kernel_all_colored(
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        
+
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
@@ -1220,7 +1218,7 @@ function kernel_all_colored(
             return
         end
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-        diffusion = bFaceValues[bFaceIndex] .* nus[iOwner] * gDiffs[iFace]
+        diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
         CUDA.@atomic vals[idx] -= diffusion[1]    # x
 
@@ -1229,6 +1227,138 @@ function kernel_all_colored(
         CUDA.@atomic RHS[iOwner] -= value[1]
         CUDA.@atomic RHS[iOwner+nCells] -= value[2]
         CUDA.@atomic RHS[iOwner+nCells+nCells] -= value[3]
+    end
+    return nothing
+end
+
+### comparison to KA 
+
+function fusedBatchedFaceBasedRunner(
+    faces, # GpuFace[] 
+    nus,
+    offsets,
+    bFaceValues,
+    U,
+    boundaries,
+    rows,
+    cols,
+    vals,
+    RHS,
+    numBatches,
+    N,
+    M,
+    fused_pde
+)
+    for color in 1:numBatches
+        iblocks = cld(N, 256)
+        CUDA.@sync @cuda threads = 256 blocks = iblocks fusedKernel_internal_colored(
+            faces,      # CuArray{GpuFace}
+            nus,
+            offsets,
+            U,
+            rows,
+            cols,
+            vals,
+            color,
+            fused_pde
+        )
+    end
+    bblocks = cld(M, 256)
+
+    CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace_structs(
+        faces,      # CuArray{GpuFace}
+        nus,
+        offsets,
+        bFaceValues,
+        boundaries,
+        vals,
+        RHS,
+        fused_pde
+    )
+    return rows, cols, vals, RHS
+end
+
+function fusedKernel_internal_colored(
+    faces,      # CuArray{GpuFace}
+    nus,
+    offsets,
+    U,
+    rows,
+    cols,
+    vals,
+    color,
+    fused_pde
+)
+    iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    if iFace > length(faces)
+        return
+    end
+    theFace = faces[iFace]
+    if theFace.iNeighbor == -1
+        return
+    end
+    if theFace.batchId != color
+        return
+    end
+    iOwner = theFace.iOwner
+    iNeighbor = theFace.iNeighbor
+
+    upper = 0.0
+    lower = 0.0
+    upper, lower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nus[iOwner], theFace.gDiff, upper, lower)
+
+    idx = offsets[iOwner]
+    cols[idx] = iOwner
+    rows[idx] = iOwner
+    vals[idx] += upper
+
+    idx = offsets[iOwner] + theFace.relativeToOwner
+    cols[idx] = iOwner
+    rows[idx] = iNeighbor
+    vals[idx] += lower
+
+    idx = offsets[iNeighbor]
+    cols[idx] = iNeighbor
+    rows[idx] = iNeighbor
+    vals[idx] += lower
+
+    idx = offsets[iNeighbor] + theFace.relativeToNeighbor
+    cols[idx] = iNeighbor
+    rows[idx] = iOwner
+    vals[idx] += upper
+
+    return nothing
+end
+
+function kernel_boundaryFace_structs(
+    faces,      # CuArray{GpuFace}
+    nus,
+    offsets,
+    bFaceValues,
+    boundaries,
+    vals,
+    RHS,
+    fused_pde
+)
+    iFace = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    globalIndex = iFace + length(bFaceValues)
+    theFace = faces[iFace]
+    if theFace.iNeighbor != -1
+        return
+    end
+    iOwner = theFace.iOwner
+    iBoundary = theFace.patchIndex
+    if boundaries[iBoundary].isFixedValue
+        diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[iFace], theFace.Sf, nus[iOwner], theFace.gDiff)
+
+        # Diagonal Entry        
+        CUDA.@atomic vals[offsets[iOwner]] += diag
+
+        # RHS/Source
+        nCells = length(nus)
+        CUDA.@atomic RHS[iOwner] += rhsx
+        CUDA.@atomic RHS[iOwner+nCells] += rhsy
+        CUDA.@atomic RHS[iOwner+nCells+nCells] += rhsz
     end
     return nothing
 end
