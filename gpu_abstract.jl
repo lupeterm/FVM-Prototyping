@@ -1,150 +1,86 @@
 include("init.jl")
 include("gpu_faceBased.jl")
 include("gpu_helper.jl")
+include("gpu_batchedFace.jl")
 using KernelAbstractions, Atomix
 """
 'abstract', as in, using `KernelAbstractions`, and not CUDA.
 """
+function getFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+    faces = CuArray([f() for f in input.mesh.faces])
+    boundaries = CuArray([b() for b in input.mesh.boundaries])
+    nu = CuArray(input.nu)
+    nCells::Int32 = length(input.mesh.cells)
+    RHS = CUDA.zeros(P, nCells * 3)
+    entriesNeeded::Int32 = length(input.mesh.cells) + 2 * input.mesh.numInteriorFaces
+    offsets = gpu_precalcOffsets(input)
+    vals = CUDA.zeros(P, entriesNeeded)
+    rows = CUDA.zeros(Int32, entriesNeeded)
+    cols = CUDA.zeros(Int32, entriesNeeded)
+    prepareRelativeIndices!(input)
+    bFaceValues, U, _ = gpu_getFaceValues(input)
+    return faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS
+end
 
-function run_faceBased_abstract(
-    iOwners::CuArray{Int32},
-    iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{P},
-    offsets::CuArray{Int32},
-    nu_g::CuArray{P},
-    rows::CuArray{Int32},
-    cols::CuArray{Int32},
-    vals::CuArray{P},
-    entriesNeeded::Int32,
-    relativeToOwners::CuArray{Int32},
-    N::Int32,
-    relativeToNbs::CuArray{Int32},
-    bFaceValues::CuArray{SVector{3,P}},
-    RHS::CuArray{P},
-    nCells::Int32,
-    numBoundaryFaces::Int32,
-    U::CuArray{SVector{3,P}},
-    Sf::CuArray{SVector{3,P}},
-    bFaceMapping::CuArray{Int32},
-    ops,
-) where {P<:AbstractFloat}
-    backend = CUDABackend()
+function run_faceBased_abstract( # TODO -> Gpu Structs
+    faces, # GpuFace[] 
+    nus,
+    offsets,
+    bFaceValues,
+    U,
+    boundaries,
+    rows,
+    cols,
+    vals,
+    RHS,
+    fused_pde
+)
+    backend = KernelAbstractions.get_backend(iOwners)
     kernel_FusedFaceBasedAssembly(backend, 256)(
-        iOwners,
-        iNeighbors,
-        gDiffs,
+        faces, # GpuFace[] 
+        nus,
         offsets,
-        nu_g,
+        bFaceValues,
+        U,
+        boundaries,
         rows,
         cols,
         vals,
         RHS,
-        entriesNeeded,
-        relativeToOwners,
-        N,
-        relativeToNbs,
-        U,
-        Sf,
-        bFaceMapping,
-        bFaceValues,
-        numBoundaryFaces,
-        nCells,
-        ops;
-        ndrange=N + numBoundaryFaces
+        fused_pde;
+        ndrange=length(faces)
     )
     KernelAbstractions.synchronize(backend)
     return rows, cols, vals, RHS
 end
 
-
-function run_faceBased_abstract_mtl(
-    iOwners,
-    iNeighbors,
-    gDiffs,
-    offsets,
-    nu_g,
-    rows,
-    cols,
-    vals,
-    RHS,
-    entriesNeeded,
-    relativeToOwners,
-    N,
-    relativeToNbs,
-    U,
-    Sf,
-    bFaceMapping,
-    bFaceValues,
-    numBoundaryFaces,
-    nCells,
-    ops,
-) 
-    backend = get_backend(iOwners)
-    kernel_FusedFaceBasedAssembly(backend, 32)(
-        iOwners,
-        iNeighbors,
-        gDiffs,
-        offsets,
-        nu_g,
-        rows,
-        cols,
-        vals,
-        RHS,
-        entriesNeeded,
-        relativeToOwners,
-        N,
-        relativeToNbs,
-        U,
-        Sf,
-        bFaceMapping,
-        bFaceValues,
-        numBoundaryFaces,
-        nCells,
-        ops;
-        ndrange=N
-    )
-    KernelAbstractions.synchronize(backend)
-    # return rows, cols, vals, RHS
-end
-
-@kernel function kernel_FusedFaceBasedAssembly(
-    @Const(iOwners),
-    @Const(iNeighbors),
-    @Const(gDiffs),
-    @Const(offsets),
+@kernel function kernel_FusedFaceBasedAssembly( # TODO -> Gpu Structs
+    @Const(faces),      # CuArray{GpuFace}
     @Const(nus),
+    @Const(offsets),
+    @Const(bFaceValues),
+    @Const(U),
+    @Const(boundaries),
     rows,
     cols,
     vals,
     RHS,
-    @Const(entriesNeeded),
-    @Const(relativeToOwner),
-    @Const(numInteriorFaces),
-    @Const(relativeToNeighbor),
-    @Const(U),
-    @Const(Sf),
-    @Const(bFaceMapping),
-    @Const(bFaceValues),
-    @Const(numBoundaryFaces),
-    @Const(nCells),
-    ops,
+    fused_pde
 )
     iFace = @index(Global)
-    iOwner = iOwners[iFace]
-    iNeighbor = iNeighbors[iFace]
-    if iFace <= numInteriorFaces
+    theFace = faces[iFace]
+    iOwner = theFace.iOwner
+    iNeighbor = theFace.iNeighbor
+    if theFace.iNeighbor != -1
 
-        upper = 0.0
-        lower = 0.0
-
-        upper, lower = ops(U[iOwner], U[iNeighbor], Sf[iFace], nus[iFace], gDiffs[iFace], upper, lower)
+        upper, lower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nus[iOwner], theFace.gDiff)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         Atomix.@atomic vals[idx] += upper
 
-        idx = offsets[iOwner] + relativeToOwner[iFace]
+        idx = offsets[iOwner] + theFace.relativeToOwner
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += lower
@@ -154,87 +90,75 @@ end
         rows[idx] = iNeighbor
         Atomix.@atomic vals[idx] += lower
 
-        idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
+        idx = offsets[iNeighbor] + theFace.relativeToNeighbor
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += upper
     else
-        relativeFaceIndex = iFace - numInteriorFaces
-        bFaceIndex = bFaceMapping[relativeFaceIndex]
-        if bFaceIndex != -1
-            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-            diffusion = nus[iOwner] * gDiffs[iFace]
-            Atomix.@atomic vals[idx] -= diffusion[1] # FIXME local scope in julia is a myth 
+        iBoundary = theFace.patchIndex
+        if boundaries[iBoundary].isFixedValue
+            relativeFaceIndex = iFace - boundaries[iBoundary].startFace
+            diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[relativeFaceIndex], theFace.Sf, nus[iOwner], theFace.gDiff)
+            # Diagonal Entry        
+            idx = offsets[iOwner]
+            Atomix.@atomic vals[idx] += diag
 
             # RHS/Source
-            Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
-            Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
-            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
+            nCells = length(nus)
+            Atomix.@atomic RHS[iOwner] += rhsx
+            Atomix.@atomic RHS[iOwner+nCells] += rhsy
+            Atomix.@atomic RHS[iOwner+nCells+nCells] += rhsz
         end
     end
 end
 
+function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+    faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS = getFaceBasedGpuInput(input)
+    numBatches = getGreedyEdgeColoring(input)
+    return faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS, numBatches, input.mesh.numInteriorFaces, input.mesh.numBoundaryFaces
+end
 
-function run_batchedFace_abstract(
-    iOwners::CuArray{Int32},
-    iNeighbors::CuArray{Int32},
-    gDiffs::CuArray{P},
-    offsets::CuArray{Int32},
-    nus::CuArray{P},
-    rows::CuArray{Int32},
-    cols::CuArray{Int32},
-    vals::CuArray{P},
-    entriesNeeded::Int32,
-    relativeToOwners::CuArray{Int32},
-    N::Int32,
-    relativeToNeighbor::CuArray{Int32},
-    numBlocks::Int32,
-    bFaceValues::CuArray{SVector{3,P}},
-    RHS::CuArray{P},
-    nCells::Int32,
-    M::Int32,
-    numBatches::Int32,
-    faceColors::CuArray{Int32},
-    U::CuArray{SVector{3,P}},
-    Sf::CuArray{SVector{3,P}},
-    bFaceMapping::CuArray{Int32},
-    ops,
-) where {P<:AbstractFloat}
+function run_batchedFace_abstract( # TODO -> Gpu Structs
+    faces, # GpuFace[] 
+    nus,
+    offsets,
+    bFaceValues,
+    U,
+    boundaries,
+    rows,
+    cols,
+    vals,
+    RHS,
+    numBatches,
+    N,
+    M,
+    fused_pde
+)
     backend = CUDABackend()
     for color in 1:numBatches
         kernel_FusedBatchedFaceAssembly(backend, 256)(
-            iOwners,
-            iNeighbors,
-            gDiffs,
-            offsets,
+            faces,      # CuArray{GpuFace}
             nus,
+            offsets,
+            U,
             rows,
             cols,
             vals,
-            relativeToOwners,
-            relativeToNeighbor,
-            U,
-            Sf,
-            faceColors,
             color,
-            ops;
+            fused_pde;
             ndrange=N
         )
         KernelAbstractions.synchronize(backend)
     end
-    abstract_boundaryFace(backend, 256)(
-        iOwners,
-        gDiffs,
-        offsets,
+    kernel_abstract_boundaryFace(backend, 256)(
+        faces,      # CuArray{GpuFace}
         nus,
-        vals,
+        offsets,
         bFaceValues,
+        boundaries,
+        vals,
         RHS,
-        N,
-        nCells,
-        M,
-        Sf,
-        bFaceMapping;
+        fused_pde,
         ndrange=M
     )
     KernelAbstractions.synchronize(backend)
@@ -244,38 +168,30 @@ end
 
 
 @kernel function kernel_FusedBatchedFaceAssembly(
-    iOwners,
-    iNeighbors,
-    gDiffs,
-    offsets,
-    nus,
+    @Const(faces),      # CuArray{GpuFace}
+    @Const(nus),
+    @Const(offsets),
+    @Const(U),
     rows,
     cols,
     vals,
-    relativeToOwners,
-    relativeToNeighbor,
-    U,
-    Sf,
-    faceColors,
     color,
-    ops, # TODO: differentiate between internal and boundary
+    fused_pde
 )
     iFace = @index(Global)
-    iOwner = iOwners[iFace]
-    iNeighbor = iNeighbors[iFace]
-    faceColor = faceColors[iFace]
+    theFace = faces[iFace]
+    iOwner = theFace.iOwner
+    iNeighbor = theFace.iNeighbor
 
-    if faceColor == color
-        upper = 0.0
-        lower = 0.0
-        upper, lower = ops(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
+    if theFace.batchId == color[1]  # CuArray{Int32, 1, 1}
+        upper, lower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nus[iOwner], theFace.gDiff)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         vals[idx] += upper
 
-        idx = offsets[iOwner] + relativeToOwners[iFace]
+        idx = offsets[iOwner] + theFace.relativeToOwner
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += lower
@@ -285,7 +201,7 @@ end
         rows[idx] = iNeighbor
         vals[idx] += lower
 
-        idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
+        idx = offsets[iNeighbor] + theFace.relativeToNeighbor
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += upper
@@ -293,33 +209,112 @@ end
 end
 
 
-@kernel function abstract_boundaryFace(
-    @Const(iOwners),
-    @Const(gDiffs),
-    @Const(offsets),
+@kernel function kernel_abstract_boundaryFace(
+    @Const(faces),      # CuArray{GpuFace}
     @Const(nus),
-    vals,
+    @Const(offsets),
     @Const(bFaceValues),
+    @Const(boundaries),
+    vals,
     RHS,
-    @Const(numInternalFaces),
-    @Const(nCells),
-    @Const(numBoundaryFaces),
-    @Const(Sf),
-    @Const(bFaceMapping)
+    fused_pde
 )
     iFace = @index(Global)
-    globalFaceIndex = numInternalFaces + iFace
-    bFaceIndex = bFaceMapping[iFace]
-    if bFaceIndex != -1
-        iOwner = iOwners[globalFaceIndex]
-        convection = bFaceValues[bFaceIndex] .* dot(Sf[globalFaceIndex], bFaceValues[bFaceIndex])
-        diffusion = nus[iOwner] * gDiffs[globalFaceIndex]
+    theFace = faces[iFace]
+    iOwner = theFace.iOwner
+    iBoundary = theFace.patchIndex
+    if boundaries[iBoundary].isFixedValue
+        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
+        diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[relativeFaceIndex], theFace.Sf, nus[iOwner], theFace.gDiff)
+
+        # Diagonal Entry        
         idx = offsets[iOwner]
-        Atomix.@atomic vals[idx] -= diffusion[1]    # x
+        Atomix.@atomic vals[idx] += diag
 
         # RHS/Source
-        Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
-        Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
-        Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
+        nCells = length(nus)
+        Atomix.@atomic RHS[iOwner] += rhsx
+        Atomix.@atomic RHS[iOwner+nCells] += rhsy
+        Atomix.@atomic RHS[iOwner+nCells+nCells] += rhsz
     end
+end
+
+
+
+function getCellBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+    cells = CuArray([c() for c in input.mesh.cells])
+    faces = CuArray([f() for f in input.mesh.faces])
+    boundaries = CuArray([b() for b in input.mesh.boundaries])
+    nu = CuArray(input.nu)
+    nCells::Int32 = length(input.mesh.cells)
+    RHS = CUDA.zeros(P, nCells * 3)
+    entriesNeeded::Int32 = length(input.mesh.cells) + 2 * input.mesh.numInteriorFaces
+    offsets = gpu_precalcOffsets(input)
+    vals = CUDA.zeros(P, entriesNeeded)
+    rows = CUDA.zeros(Int32, entriesNeeded)
+    cols = CUDA.zeros(Int32, entriesNeeded)
+    prepareRelativeIndices!(input)
+    bFaceValues, U, _ = gpu_getFaceValues(input)
+    return cells, faces, nu, offsets, bFaceValues, nCells, U, boundaries, rows, cols, vals, RHS
+end
+
+function runCellkernel(args...)
+    backend = CUDABackend()
+    kernel_AllCellBasedAssemblyRunner(backend, 256)(args...; ndrange=length(args[1]))
+    KernelAbstractions.synchronize(backend)
+end
+
+@kernel function kernel_AllCellBasedAssemblyRunner(
+    @Const(cells),      # CuArray{GpuCell}
+    @Const(faces),      # CuArray{GpuFace}
+    @Const(nus),
+    @Const(offsets),
+    @Const(bFaceValues),
+    @Const(nCells),
+    @Const(U),
+    @Const(boundaries),
+    rows,
+    cols,
+    vals,
+    RHS,
+    fused_pde
+)
+    iElement = @index(Global)
+    cell = cells[iElement]
+    numFaces = length(cell.iFaces)
+    diag = 0.0
+    cell.iNeighbors
+    for iFace in 1:cell.nInternalFaces
+        iFaceIndex = cell.iFaces[iFace]
+        theFace = faces[iFaceIndex]
+
+        valueUpper, valueLower = fused_pde(U[iElement], U[cell.iNeighbors[iFace]], theFace.Sf, nus[iFace], theFace.gDiff)
+
+        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
+
+        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
+        cols[idx] = iElement
+        rows[idx] = cell.iNeighbors[iFace]
+        Atomix.@atomic vals[idx] += offdiag
+
+        diag += valueUpper
+    end
+    for iFace in cell.nInternalFaces+1:numFaces
+        iFaceIndex = cell.iFaces[iFace]
+        iBoundary = faces[iFaceIndex].patchIndex
+        if !boundaries[iBoundary].isFixedValue
+            continue
+        end
+        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
+        theFace = faces[iFaceIndex]
+        d, rhsx, rhsy, rhsz = fused_pde(bFaceValues[relativeFaceIndex], theFace.Sf, nus[iElement], theFace.gDiff)
+        diag += d        
+        RHS[iElement] += rhsx
+        RHS[iElement+nCells] += rhsy
+        RHS[iElement+nCells+nCells] += rhsz
+    end
+    idx = offsets[iElement]
+    cols[idx] = iElement
+    rows[idx] = iElement
+    Atomix.@atomic vals[idx] += diag
 end

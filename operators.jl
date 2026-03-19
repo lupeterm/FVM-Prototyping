@@ -51,19 +51,23 @@ end
 
 
 # facebased boundary 
-# function (d::Div{P,S})(
-#     U_b::SVector{3,P},
-#     Sf::SVector{3,P},
-#     _::P,
-#     _::P,
-#     valueDiag::P,
-#     valueRHSx::P,
-#     valueRHSy::P,
-#     valueRHSz::P
-# ) where {P<:AbstractFloat,S}
-#     ϕf = dot(Uf, Sf)
-#     return valueDiag, (valueRHSx, valueRHSy, valueRHSz) .- U_b .* ϕf
-# end
+function (d::Div{P,S})(
+    U_b::SVector{3,P},
+    Sf::SVector{3,P},
+    _::P,
+    _::P,
+    valueDiag::P,
+    valueRHSx::P,
+    valueRHSy::P,
+    valueRHSz::P
+) where {P<:AbstractFloat,S}
+    ϕf = dot(U_b, Sf)
+    conv = U_b .* ϕf
+    valueRHSx -= conv[1]
+    valueRHSy -= conv[2]
+    valueRHSz -= conv[3] 
+    return valueDiag, valueRHSx, valueRHSy, valueRHSz
+end
 
 #### Diffusion
 # laplacian(ν, ϕ)
@@ -100,7 +104,10 @@ function (d::Laplace{P})(
 ) where {P<:AbstractFloat}
     diffusion = nu * gDiff
     valueDiag -= diffusion
-    return valueDiag, (valueRHSx, valueRHSy, valueRHSz) .- diffusion
+    valueRHSx -= diffusion
+    valueRHSy -= diffusion
+    valueRHSz -= diffusion
+    return valueDiag, valueRHSx, valueRHSy, valueRHSz  
 end
 
 #### Operator Fusing
@@ -108,11 +115,32 @@ struct DiffEq{A,B}
     a::A
     b::B
 end
+
+# facebased inner first call 
+@inline function (o::DiffEq)(U_c, U_n, Sf, nu, gdiff)
+    valueUpper, valueLower = o.a(U_c, U_n, Sf, nu, gdiff, 0.0, 0.0)
+    valueUpper, valueLower = o.b(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
+    return valueUpper, valueLower
+end
 # facebased inner 
 @inline function (o::DiffEq)(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
     valueUpper, valueLower = o.a(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
     valueUpper, valueLower = o.b(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
     return valueUpper, valueLower
+end
+
+# facebased boundary first call
+@inline function (o::DiffEq)(U_b, Sf, nu, gdiff)
+    diag, rhsx, rhsy, rhsz = o.a(U_b, Sf, nu, gdiff, 0.0, 0.0, 0.0, 0.0)
+    diag, rhsx, rhsy, rhsz = o.b(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
+    return diag, rhsx, rhsy, rhsz
+end
+
+# facebased boundary 
+@inline function (o::DiffEq)(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
+    diag, rhsx, rhsy, rhsz = o.a(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
+    diag, rhsx, rhsy, rhsz = o.b(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
+    return diag, rhsx, rhsy, rhsz
 end
 
 
@@ -123,6 +151,6 @@ end
 #     return valueUpper, valueDiag, valueLower
 # end
 
-PTERM = Union{DiffEq, Ddt, Div, Laplace}
+PTERM = Union{DiffEq,Ddt,Div,Laplace}
 
 Base.:+(a::PTERM, b::PTERM) = DiffEq(a, b)

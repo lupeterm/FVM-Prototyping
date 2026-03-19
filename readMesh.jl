@@ -508,7 +508,7 @@ function readField(P::Type{<:AbstractFloat}, filePath::String, mesh::Mesh)::Tupl
         throw(CaseDirError("Field file '$(filePath)' does not exist."))
     end
     isUniform = isUniforminternalField(filePath)
-    # TODO so far not used
+    # so far not used?
     numCells = length(mesh.cells)
     joined = ""
     fieldType = SVector{3,P} # getFieldType(filePath)
