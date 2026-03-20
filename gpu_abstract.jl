@@ -114,8 +114,8 @@ end
 end
 
 function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
-    faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS = getFaceBasedGpuInput(input)
     numBatches, _= getGreedyEdgeColoring(input)
+    faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS = getFaceBasedGpuInput(input)
     return faces, nu, offsets, bFaceValues, U, boundaries, rows, cols, vals, RHS, numBatches, input.mesh.numInteriorFaces, input.mesh.numBoundaryFaces
 end
 
@@ -180,13 +180,12 @@ end
     fused_pde
 )
     iFace = @index(Global)
-    t = typeof(nus[1])
     theFace = faces[iFace]
     iOwner = theFace.iOwner
     iNeighbor = theFace.iNeighbor
 
     if theFace.batchId == color[1]  # CuArray{Int32, 1, 1}
-        upper, lower = zero(t), zero(t)
+        upper, lower = 0.0, 0.0
         upper, lower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nus[iOwner], theFace.gDiff, upper, lower)
 
         idx = offsets[iOwner]

@@ -1,6 +1,6 @@
 include("init.jl")
 include("cpu_helper.jl")
-function CellBasedAssembly(input::MatrixAssemblyInput)
+function CellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     velocity_boundary = input.U[1]
@@ -19,15 +19,15 @@ function CellBasedAssembly(input::MatrixAssemblyInput)
         diag = 0.0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = upwind(ϕf)                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
-            diffusion::P = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
+            diffusion = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
 
             rel = theFace.relativeToOwner
             val = valueLower - diffusion
@@ -62,27 +62,19 @@ function CellBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end # function CellBasedAssembly
 
-function LaplaceOnlyCellBasedAssembly(input::MatrixAssemblyInput)
+function LaplaceOnlyCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
+    velocity_boundary = input.U_boundary
     nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
     nCells = length(mesh.cells)
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
-            diffusion::P = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
+            theFace = mesh.faces[iFaceIndex]
+            diffusion = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
 
             rel = theFace.relativeToOwner
             val = -diffusion
@@ -101,8 +93,6 @@ function LaplaceOnlyCellBasedAssembly(input::MatrixAssemblyInput)
                 continue
             end
             theFace = mesh.faces[iFaceIndex]
-            relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
-            U_b = velocity_boundary[iBoundary].values[relativeFaceIndex]
             diffusion = nu[theFace.iOwner] * theFace.gDiff
             setIndex!(theFace.iOwner, theFace.iOwner, -diffusion, rows, cols, vals, offsets[theFace.iOwner])
             # RHS/Source
@@ -115,35 +105,28 @@ function LaplaceOnlyCellBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end
 
-function PrecalculatedWeightsUpwindCellBasedAssembly(input::MatrixAssemblyInput)
+function PrecalculatedWeightsUpwindCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
-    nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
-    nCells = length(mesh.cells)
     weights = input.weightsUpwind
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
+    velocity_boundary = input.U_boundary
+    nu = input.nu
+    U = input.U_internal
+    nCells = length(mesh.cells)
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = weights[theFace.index]                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
-            diffusion::P = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
+            diffusion = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
 
             rel = theFace.relativeToOwner
             val = valueLower - diffusion
@@ -181,35 +164,28 @@ function PrecalculatedWeightsUpwindCellBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end
 
-function PrecalculatedWeightsCDFCellBasedAssembly(input::MatrixAssemblyInput)
+function PrecalculatedWeightsCDFCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
-    nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
-    nCells = length(mesh.cells)
     weights = input.weightsCdf
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
+    nu = input.nu
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
+    nCells = length(mesh.cells)
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = weights[theFace.index]                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
-            diffusion::P = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
+            diffusion = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
 
             rel = theFace.relativeToOwner
             val = valueLower - diffusion
@@ -247,35 +223,27 @@ function PrecalculatedWeightsCDFCellBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end
 
-function DynamicCDFCellBasedAssembly(input::MatrixAssemblyInput, div::Function)
+function DynamicCDFCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, div::Function) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
     nCells = length(mesh.cells)
-    weights = input.weightsCdf
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = div(ϕf)                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
-            diffusion::P = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
+            diffusion = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
 
             rel = theFace.relativeToOwner
             val = valueLower - diffusion
@@ -313,35 +281,27 @@ function DynamicCDFCellBasedAssembly(input::MatrixAssemblyInput, div::Function)
     return rows, cols, vals, RHS
 end
 
-function DynamicUpwindCellBasedAssembly(input::MatrixAssemblyInput, div::Function)
+function DynamicUpwindCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, div::Function) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
     nCells = length(mesh.cells)
-    weights = input.weightsCdf
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = div(ϕf)                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
-            diffusion::P = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
+            diffusion = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
 
             rel = theFace.relativeToOwner
             val = valueLower - diffusion
@@ -379,34 +339,26 @@ function DynamicUpwindCellBasedAssembly(input::MatrixAssemblyInput, div::Functio
     return rows, cols, vals, RHS
 end
 
-function DivOnlyPrecalculatedWeightsUpwindCellBasedAssembly(input::MatrixAssemblyInput)
+function DivOnlyPrecalculatedWeightsUpwindCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
-    nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
-    nCells = length(mesh.cells)
     weights = input.weightsUpwind
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
+    nCells = length(mesh.cells)
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = weights[theFace.index]                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
 
             rel = theFace.relativeToOwner
             val = valueLower
@@ -438,34 +390,26 @@ function DivOnlyPrecalculatedWeightsUpwindCellBasedAssembly(input::MatrixAssembl
     return rows, cols, vals, RHS
 end
 
-function DivOnlyPrecalculatedWeightsCDFCellBasedAssembly(input::MatrixAssemblyInput)
+function DivOnlyPrecalculatedWeightsCDFCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
-    nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
-    nCells = length(mesh.cells)
     weights = input.weightsCdf
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
+    nCells = length(mesh.cells)
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = weights[theFace.index]                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
 
             rel = theFace.relativeToOwner
             val = valueLower
@@ -497,33 +441,25 @@ function DivOnlyPrecalculatedWeightsCDFCellBasedAssembly(input::MatrixAssemblyIn
     return rows, cols, vals, RHS
 end
 
-function DivOnlyHardcodedUpwindCellBasedAssembly(input::MatrixAssemblyInput)
+function DivOnlyHardcodedUpwindCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
-    nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
     nCells = length(mesh.cells)
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = upwind(ϕf)                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
 
             rel = theFace.relativeToOwner
             val = valueLower
@@ -555,33 +491,25 @@ function DivOnlyHardcodedUpwindCellBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end
 
-function DivOnlyHardcodedCDFCellBasedAssembly(input::MatrixAssemblyInput)
-mesh = input.mesh
-    nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
+function DivOnlyHardcodedCDFCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
+    mesh = input.mesh
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
     nCells = length(mesh.cells)
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = centralDifferencing(ϕf)                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
 
             rel = theFace.relativeToOwner
             val = valueLower
@@ -613,32 +541,25 @@ mesh = input.mesh
     return rows, cols, vals, RHS
 end
 
-function DivOnlyDynamicCDFCellBasedAssembly(input::MatrixAssemblyInput, div::Function)
+function DivOnlyDynamicCDFCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, div::Function) where {P<:AbstractFloat}
     mesh = input.mesh
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
     nCells = length(mesh.cells)
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = div(ϕf)                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
 
             rel = theFace.relativeToOwner
             val = valueLower
@@ -670,32 +591,25 @@ function DivOnlyDynamicCDFCellBasedAssembly(input::MatrixAssemblyInput, div::Fun
     return rows, cols, vals, RHS
 end
 
-function DivOnlyDynamicUpwindCellBasedAssembly(input::MatrixAssemblyInput, div::Function)
+function DivOnlyDynamicUpwindCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, div::Function) where {P<:AbstractFloat}
     mesh = input.mesh
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
     nCells = length(mesh.cells)
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = div(ϕf)                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
 
             rel = theFace.relativeToOwner
             val = valueLower
@@ -727,34 +641,27 @@ function DivOnlyDynamicUpwindCellBasedAssembly(input::MatrixAssemblyInput, div::
     return rows, cols, vals, RHS
 end
 
-function HardcodedUpwindCellBasedAssembly(input::MatrixAssemblyInput)
+function HardcodedUpwindCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
     nCells = length(mesh.cells)
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = upwind(ϕf)                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
-            diffusion::P = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
+            diffusion = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
 
             rel = theFace.relativeToOwner
             val = valueLower - diffusion
@@ -792,34 +699,27 @@ function HardcodedUpwindCellBasedAssembly(input::MatrixAssemblyInput)
     return rows, cols, vals, RHS
 end
 
-function HardcodedCDFCellBasedAssembly(input::MatrixAssemblyInput)
+function HardcodedCDFCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
-    velocity_boundary = input.U[1]
-    U = input.U[2].values
+    velocity_boundary = input.U_boundary
+    U = input.U_internal
     nCells = length(mesh.cells)
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    RHS = zeros(P, nCells * 3)
-    offsets = input.offsets
-
     for iElement::Int32 in eachindex(mesh.cells)
         theElement = mesh.cells[iElement]
         numFaces = length(theElement.iFaces)
         diag = 0
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
-            theFace::Face = mesh.faces[iFaceIndex]
+            theFace = mesh.faces[iFaceIndex]
             U_P = U[iElement]
             U_N = U[theElement.iNeighbors[iFace]]
             Uf = 0.5(U_P + U_N)                             # interpolate velocity to face 
-            ϕf::P = Uf ⋅ theFace.Sf                   # flux through the face
+            ϕf = Uf ⋅ theFace.Sf                   # flux through the face
             weights_f = centralDifferencing(ϕf)                      # get precalculated weight
-            valueUpper::P = ϕf * weights_f
-            valueLower::P = -ϕf * (1 - weights_f)
-            diffusion::P = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
+            diffusion = nu[iElement] * theFace.gDiff          # laplacian(Γ, U)  ⟹ Diffusion
 
             rel = theFace.relativeToOwner
             val = valueLower - diffusion
@@ -862,7 +762,7 @@ end
 #    |
 #    v
 
-function ThreadedCellBasedAssembly(input::MatrixAssemblyInput)
+function ThreadedCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
     nCells = length(mesh.cells)
     RHS = zeros(P, nCells * 3)
@@ -887,9 +787,9 @@ function CellBasedHelper(chunk::UnitRange, input::MatrixAssemblyInput, RHS::Vect
     velocity_internal = input.U[2].values
     for iElement in chunk
         theElement = mesh.cells[iElement]
-        @inbounds diagx::P = velocity_internal[iElement][1]
-        @inbounds diagy::P = velocity_internal[iElement][2]
-        @inbounds diagz::P = velocity_internal[iElement][3]
+        @inbounds diagx = velocity_internal[iElement][1]
+        @inbounds diagy = velocity_internal[iElement][2]
+        @inbounds diagz = velocity_internal[iElement][3]
         @inbounds for iFace in 1:theElement.nInternalFaces
             @inbounds iFaceIndex = theElement.iFaces[iFace]
             @inbounds theFace = mesh.faces[iFaceIndex]
