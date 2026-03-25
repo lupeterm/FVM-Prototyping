@@ -87,39 +87,31 @@ function kernel_DivOnlyPrecalculatedWeightsFaceBasedAssembly( # TODO -> Gpu Stru
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = weights[iFace]                          # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = ϕf * weights_f
-        valueLower::P = -ϕf * (1 - weights_f)
+        valueUpper = ϕf * weights_f
+        valueLower = -ϕf * (1 - weights_f)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -237,39 +229,31 @@ function kernel_DivOnlyHardcodedUpwindFaceBasedAssembly( # TODO -> Gpu Structs
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = upwind(ϕf)                          # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = ϕf * weights_f
-        valueLower::P = -ϕf * (1 - weights_f)
+        valueUpper = ϕf * weights_f
+        valueLower = -ϕf * (1 - weights_f)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -312,45 +296,35 @@ function kernel_DivOnlyHardcodedCDFFaceBasedAssembly( # TODO -> Gpu Structs
 
     iOwner = iOwners[iFace]
     if iFace <= numInternalFaces
-
         iNeighbor = iNeighbors[iFace]
-        # Diffusion
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = centralDifferencing(ϕf)                          # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = ϕf * weights_f
-        valueLower::P = -ϕf * (1 - weights_f)
+        valueUpper = ϕf * weights_f
+        valueLower = -ϕf * (1 - weights_f)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -446,39 +420,31 @@ function kernel_DivOnlyDynamicFaceBasedAssembly( # TODO -> Gpu Structs
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = divFunc(ϕf)                          # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = ϕf * weights_f
-        valueLower::P = -ϕf * (1 - weights_f)
+        valueUpper = ϕf * weights_f
+        valueLower = -ϕf * (1 - weights_f)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -578,39 +544,31 @@ function kernel_PrecalculatedWeightsFaceBasedAssembly( # TODO -> Gpu Structs
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = weights[iFace]                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -620,9 +578,7 @@ function kernel_PrecalculatedWeightsFaceBasedAssembly( # TODO -> Gpu Structs
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
         diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
-        CUDA.@atomic vals[idx] -= diffusion[1]    # x
-        CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+        CUDA.@atomic vals[idx] -= diffusion    # x
 
         # RHS/Source
         value = convection .+ diffusion
@@ -739,39 +695,31 @@ function kernel_HardcodedUpwindFaceBasedAssembly( # TODO -> Gpu Structs
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = upwind(ϕf)                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -781,9 +729,7 @@ function kernel_HardcodedUpwindFaceBasedAssembly( # TODO -> Gpu Structs
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
         diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
-        CUDA.@atomic vals[idx] -= diffusion[1]    # x
-        CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+        CUDA.@atomic vals[idx] -= diffusion    # x
 
         # RHS/Source
         value = convection .+ diffusion
@@ -829,39 +775,31 @@ function kernel_HardcodedCDFFaceBasedAssembly( # TODO -> Gpu Structs
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = centralDifferencing(ϕf)                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -871,9 +809,7 @@ function kernel_HardcodedCDFFaceBasedAssembly( # TODO -> Gpu Structs
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
         diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
-        CUDA.@atomic vals[idx] -= diffusion[1]    # x
-        CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+        CUDA.@atomic vals[idx] -= diffusion    # x
 
         # RHS/Source
         value = convection .+ diffusion
@@ -1000,7 +936,7 @@ function kernel_DynamicFaceBasedAssembly( # TODO -> Gpu Structs
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
         diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
-        CUDA.@atomic vals[idx] -= diffusion[1]    # x
+        CUDA.@atomic vals[idx] -= diffusion    # x
 
         # RHS/Source
         value = convection .+ diffusion
@@ -1093,36 +1029,28 @@ function kernel_LaplaceOnlyFaceBasedAssembly( # TODO -> Gpu Structs
         diffusion = nus[iOwner] * gDiffs[iFace]
 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = diffusion
-        valueLower::P = -diffusion
+        valueUpper = diffusion
+        valueLower = -diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -1131,9 +1059,7 @@ function kernel_LaplaceOnlyFaceBasedAssembly( # TODO -> Gpu Structs
         end
         diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
-        CUDA.@atomic vals[idx] -= diffusion[1]    # x
-        CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+        CUDA.@atomic vals[idx] -= diffusion    # x
 
         # RHS/Source
         value = diffusion
@@ -1224,39 +1150,31 @@ function kernel_all( # TODO -> Gpu Structs
 
         # Convection
         Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-        ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
         weights_f = 0.5                              # get weight of transport variable interpolation 
         # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1 - weights_f) - diffusion
 
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
         CUDA.@atomic vals[idx] += valueUpper    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
         rows[idx] = iNeighbor
         vals[idx] += valueLower    # x
-        vals[idx+entriesNeeded] += valueLower  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
         CUDA.@atomic vals[idx] += valueLower    # x
-        CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
         rows[idx] = iOwner
         vals[idx] += valueUpper    # x
-        vals[idx+entriesNeeded] += valueUpper  # y
-        vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     else
         relativeFaceIndex = iFace - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
@@ -1266,9 +1184,7 @@ function kernel_all( # TODO -> Gpu Structs
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
         diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
-        CUDA.@atomic vals[idx] -= diffusion[1]    # x
-        CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
-        CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+        CUDA.@atomic vals[idx] -= diffusion    # x
 
         # RHS/Source
         value = convection .+ diffusion
@@ -1338,39 +1254,31 @@ function kernel_internalFace( # TODO -> Gpu Structs
 
     # Convection
     Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-    ϕf::P = dot(Uf, Sf[iFace])                    # flux through the face
+    ϕf = dot(Uf, Sf[iFace])                    # flux through the face
     weights_f = upwind(ϕf)                              # get weight of transport variable interpolation 
     # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-    valueUpper::P = ϕf * weights_f + diffusion
-    valueLower::P = -ϕf * (1 - weights_f) - diffusion
+    valueUpper = ϕf * weights_f + diffusion
+    valueLower = -ϕf * (1 - weights_f) - diffusion
 
     idx = offsets[iOwner]
     cols[idx] = iOwner
     rows[idx] = iOwner
     CUDA.@atomic vals[idx] += valueUpper    # x
-    CUDA.@atomic vals[idx+entriesNeeded] += valueUpper  # y
-    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
 
     idx = offsets[iOwner] + relativeToOwner[iFace]
     cols[idx] = iOwner
     rows[idx] = iNeighbor
     vals[idx] += valueLower    # x
-    vals[idx+entriesNeeded] += valueLower  # y
-    vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
     CUDA.@atomic vals[idx] += valueLower    # x
-    CUDA.@atomic vals[idx+entriesNeeded] += valueLower  # y
-    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] += valueLower  # z
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
     rows[idx] = iOwner
     vals[idx] += valueUpper    # x
-    vals[idx+entriesNeeded] += valueUpper  # y
-    vals[idx+entriesNeeded+entriesNeeded] += valueUpper  # z
     return nothing
 end
 
@@ -1405,7 +1313,7 @@ function kernel_boundaryFace( # TODO -> Gpu Structs
     convection = bFaceValues[bFaceIndex] .* dot(Sf[globalFaceIndex], bFaceValues[bFaceIndex])
     diffusion = nus[iOwner] * gDiffs[globalFaceIndex]
     idx = offsets[iOwner]
-    CUDA.@atomic vals[idx] -= diffusion[1]    # x
+    CUDA.@atomic vals[idx] -= diffusion    # x
 
     # RHS/Source
     value = convection .+ diffusion
@@ -1445,14 +1353,12 @@ function kernel_boundaryFace_LaplaceOnly( # TODO -> Gpu Structs
     iOwner = iOwners[globalFaceIndex]
     diffusion = nus[iOwner] * gDiffs[globalFaceIndex]
     idx = offsets[iOwner]
-    CUDA.@atomic vals[idx] -= diffusion[1]    # x
-    CUDA.@atomic vals[idx+entriesNeeded] -= diffusion[2]  # y
-    CUDA.@atomic vals[idx+entriesNeeded+entriesNeeded] -= diffusion[3]  # z
+    CUDA.@atomic vals[idx] -= diffusion
 
     # RHS/Source
-    CUDA.@atomic RHS[iOwner] -= diffusion[1]
-    CUDA.@atomic RHS[iOwner+nCells] -= diffusion[2]
-    CUDA.@atomic RHS[iOwner+nCells+nCells] -= diffusion[3]
+    CUDA.@atomic RHS[iOwner] -= diffusion
+    CUDA.@atomic RHS[iOwner+nCells] -= diffusion
+    CUDA.@atomic RHS[iOwner+nCells+nCells] -= diffusion
     return nothing
 end
 

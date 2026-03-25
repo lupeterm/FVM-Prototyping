@@ -22,59 +22,64 @@ end
 
 function gpu_LaplaceOnlyCellBasedRunner(args...)
     backend = CUDABackend()
-    kernel_LaplaceOnlyCellBased(backend, 256)(args...; ndrange=length(args[1]))
+    kernel_LaplaceOnlyCellBased(backend, 256)(args...; ndrange=length(args[3]))
     KernelAbstractions.synchronize(backend)
 end
 
 @kernel function kernel_LaplaceOnlyCellBased(
-    @Const(cells),      # CuArray{GpuCell}
-    @Const(faces),      # CuArray{GpuFace}
+    @Const(iFaces),
+    @Const(iNeighbors),
+    @Const(numInteriors),
     @Const(nus),
+    @Const(Sf),
+    @Const(gDiffs),
+    @Const(U),
+    @Const(relativeToOwners),
+    @Const(relativeToNeighbors),
     @Const(offsets),
     @Const(bFaceValues),
-    @Const(U),
-    @Const(boundaries),
+    @Const(bFaceMapping),
+    @Const(numInternalFaces),
+    @Const(iOwners),
     rows,
     cols,
     vals,
     RHS,
+    @Const(iFaceOffsets),
+    @Const(facesPerCell),
 )
     iElement = @index(Global)
-    cell = cells[iElement]
-    numFaces = length(cell.iFaces)
+    numFaces = facesPerCell[iElement]
+    nCells = length(nus)
     diag = 0.0
-    nCells = length(cells)
-    for iFace in 1:cell.nInternalFaces
-        iFaceIndex = cell.iFaces[iFace]
-        theFace = faces[iFaceIndex]
-
-        diffusion = nus[iElement] * theFace.gDiff
+    startIndex = iFaceOffsets[iElement]-1
+    for iFace in 1:numInteriors[iElement]
+        iFaceIndex = iFaces[startIndex+iFace]
+        diffusion = nus[iElement] * gDiffs[iFaceIndex]
 
         valueUpper = diffusion
         valueLower = -diffusion
 
-        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
+        offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
 
-        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
+        idx = offsets[iElement] + ifelse(iOwners[iFaceIndex] == iElement, relativeToOwners[iFace], relativeToNeighbors[iFace])
         cols[idx] = iElement
-        rows[idx] = cell.iNeighbors[iFace]
+        rows[idx] = iNeighbors[startIndex+iFace]
         Atomix.@atomic vals[idx] += offdiag
 
         diag += valueUpper
     end
-    for iFace in cell.nInternalFaces+1:numFaces
-        iFaceIndex = cell.iFaces[iFace]
-        iBoundary = faces[iFaceIndex].patchIndex
-        if !boundaries[iBoundary].isFixedValue
-            continue
+    for iFace in numInteriors[iElement]+1:numFaces
+        iFaceIndex = iFaces[startIndex+iFace]
+        relativeFaceIndex = iFaceIndex - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            diffusion = nus[iElement] * gDiffs[iFaceIndex]
+            diag -= diffusion
+            RHS[iElement] -= diffusion
+            RHS[iElement+nCells] -= diffusion
+            RHS[iElement+nCells+nCells] -= diffusion
         end
-        theFace = faces[iFaceIndex]
-        diffusion = nus[iElement] * theFace.gDiff
-
-        diag -= diffusion
-        RHS[iElement] -= diffusion
-        RHS[iElement+nCells] -= diffusion
-        RHS[iElement+nCells+nCells] -= diffusion
     end
     idx = offsets[iElement]
     cols[idx] = iElement
@@ -84,68 +89,75 @@ end
 
 function gpu_PrecalculatedWeightsCellBasedRunner(args, weights)
     backend = CUDABackend()
-    kernel_PrecalculatedWeightsCellBased(backend, 256)(args..., weights; ndrange=length(args[1]))
+    kernel_PrecalculatedWeightsCellBased(backend, 256)(args..., weights; ndrange=length(args[3]))
     KernelAbstractions.synchronize(backend)
 end
 
 @kernel function kernel_PrecalculatedWeightsCellBased(
-    @Const(cells),      # CuArray{GpuCell}
-    @Const(faces),      # CuArray{GpuFace}
+    @Const(iFaces),
+    @Const(iNeighbors),
+    @Const(numInteriors),
     @Const(nus),
+    @Const(Sf),
+    @Const(gDiffs),
+    @Const(U),
+    @Const(relativeToOwners),
+    @Const(relativeToNeighbors),
     @Const(offsets),
     @Const(bFaceValues),
-    @Const(U),
-    @Const(boundaries),
+    @Const(bFaceMapping),
+    @Const(numInternalFaces),
+    @Const(iOwners),
     rows,
     cols,
     vals,
     RHS,
+    @Const(iFaceOffsets),
+    @Const(facesPerCell),
     @Const(weights)
 )
     iElement = @index(Global)
-    cell = cells[iElement]
-    numFaces = length(cell.iFaces)
+    numFaces = facesPerCell[iElement]
+    nCells = length(nus)
     diag = 0.0
-    nCells = length(cells)
+    startIndex = iFaceOffsets[iElement]-1 
+    for iFace in 1:numInteriors[iElement]
+        iFaceIndex = iFaces[startIndex+iFace]
 
-    for iFace in 1:cell.nInternalFaces
-        iFaceIndex = cell.iFaces[iFace]
-        theFace = faces[iFaceIndex]
+        U_P = U[iElement]
+        U_N = U[iNeighbors[startIndex+iFace]]
+        ϕf = dot(0.5(U_P + U_N), Sf[iFaceIndex])
+        weights_f = weights[iFaceIndex]
+        valueUpper = ϕf * weights_f
+        valueLower = -ϕf * (1 - weights_f)
 
-        diffusion = nus[iElement] * theFace.gDiff
+        diffusion = nus[iElement] * gDiffs[iFaceIndex]
 
-        # Convection
-        Uf = 0.5(U[iElement] + U[cell.iNeighbors[iFace]])                  # interpolate velocity to face 
-        ϕf = dot(Uf, theFace.Sf)                    # flux through the face
-        weights_f = weights[iFace]                              # get weight of transport variable interpolation 
-        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper = ϕf * weights_f + diffusion
-        valueLower = -ϕf * (1 - weights_f) - diffusion
+        valueUpper += diffusion
+        valueLower += -diffusion
 
-        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
+        offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
 
-        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
+        idx = offsets[iElement] + ifelse(iOwners[iFaceIndex] == iElement, relativeToOwners[iFace], relativeToNeighbors[iFace])
         cols[idx] = iElement
-        rows[idx] = cell.iNeighbors[iFace]
+        rows[idx] = iNeighbors[startIndex+iFace]
         Atomix.@atomic vals[idx] += offdiag
 
         diag += valueUpper
     end
-    for iFace in cell.nInternalFaces+1:numFaces
-        iFaceIndex = cell.iFaces[iFace]
-        iBoundary = faces[iFaceIndex].patchIndex
-        if !boundaries[iBoundary].isFixedValue
-            continue
-        end
-        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
-        theFace = faces[iFaceIndex]
-        convection = bFaceValues[relativeFaceIndex] .* dot(theFace.Sf, bFaceValues[relativeFaceIndex])
-        diffusion = nus[iElement] * theFace.gDiff
+    for iFace in numInteriors[iElement]+1:numFaces
+        iFaceIndex = iFaces[startIndex+iFace]
+        relativeFaceIndex = iFaceIndex - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
 
-        diag -= diffusion
-        RHS[iElement] -= diffusion - convection[1]
-        RHS[iElement+nCells] -= diffusion - convection[2]
-        RHS[iElement+nCells+nCells] -= diffusion - convection[3]
+            diffusion = nus[iElement] * gDiffs[iFace]
+            diag -= diffusion
+            RHS[iElement] -= convection - diffusion
+            RHS[iElement+nCells] -= convection - diffusion
+            RHS[iElement+nCells+nCells] -= convection - diffusion
+        end
     end
     idx = offsets[iElement]
     cols[idx] = iElement
@@ -155,68 +167,75 @@ end
 
 function gpu_DynamicCellBasedRunner(args, f)
     backend = CUDABackend()
-    kernel_DynamicCellBased(backend, 256)(args..., f; ndrange=length(args[1]))
+    kernel_DynamicCellBased(backend, 256)(args..., f; ndrange=length(args[3]))
     KernelAbstractions.synchronize(backend)
 end
 
 @kernel function kernel_DynamicCellBased(
-    @Const(cells),      # CuArray{GpuCell}
-    @Const(faces),      # CuArray{GpuFace}
+    @Const(iFaces),
+    @Const(iNeighbors),
+    @Const(numInteriors),
     @Const(nus),
+    @Const(Sf),
+    @Const(gDiffs),
+    @Const(U),
+    @Const(relativeToOwners),
+    @Const(relativeToNeighbors),
     @Const(offsets),
     @Const(bFaceValues),
-    @Const(U),
-    @Const(boundaries),
+    @Const(bFaceMapping),
+    @Const(numInternalFaces),
+    @Const(iOwners),
     rows,
     cols,
     vals,
     RHS,
+    @Const(iFaceOffsets),
+    @Const(facesPerCell),
     @Const(divFunc)
 )
     iElement = @index(Global)
-    cell = cells[iElement]
-    numFaces = length(cell.iFaces)
+    numFaces = facesPerCell[iElement] 
+    nCells = length(nus)
     diag = 0.0
-    nCells = length(cells)
+    startIndex = iFaceOffsets[iElement]-1
+    for iFace in 1:numInteriors[iElement]
+        iFaceIndex = iFaces[startIndex+iFace]
 
-    for iFace in 1:cell.nInternalFaces
-        iFaceIndex = cell.iFaces[iFace]
-        theFace = faces[iFaceIndex]
+        U_P = U[iElement]
+        U_N = U[iNeighbors[startIndex+iFace]]
+        ϕf = dot(0.5(U_P + U_N), Sf[iFaceIndex])
+        weights_f = divFunc(ϕf)
+        valueUpper = ϕf * weights_f
+        valueLower = -ϕf * (1 - weights_f)
 
-        diffusion = nus[iElement] * theFace.gDiff
+        diffusion = nus[iElement] * gDiffs[iFaceIndex]
 
-        # Convection
-        Uf = 0.5(U[iElement] + U[cell.iNeighbors[iFace]])                  # interpolate velocity to face 
-        ϕf = dot(Uf, theFace.Sf)                    # flux through the face
-        weights_f = divFunc(ϕf)                              # get weight of transport variable interpolation 
-        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper = ϕf * weights_f + diffusion
-        valueLower = -ϕf * (1 - weights_f) - diffusion
+        valueUpper += diffusion
+        valueLower += -diffusion
 
-        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
+        offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
 
-        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
+        idx = offsets[iElement] + ifelse(iOwners[iFaceIndex] == iElement, relativeToOwners[iFace], relativeToNeighbors[iFace])
         cols[idx] = iElement
-        rows[idx] = cell.iNeighbors[iFace]
+        rows[idx] = iNeighbors[startIndex+iFace]
         Atomix.@atomic vals[idx] += offdiag
 
         diag += valueUpper
     end
-    for iFace in cell.nInternalFaces+1:numFaces
-        iFaceIndex = cell.iFaces[iFace]
-        iBoundary = faces[iFaceIndex].patchIndex
-        if !boundaries[iBoundary].isFixedValue
-            continue
-        end
-        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
-        theFace = faces[iFaceIndex]
-        convection = bFaceValues[relativeFaceIndex] .* dot(theFace.Sf, bFaceValues[relativeFaceIndex])
-        diffusion = nus[iElement] * theFace.gDiff
+    for iFace in numInteriors[iElement]+1:numFaces
+        iFaceIndex = iFaces[startIndex+iFace]
+        relativeFaceIndex = iFaceIndex - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
 
-        diag -= diffusion
-        RHS[iElement] -= diffusion - convection[1]
-        RHS[iElement+nCells] -= diffusion - convection[2]
-        RHS[iElement+nCells+nCells] -= diffusion - convection[3]
+            diffusion = nus[iElement] * gDiffs[iFace]
+            diag -= diffusion
+            RHS[iElement] -= convection - diffusion
+            RHS[iElement+nCells] -= convection - diffusion
+            RHS[iElement+nCells+nCells] -= convection - diffusion
+        end
     end
     idx = offsets[iElement]
     cols[idx] = iElement
@@ -226,64 +245,70 @@ end
 
 function gpu_DivOnlyPrecalculatedWeightsCellBasedRunner(args, weights)
     backend = CUDABackend()
-    kernel_DivOnlyPrecalculatedWeightsCellBased(backend, 256)(args..., weights; ndrange=length(args[1]))
+    kernel_DivOnlyPrecalculatedWeightsCellBased(backend, 256)(args..., weights; ndrange=length(args[3]))
     KernelAbstractions.synchronize(backend)
 end
 
 @kernel function kernel_DivOnlyPrecalculatedWeightsCellBased(
-    @Const(cells),      # CuArray{GpuCell}
-    @Const(faces),      # CuArray{GpuFace}
+    @Const(iFaces),
+    @Const(iNeighbors),
+    @Const(numInteriors),
     @Const(nus),
+    @Const(Sf),
+    @Const(gDiffs),
+    @Const(U),
+    @Const(relativeToOwners),
+    @Const(relativeToNeighbors),
     @Const(offsets),
     @Const(bFaceValues),
-    @Const(U),
-    @Const(boundaries),
+    @Const(bFaceMapping),
+    @Const(numInternalFaces),
+    @Const(iOwners),
     rows,
     cols,
     vals,
     RHS,
+    @Const(iFaceOffsets),
+    @Const(facesPerCell),
     @Const(weights)
 )
     iElement = @index(Global)
-    cell = cells[iElement]
-    numFaces = length(cell.iFaces)
+    numFaces = facesPerCell[iElement]
+    nCells = length(nus)
     diag = 0.0
-    nCells = length(cells)
+    startIndex = iFaceOffsets[iElement]-1
+    for iFace in 1:numInteriors[iElement]
+        iFaceIndex = iFaces[startIndex+iFace]
 
-    for iFace in 1:cell.nInternalFaces
-        iFaceIndex = cell.iFaces[iFace]
-        theFace = faces[iFaceIndex]
-
-        # Convection
-        Uf = 0.5(U[iElement] + U[cell.iNeighbors[iFace]])                  # interpolate velocity to face 
-        ϕf = dot(Uf, theFace.Sf)                    # flux through the face
-        weights_f = weights[iFace]                              # get weight of transport variable interpolation 
-        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        U_P = U[iElement]
+        U_N = U[iNeighbors[startIndex+iFace]]
+        ϕf = dot(0.5(U_P + U_N), Sf[iFaceIndex])
+        weights_f = weights[iFaceIndex]
         valueUpper = ϕf * weights_f
         valueLower = -ϕf * (1 - weights_f)
 
-        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
 
-        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
+
+        offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
+
+        idx = offsets[iElement] + ifelse(iOwners[iFaceIndex] == iElement, relativeToOwners[iFace], relativeToNeighbors[iFace])
         cols[idx] = iElement
-        rows[idx] = cell.iNeighbors[iFace]
+        rows[idx] = iNeighbors[startIndex+iFace]
         Atomix.@atomic vals[idx] += offdiag
 
         diag += valueUpper
     end
-    for iFace in cell.nInternalFaces+1:numFaces
-        iFaceIndex = cell.iFaces[iFace]
-        iBoundary = faces[iFaceIndex].patchIndex
-        if !boundaries[iBoundary].isFixedValue
-            continue
-        end
-        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
-        theFace = faces[iFaceIndex]
-        convection = bFaceValues[relativeFaceIndex] .* dot(theFace.Sf, bFaceValues[relativeFaceIndex])
+    for iFace in numInteriors[iElement]+1:numFaces
+        iFaceIndex = iFaces[startIndex+iFace]
+        relativeFaceIndex = iFaceIndex - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
 
-        RHS[iElement] -= convection[1]
-        RHS[iElement+nCells] -= convection[2]
-        RHS[iElement+nCells+nCells] -= convection[3]
+            RHS[iElement] -= convection
+            RHS[iElement+nCells] -= convection
+            RHS[iElement+nCells+nCells] -= convection
+        end
     end
     idx = offsets[iElement]
     cols[idx] = iElement
@@ -293,67 +318,67 @@ end
 
 function gpu_DivOnlyHardcodedUpwindCellBasedRunner(args...)
     backend = CUDABackend()
-    kernel_DivOnlyHardCodedUpwindCellBased(backend, 256)(args...; ndrange=length(args[1]))
+    kernel_DivOnlyHardCodedUpwindCellBased(backend, 256)(args...; ndrange=length(args[3]))
     KernelAbstractions.synchronize(backend)
 end
 
 @kernel function kernel_DivOnlyHardCodedUpwindCellBased(
-    @Const(cells),      # CuArray{GpuCell}
-    @Const(faces),      # CuArray{GpuFace}
+    @Const(iFaces),
+    @Const(iNeighbors),
+    @Const(numInteriors),
     @Const(nus),
+    @Const(Sf),
+    @Const(gDiffs),
+    @Const(U),
+    @Const(relativeToOwners),
+    @Const(relativeToNeighbors),
     @Const(offsets),
     @Const(bFaceValues),
-    @Const(U),
-    @Const(boundaries),
+    @Const(bFaceMapping),
+    @Const(numInternalFaces),
+    @Const(iOwners),
     rows,
     cols,
     vals,
     RHS,
+    @Const(iFaceOffsets),
+    @Const(facesPerCell),
 )
     iElement = @index(Global)
-    cell = cells[iElement]
-    numFaces = length(cell.iFaces)
+    numFaces = facesPerCell[iElement]
+    nCells = length(nus)
     diag = 0.0
-    nCells = length(cells)
+    startIndex = iFaceOffsets[iElement]-1
+    for iFace in 1:numInteriors[iElement]
+        iFaceIndex = iFaces[startIndex+iFace]
 
-    for iFace in 1:cell.nInternalFaces
-        iFaceIndex = cell.iFaces[iFace]
-        theFace = faces[iFaceIndex]
+        U_P = U[iElement]
+        U_N = U[iNeighbors[startIndex+iFace]]
+        ϕf = dot(0.5(U_P + U_N), Sf[iFaceIndex])
+        weights_f = upwind(ϕf)
+        valueUpper = ϕf * weights_f
+        valueLower = -ϕf * (1 - weights_f)
 
-        diffusion = nus[iElement] * theFace.gDiff
+        offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
 
-        # Convection
-        Uf = 0.5(U[iElement] + U[cell.iNeighbors[iFace]])                  # interpolate velocity to face 
-        ϕf = dot(Uf, theFace.Sf)                    # flux through the face
-        weights_f = upwind(ϕf)                              # get weight of transport variable interpolation 
-        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper = ϕf * weights_f + diffusion
-        valueLower = -ϕf * (1 - weights_f) - diffusion
-
-        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
-
-        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
+        idx = offsets[iElement] + ifelse(iOwners[iFaceIndex] == iElement, relativeToOwners[iFace], relativeToNeighbors[iFace])
         cols[idx] = iElement
-        rows[idx] = cell.iNeighbors[iFace]
+        rows[idx] = iNeighbors[startIndex+iFace]
         Atomix.@atomic vals[idx] += offdiag
 
         diag += valueUpper
     end
-    for iFace in cell.nInternalFaces+1:numFaces
-        iFaceIndex = cell.iFaces[iFace]
-        iBoundary = faces[iFaceIndex].patchIndex
-        if !boundaries[iBoundary].isFixedValue
-            continue
-        end
-        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
-        theFace = faces[iFaceIndex]
-        convection = bFaceValues[relativeFaceIndex] .* dot(theFace.Sf, bFaceValues[relativeFaceIndex])
-        diffusion = nus[iElement] * theFace.gDiff
+    for iFace in numInteriors[iElement]+1:numFaces
+        iFaceIndex = iFaces[startIndex+iFace]
+        relativeFaceIndex = iFaceIndex - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
 
-        diag -= diffusion
-        RHS[iElement] -= diffusion - convection[1]
-        RHS[iElement+nCells] -= diffusion - convection[2]
-        RHS[iElement+nCells+nCells] -= diffusion - convection[3]
+            RHS[iElement] -= convection
+            RHS[iElement+nCells] -= convection
+            RHS[iElement+nCells+nCells] -= convection
+        end
     end
     idx = offsets[iElement]
     cols[idx] = iElement
@@ -363,67 +388,67 @@ end
 
 function gpu_DivOnlyHardcodedCDFCellBasedRunner(args...)
     backend = CUDABackend()
-    kernel_DivOnlyHardCodedCDFCellBased(backend, 256)(args...; ndrange=length(args[1]))
+    kernel_DivOnlyHardCodedCDFCellBased(backend, 256)(args...; ndrange=length(args[3]))
     KernelAbstractions.synchronize(backend)
 end
 
 @kernel function kernel_DivOnlyHardCodedCDFCellBased(
-    @Const(cells),      # CuArray{GpuCell}
-    @Const(faces),      # CuArray{GpuFace}
+    @Const(iFaces),
+    @Const(iNeighbors),
+    @Const(numInteriors),
     @Const(nus),
+    @Const(Sf),
+    @Const(gDiffs),
+    @Const(U),
+    @Const(relativeToOwners),
+    @Const(relativeToNeighbors),
     @Const(offsets),
     @Const(bFaceValues),
-    @Const(U),
-    @Const(boundaries),
+    @Const(bFaceMapping),
+    @Const(numInternalFaces),
+    @Const(iOwners),
     rows,
     cols,
     vals,
     RHS,
+    @Const(iFaceOffsets),
+    @Const(facesPerCell),
 )
     iElement = @index(Global)
-    cell = cells[iElement]
-    numFaces = length(cell.iFaces)
+    numFaces = facesPerCell[iElement]
+    nCells = length(nus)
     diag = 0.0
-    nCells = length(cells)
+    startIndex = iFaceOffsets[iElement]-1
+    for iFace in 1:numInteriors[iElement]
+        iFaceIndex = iFaces[startIndex+iFace]
 
-    for iFace in 1:cell.nInternalFaces
-        iFaceIndex = cell.iFaces[iFace]
-        theFace = faces[iFaceIndex]
+        U_P = U[iElement]
+        U_N = U[iNeighbors[startIndex+iFace]]
+        ϕf = dot(0.5(U_P + U_N), Sf[iFaceIndex])
+        weights_f = centralDifferencing(ϕf)
+        valueUpper = ϕf * weights_f
+        valueLower = -ϕf * (1 - weights_f)
 
-        diffusion = nus[iElement] * theFace.gDiff
+        offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
 
-        # Convection
-        Uf = 0.5(U[iElement] + U[cell.iNeighbors[iFace]])                  # interpolate velocity to face 
-        ϕf = dot(Uf, theFace.Sf)                    # flux through the face
-        weights_f = 0.5                              # get weight of transport variable interpolation 
-        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper = ϕf * weights_f + diffusion
-        valueLower = -ϕf * (1 - weights_f) - diffusion
-
-        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
-
-        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
+        idx = offsets[iElement] + ifelse(iOwners[iFaceIndex] == iElement, relativeToOwners[iFace], relativeToNeighbors[iFace])
         cols[idx] = iElement
-        rows[idx] = cell.iNeighbors[iFace]
+        rows[idx] = iNeighbors[startIndex+iFace]
         Atomix.@atomic vals[idx] += offdiag
 
         diag += valueUpper
     end
-    for iFace in cell.nInternalFaces+1:numFaces
-        iFaceIndex = cell.iFaces[iFace]
-        iBoundary = faces[iFaceIndex].patchIndex
-        if !boundaries[iBoundary].isFixedValue
-            continue
-        end
-        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
-        theFace = faces[iFaceIndex]
-        convection = bFaceValues[relativeFaceIndex] .* dot(theFace.Sf, bFaceValues[relativeFaceIndex])
-        diffusion = nus[iElement] * theFace.gDiff
+    for iFace in numInteriors[iElement]+1:numFaces
+        iFaceIndex = iFaces[startIndex+iFace]
+        relativeFaceIndex = iFaceIndex - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
 
-        diag -= diffusion
-        RHS[iElement] -= diffusion - convection[1]
-        RHS[iElement+nCells] -= diffusion - convection[2]
-        RHS[iElement+nCells+nCells] -= diffusion - convection[3]
+            RHS[iElement] -= convection
+            RHS[iElement+nCells] -= convection
+            RHS[iElement+nCells+nCells] -= convection
+        end
     end
     idx = offsets[iElement]
     cols[idx] = iElement
@@ -433,64 +458,68 @@ end
 
 function gpu_DivOnlyDynamicCellBasedRunner(args, f)
     backend = CUDABackend()
-    kernel_DivOnlyDynamicCellBased(backend, 256)(args..., f; ndrange=length(args[1]))
+    kernel_DivOnlyDynamicCellBased(backend, 256)(args..., f; ndrange=length(args[3]))
     KernelAbstractions.synchronize(backend)
 end
 
 @kernel function kernel_DivOnlyDynamicCellBased(
-    @Const(cells),      # CuArray{GpuCell}
-    @Const(faces),      # CuArray{GpuFace}
+    @Const(iFaces),
+    @Const(iNeighbors),
+    @Const(numInteriors),
     @Const(nus),
+    @Const(Sf),
+    @Const(gDiffs),
+    @Const(U),
+    @Const(relativeToOwners),
+    @Const(relativeToNeighbors),
     @Const(offsets),
     @Const(bFaceValues),
-    @Const(U),
-    @Const(boundaries),
+    @Const(bFaceMapping),
+    @Const(numInternalFaces),
+    @Const(iOwners),
     rows,
     cols,
     vals,
     RHS,
+    @Const(iFaceOffsets),
+    @Const(facesPerCell),
     @Const(divFunc)
 )
     iElement = @index(Global)
-    cell = cells[iElement]
-    numFaces = length(cell.iFaces)
+    numFaces = facesPerCell[iElement]
+    nCells = length(nus)
     diag = 0.0
-    nCells = length(cells)
+    startIndex = iFaceOffsets[iElement]-1
+    for iFace in 1:numFaces
+        iFaceIndex = iFaces[startIndex+iFace]
+        if iNeighbors[startIndex+iFace] > 0
 
-    for iFace in 1:cell.nInternalFaces
-        iFaceIndex = cell.iFaces[iFace]
-        theFace = faces[iFaceIndex]
+            U_P = U[iElement]
+            U_N = U[iNeighbors[startIndex+iFace]]
+            ϕf = dot(0.5(U_P + U_N), Sf[iFaceIndex])
+            weights_f = divFunc(ϕf)
+            valueUpper = ϕf * weights_f
+            valueLower = -ϕf * (1 - weights_f)
 
-        # Convection
-        Uf = 0.5(U[iElement] + U[cell.iNeighbors[iFace]])                  # interpolate velocity to face 
-        ϕf = dot(Uf, theFace.Sf)                    # flux through the face
-        weights_f = divFunc(ϕf)                              # get weight of transport variable interpolation 
-        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-        valueUpper = ϕf * weights_f
-        valueLower = -ϕf * (1 - weights_f)
+            offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
 
-        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
+            idx = offsets[iElement] + ifelse(iOwners[iFaceIndex] == iElement, relativeToOwners[iFace], relativeToNeighbors[iFace])
+            cols[idx] = iElement
+            rows[idx] = iNeighbors[startIndex+iFace]
+            Atomix.@atomic vals[idx] += offdiag
 
-        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
-        cols[idx] = iElement
-        rows[idx] = cell.iNeighbors[iFace]
-        Atomix.@atomic vals[idx] += offdiag
-
-        diag += valueUpper
-    end
-    for iFace in cell.nInternalFaces+1:numFaces
-        iFaceIndex = cell.iFaces[iFace]
-        iBoundary = faces[iFaceIndex].patchIndex
-        if !boundaries[iBoundary].isFixedValue
-            continue
+            diag += valueUpper
+        else
+            relativeFaceIndex = iFaceIndex - numInternalFaces
+            bFaceIndex = bFaceMapping[relativeFaceIndex]
+            if bFaceIndex != -1 && bFaceIndex < length(bFaceValues)
+                convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
+                
+                RHS[iElement] -= convection
+                RHS[iElement+nCells] -= convection
+                RHS[iElement+nCells+nCells] -= convection
+            end
         end
-        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
-        theFace = faces[iFaceIndex]
-        convection = bFaceValues[relativeFaceIndex] .* dot(theFace.Sf, bFaceValues[relativeFaceIndex])
-
-        RHS[iElement] -= convection[1]
-        RHS[iElement+nCells] -= convection[2]
-        RHS[iElement+nCells+nCells] -= convection[3]
     end
     idx = offsets[iElement]
     cols[idx] = iElement
@@ -500,63 +529,74 @@ end
 
 function gpu_HardcodedUpwindCellBasedRunner(args...)
     backend = CUDABackend()
-    kernel_HardCodedUpwindCellBased(backend, 256)(args...; ndrange=length(args[1]))
+    kernel_HardCodedUpwindCellBased(backend, 256)(args...; ndrange=length(args[3]))
     KernelAbstractions.synchronize(backend)
 end
 
 @kernel function kernel_HardCodedUpwindCellBased(
-    @Const(cells),      # CuArray{GpuCell}
-    @Const(faces),      # CuArray{GpuFace}
+    @Const(iFaces),
+    @Const(iNeighbors),
+    @Const(numInteriors),
     @Const(nus),
+    @Const(Sf),
+    @Const(gDiffs),
+    @Const(U),
+    @Const(relativeToOwners),
+    @Const(relativeToNeighbors),
     @Const(offsets),
     @Const(bFaceValues),
-    @Const(U),
-    @Const(boundaries),
+    @Const(bFaceMapping),
+    @Const(numInternalFaces),
+    @Const(iOwners),
     rows,
     cols,
     vals,
     RHS,
+    @Const(iFaceOffsets),
+    @Const(facesPerCell),
 )
     iElement = @index(Global)
-    cell = cells[iElement]
-    numFaces = length(cell.iFaces)
+    numFaces = facesPerCell[iElement]
+    nCells = length(nus)
     diag = 0.0
-    nCells = length(cells)
+    startIndex = iFaceOffsets[iElement]-1
+    for iFace in 1:numInteriors[iElement]
+        iFaceIndex = iFaces[startIndex+iFace]
 
-    for iFace in 1:cell.nInternalFaces
-        iFaceIndex = cell.iFaces[iFace]
-        theFace = faces[iFaceIndex]
-
-        # Convection
-        Uf = 0.5(U[iElement] + U[cell.iNeighbors[iFace]])                  # interpolate velocity to face 
-        ϕf = dot(Uf, theFace.Sf)                    # flux through the face
-        weights_f = upwind(ϕf)                              # get weight of transport variable interpolation 
-        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        U_P = U[iElement]
+        U_N = U[iNeighbors[startIndex+iFace]]
+        ϕf = dot(0.5(U_P + U_N), Sf[iFaceIndex])
+        weights_f = upwind(ϕf)
         valueUpper = ϕf * weights_f
         valueLower = -ϕf * (1 - weights_f)
 
-        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
+        diffusion = nus[iElement] * gDiffs[iFaceIndex]
 
-        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
+        valueUpper += diffusion
+        valueLower += -diffusion
+
+        offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
+
+        idx = offsets[iElement] + ifelse(iOwners[iFaceIndex] == iElement, relativeToOwners[iFace], relativeToNeighbors[iFace])
         cols[idx] = iElement
-        rows[idx] = cell.iNeighbors[iFace]
+        rows[idx] = iNeighbors[startIndex+iFace]
         Atomix.@atomic vals[idx] += offdiag
 
         diag += valueUpper
     end
-    for iFace in cell.nInternalFaces+1:numFaces
-        iFaceIndex = cell.iFaces[iFace]
-        iBoundary = faces[iFaceIndex].patchIndex
-        if !boundaries[iBoundary].isFixedValue
-            continue
-        end
-        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
-        theFace = faces[iFaceIndex]
-        convection = bFaceValues[relativeFaceIndex] .* dot(theFace.Sf, bFaceValues[relativeFaceIndex])
+    for iFace in numInteriors[iElement]+1:numFaces
+        iFaceIndex = iFaces[startIndex+iFace]
+        relativeFaceIndex = iFaceIndex - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
 
-        RHS[iElement] -= convection[1]
-        RHS[iElement+nCells] -= convection[2]
-        RHS[iElement+nCells+nCells] -= convection[3]
+            diffusion = nus[iElement] * gDiffs[iFace]
+            diag -= diffusion
+            RHS[iElement] -= convection - diffusion
+            RHS[iElement+nCells] -= convection - diffusion
+            RHS[iElement+nCells+nCells] -= convection - diffusion
+        end
     end
     idx = offsets[iElement]
     cols[idx] = iElement
@@ -566,63 +606,74 @@ end
 
 function gpu_HardcodedCDFCellBasedRunner(args...)
     backend = CUDABackend()
-    kernel_HardCodedCDFCellBased(backend, 256)(args...; ndrange=length(args[1]))
+    kernel_HardCodedCDFCellBased(backend, 256)(args...; ndrange=length(args[3]))
     KernelAbstractions.synchronize(backend)
 end
 
 @kernel function kernel_HardCodedCDFCellBased(
-    @Const(cells),      # CuArray{GpuCell}
-    @Const(faces),      # CuArray{GpuFace}
+    @Const(iFaces),
+    @Const(iNeighbors),
+    @Const(numInteriors),
     @Const(nus),
+    @Const(Sf),
+    @Const(gDiffs),
+    @Const(U),
+    @Const(relativeToOwners),
+    @Const(relativeToNeighbors),
     @Const(offsets),
     @Const(bFaceValues),
-    @Const(U),
-    @Const(boundaries),
+    @Const(bFaceMapping),
+    @Const(numInternalFaces),
+    @Const(iOwners),
     rows,
     cols,
     vals,
     RHS,
+    @Const(iFaceOffsets),
+    @Const(facesPerCell),
 )
     iElement = @index(Global)
-    cell = cells[iElement]
-    numFaces = length(cell.iFaces)
+    numFaces = facesPerCell[iElement]
+    nCells = length(nus)
     diag = 0.0
-    nCells = length(cells)
+    startIndex = iFaceOffsets[iElement]-1
+    for iFace in 1:numInteriors[iElement]
+        iFaceIndex = iFaces[startIndex+iFace]
 
-    for iFace in 1:cell.nInternalFaces
-        iFaceIndex = cell.iFaces[iFace]
-        theFace = faces[iFaceIndex]
-
-        # Convection
-        Uf = 0.5(U[iElement] + U[cell.iNeighbors[iFace]])                  # interpolate velocity to face 
-        ϕf = dot(Uf, theFace.Sf)                    # flux through the face
-        weights_f = centralDifferencing(ϕf)                              # get weight of transport variable interpolation 
-        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        U_P = U[iElement]
+        U_N = U[iNeighbors[startIndex+iFace]]
+        ϕf = dot(0.5(U_P + U_N), Sf[iFaceIndex])
+        weights_f = centralDifferencing(ϕf)
         valueUpper = ϕf * weights_f
         valueLower = -ϕf * (1 - weights_f)
 
-        offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
+        diffusion = nus[iElement] * gDiffs[iFaceIndex]
 
-        idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
+        valueUpper += diffusion
+        valueLower += -diffusion
+
+        offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
+
+        idx = offsets[iElement] + ifelse(iOwners[iFaceIndex] == iElement, relativeToOwners[iFace], relativeToNeighbors[iFace])
         cols[idx] = iElement
-        rows[idx] = cell.iNeighbors[iFace]
+        rows[idx] = iNeighbors[startIndex+iFace]
         Atomix.@atomic vals[idx] += offdiag
 
         diag += valueUpper
     end
-    for iFace in cell.nInternalFaces+1:numFaces
-        iFaceIndex = cell.iFaces[iFace]
-        iBoundary = faces[iFaceIndex].patchIndex
-        if !boundaries[iBoundary].isFixedValue
-            continue
-        end
-        relativeFaceIndex = iFaceIndex - boundaries[iBoundary].startFace
-        theFace = faces[iFaceIndex]
-        convection = bFaceValues[relativeFaceIndex] .* dot(theFace.Sf, bFaceValues[relativeFaceIndex])
+    for iFace in numInteriors[iElement]+1:numFaces
+        iFaceIndex = iFaces[startIndex+iFace]
+        relativeFaceIndex = iFaceIndex - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
 
-        RHS[iElement] -= convection[1]
-        RHS[iElement+nCells] -= convection[2]
-        RHS[iElement+nCells+nCells] -= convection[3]
+            diffusion = nus[iElement] * gDiffs[iFace]
+            diag -= diffusion
+            RHS[iElement] -= convection - diffusion
+            RHS[iElement+nCells] -= convection - diffusion
+            RHS[iElement+nCells+nCells] -= convection - diffusion
+        end
     end
     idx = offsets[iElement]
     cols[idx] = iElement

@@ -47,7 +47,6 @@ function mtl_precalcOffsets(input::MatrixAssemblyInput)
         offsets[iElement] += negOffsets[iElement]  # increase offset
     end
     gpu_offsets = mtl(offsets)
-    # copyto!(gpu_offsets, offsets)
     offsets = []
     negOffsets = []
     return gpu_offsets
@@ -55,15 +54,13 @@ end
 
 function gpu_prepareFaceBased(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
     mesh = input.mesh
-    nu = input.nu
-    nu_g = CuArray{P}(undef, length(nu))
-    copyto!(nu_g, nu)
+    nu_g = CuArray(input.nu)
     nCells::Int32 = length(mesh.cells)
     RHS = CUDA.zeros(P, nCells * 3)
     entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
     offsets = gpu_precalcOffsets(input)
     vals = CUDA.zeros(P, entriesNeeded)
-    rows::CuArray{Int32} = CUDA.zeros(Int32, entriesNeeded)
+    rows = CUDA.zeros(Int32, entriesNeeded)
     cols = CUDA.zeros(Int32, entriesNeeded)
     N::Int32 = length(mesh.faces)
     M = mesh.numBoundaryFaces
