@@ -1,42 +1,110 @@
 include("init.jl")
 include("cpu_helper.jl")
-include("operators.jl")
-
-
-function prepf(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+using Atomix
+function ThreadedCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}) where {P<:AbstractFloat}
     mesh = input.mesh
     nCells = length(mesh.cells)
-    entriesNeeded::Int32 = nCells + 2 * mesh.numInteriorFaces
     RHS = zeros(P, nCells * 3)
-    offsets::Vector{Int32} = input.offsets
-    vals = zeros(P, entriesNeeded)
+    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
+    offsets = getOffsets(input)
     rows = zeros(Int32, entriesNeeded)
     cols = zeros(Int32, entriesNeeded)
-    return rows, vals, cols, RHS, offsets
+    vals = Vector{P}(undef, entriesNeeded * 3)
+    chunks = Iterators.partition(1:nCells, nCells ÷ nthreads())
+    chunks = [c for c in chunks]
+    @threads for chunk in chunks
+        CellBasedHelper(chunk, input, RHS, rows, cols, offsets, vals)
+    end
+    return rows, cols, vals
 end
-function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, fused_pde::DiffEq) where {P<:AbstractFloat}
+
+function CellBasedHelper(chunk::UnitRange, input::MatrixAssemblyInput, RHS::Vector{P}, rows::Vector{Int32}, cols::Vector{Int32}, offsets, vals::Vector) where {P<:AbstractFloat}
+    mesh = input.mesh
+    nu = input.nu
+    nCells = length(mesh.cells)
+    velocity_boundary = input.U[1]
+    velocity_internal = input.U[2].values
+    for iElement in chunk
+        theElement = mesh.cells[iElement]
+        @inbounds diagx = velocity_internal[iElement][1]
+        @inbounds diagy = velocity_internal[iElement][2]
+        @inbounds diagz = velocity_internal[iElement][3]
+        @inbounds for iFace in 1:theElement.nInternalFaces
+            @inbounds iFaceIndex = theElement.iFaces[iFace]
+            @inbounds theFace = mesh.faces[iFaceIndex]
+            fluxCn = nu * theFace.gDiff
+            fluxFn = -fluxCn
+            idx = offsets[iElement] + iFace
+            @inbounds cols[idx] = iElement
+            @inbounds rows[idx] = theElement.iNeighbors[iFace]
+            @inbounds vals[idx] = fluxFn    # x
+            @inbounds vals[2*idx] = fluxFn  # y
+            @inbounds vals[3*idx] = fluxFn  # z
+            diagx += fluxCn
+            diagy += fluxCn
+            diagz += fluxCn
+        end
+        for iFace in theElement.nInternalFaces+1:length(theElement.iFaces)
+            @inbounds iFaceIndex = theElement.iFaces[iFace]
+            @inbounds theFace = mesh.faces[iFaceIndex]
+            @inbounds iBoundary = mesh.faces[iFaceIndex].patchIndex
+            @inbounds boundaryType = velocity_boundary[iBoundary].type
+            if boundaryType == "fixedValue"
+                fluxCb = nu * theFace.gDiff
+                relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
+                fluxVb::Vector{P} = velocity_boundary[iBoundary].values[relativeFaceIndex] .* -fluxCb
+                @inbounds RHS[iElement] -= fluxVb[1]
+                @inbounds RHS[iElement+nCells] -= fluxVb[2]
+                @inbounds RHS[iElement+nCells+nCells] -= fluxVb[3]
+                diagx += fluxCb
+                diagy += fluxCb
+                diagz += fluxCb
+            end
+        end
+        idx = offsets[iElement]
+        @inbounds cols[idx] = iElement
+        @inbounds rows[idx] = iElement
+        @inbounds vals[idx] = diagx    # x
+        @inbounds vals[2*idx] = diagy  # y
+        @inbounds vals[3*idx] = diagz  # z
+    end
+end
+
+
+function FusedFaceBasedAssemblyThreaded(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, fused_pde::DiffEq) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(mesh.cells)
-    @inbounds for iFace in 1:mesh.numInteriorFaces
+    Threads.@threads for iFace in 1:mesh.numInteriorFaces
         theFace = mesh.faces[iFace]
         iOwner = theFace.iOwner
         iNeighbor = theFace.iNeighbor
         valueUpper, valueLower = zero(P), zero(P)
         valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nu[iOwner], theFace.gDiff, valueUpper, valueLower)
 
-        # rowOwnStart + diagOffs[own]  -> (owner, owner)
-        setIndex!(iOwner, iOwner, valueUpper, rows, cols, vals, offsets[iOwner])
+        idxUpper = offsets[iOwner]
+        cols[idxUpper] = iOwner
+        rows[idxUpper] = iOwner
+        idx = offsets[iNeighbor]
+        cols[idx] = iNeighbor
+        rows[idx] = iNeighbor
+        Atomix.@atomic vals[idxUpper] += valueUpper
+        Atomix.@atomic vals[idx] += valueLower
+
         # rowNeiStart + neiOffs[facei] -> (neigh, owner)
-        setIndex!(iNeighbor, iOwner, valueUpper, rows, cols, vals, offsets[iNeighbor] + theFace.relativeToNeighbor)
-        # rowNeiStart + diagOffs[nei]  -> (neigh, neigh)
-        setIndex!(iNeighbor, iNeighbor, valueLower, rows, cols, vals, offsets[iNeighbor])
+        idx = offsets[iNeighbor] + theFace.relativeToNeighbor
+        cols[idx] = iNeighbor
+        rows[idx] = iOwner
+        vals[idx] += valueUpper
         # rowOwnStart + ownOffs[facei] -> (owner, neigh)
-        setIndex!(iOwner, iNeighbor, valueLower, rows, cols, vals, offsets[iOwner] + theFace.relativeToOwner)
+        idx = offsets[iOwner] + theFace.relativeToOwner
+        cols[idx] = iOwner
+        rows[idx] = iNeighbor
+        vals[idx] += valueLower
     end
-    @inbounds for iBoundary in eachindex(mesh.boundaries)
+    Threads.@threads for iBoundary in eachindex(mesh.boundaries)
         if U_b[iBoundary].type != "fixedValue"
             continue
         end
@@ -49,11 +117,15 @@ function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int3
             diag, rhsx, rhsy, rhsz = zeros(P, 4)
             diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], theFace.Sf, nu[theFace.iOwner], theFace.gDiff, diag, rhsx, rhsy, rhsz)
 
-            setIndex!(theFace.iOwner, theFace.iOwner, diag, rows, cols, vals, offsets[theFace.iOwner])
+            idx = offsets[theFace.iOwner]
+
+            cols[idx] = theFace.iOwner
+            rows[idx] = theFace.iOwner
+            Atomix.@atomic vals[idx] += diag 
             # RHS/Source
-            @inbounds RHS[theFace.iOwner] += rhsx
-            @inbounds RHS[theFace.iOwner+nCells] += rhsy
-            @inbounds RHS[theFace.iOwner+nCells+nCells] += rhsz
+            Atomix.@atomic RHS[theFace.iOwner] += rhsx
+            Atomix.@atomic RHS[theFace.iOwner+nCells] += rhsy
+            Atomix.@atomic RHS[theFace.iOwner+nCells+nCells] += rhsz
         end
     end
     return rows, cols, vals, RHS

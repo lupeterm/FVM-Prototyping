@@ -8,6 +8,7 @@ include("gpu_faceBased.jl")
 include("gpu_batchedFace.jl")
 include("gpu_cellBased.jl")
 include("operators.jl")
+include("cpu_threaded.jl")
 using BenchmarkTools
 const CASES = [
     # ("cases/LDC-S/", "LDC-S", "Lid-Driven-Cavity S")
@@ -223,9 +224,9 @@ function count_benchmarks(group)
 end
 
 function processResults(results::BenchmarkGroup, file::String, T)
-    # open("results/$(file)", "a") do io
-    #     write(io, join("time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language,precision,executor,use_kernelAbstractions,use_fusing\n"))
-    # end
+    open("results/$(file)", "a") do io
+        write(io, join("time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language,precision,executor,use_kernelAbstractions,use_fusing\n"))
+    end
     for (cpu_gpu, perDataset) in results
         println("[CPU, GPU]: $cpu_gpu ")
         for (case, perStrategy) in perDataset
