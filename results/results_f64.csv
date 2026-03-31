@@ -6,7 +6,7 @@ time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_lo
 24.026631344497606,23.960135,0.0,0.0,LDC-S,Lid-Driven Cavity S,faceBased,DynamicCDF,julia,float64,cpu,false,false
 23.19426483333333,23.1449875,0.0,0.0,LDC-S,Lid-Driven Cavity S,faceBased,DivOnlyHardCodedCDF,julia,float64,cpu,false,false
 23.612247990566036,23.5661875,0.0,0.0,LDC-S,Lid-Driven Cavity S,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,float64,cpu,false,false
-67.6504326081081,67.4332315,0.0,0.0,LDC-S,Lid-Driven Cavity S,faceBased,FusedDivLap,julia,float64,cpu,false,true
+23.93634876555024,23.906609,0.0,0.0,LDC-S,Lid-Driven Cavity S,faceBased,FusedDivLap,julia,float64,cpu,false,true
 24.052419120192308,24.0262975,0.0,0.0,LDC-S,Lid-Driven Cavity S,faceBased,HardCodedUpwind,julia,float64,cpu,false,false
 23.660121594339625,23.6201215,0.0,0.0,LDC-S,Lid-Driven Cavity S,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,float64,cpu,false,false
 22.715054488687784,22.653508,0.0,0.0,LDC-S,Lid-Driven Cavity S,faceBased,DivOnlyDynamicUpwind,julia,float64,cpu,false,false
@@ -62,7 +62,7 @@ time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_lo
 171.3861777666667,171.3146715,0.0,0.0,Wind,WindsorBody,faceBased Global,DynamicCDF,julia,float64,cpu,false,false
 167.65549753333332,166.843977,0.0,0.0,Wind,WindsorBody,faceBased Global,DivOnlyHardCodedCDF,julia,float64,cpu,false,false
 168.76148043333333,168.6552105,0.0,0.0,Wind,WindsorBody,faceBased Global,DivOnlyPrecalculatedWeightsCDF,julia,float64,cpu,false,false
-175.23863386206895,175.161237,0.0,0.0,Wind,WindsorBody,faceBased Global,FusedDivLap,julia,float64,cpu,false,true
+160.783352125,160.758305,0.0,0.0,Wind,WindsorBody,faceBased,FusedDivLap,julia,float64,cpu,false,true
 170.534898,170.473375,0.0,0.0,Wind,WindsorBody,faceBased Global,HardCodedUpwind,julia,float64,cpu,false,false
 168.76093866666665,168.716084,0.0,0.0,Wind,WindsorBody,faceBased Global,DivOnlyPrecalculatedWeightsUpwind,julia,float64,cpu,false,false
 166.70863406666666,166.2107775,0.0,0.0,Wind,WindsorBody,faceBased Global,DivOnlyDynamicUpwind,julia,float64,cpu,false,false
@@ -90,7 +90,7 @@ time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_lo
 187.38720407407405,187.339856,0.0,0.0,LDC-M,Lid-Driven Cavity M,faceBased,DynamicCDF,julia,float64,cpu,false,false
 187.6229914814815,187.533384,0.0,0.0,LDC-M,Lid-Driven Cavity M,faceBased,DivOnlyHardCodedCDF,julia,float64,cpu,false,false
 194.26865457692307,194.1188715,0.0,0.0,LDC-M,Lid-Driven Cavity M,faceBased,DivOnlyPrecalculatedWeightsCDF,julia,float64,cpu,false,false
-195.81345965384614,195.664676,0.0,0.0,LDC-M,Lid-Driven Cavity M,faceBased,FusedDivLap,julia,float64,cpu,false,true
+187.50576203703704,187.468548,0.0,0.0,LDC-M,Lid-Driven Cavity M,faceBased,FusedDivLap,julia,float64,cpu,false,true
 193.242741,193.1233005,0.0,0.0,LDC-M,Lid-Driven Cavity M,faceBased,HardCodedUpwind,julia,float64,cpu,false,false
 195.3474775,195.1855365,0.0,0.0,LDC-M,Lid-Driven Cavity M,faceBased,DivOnlyPrecalculatedWeightsUpwind,julia,float64,cpu,false,false
 183.46690307142856,183.406604,0.0,0.0,LDC-M,Lid-Driven Cavity M,faceBased,DivOnlyDynamicUpwind,julia,float64,cpu,false,false
