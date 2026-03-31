@@ -381,3 +381,211 @@ end
     rows[idx] = iElement
     Atomix.@atomic vals[idx] += diag
 end
+
+function getFaceBasedGpuInput2(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+    mesh = input.mesh
+    nu_g = CuArray(input.nu)
+    nCells::Int32 = length(mesh.cells)
+    RHS = CUDA.zeros(P, nCells * 3)
+    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
+    offsets = gpu_precalcOffsets(input)
+    vals = CUDA.zeros(P, entriesNeeded)
+    rows = CUDA.zeros(Int32, entriesNeeded)
+    cols = CUDA.zeros(Int32, entriesNeeded)
+    prepareRelativeIndices!(input)
+    bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
+    batches = group(x -> x.batchId, input.mesh.faces)
+    gpuBatches = [facesToGPUarrays(b) for b in batches.values]
+    return gpuBatches, offsets, nu_g, rows, cols, vals, U, bFaceValues, RHS, input.mesh.numInteriorFaces, bFaceMapping
+end
+
+function getBatchedFaceBasedGpuInput2(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+    getGreedyEdgeColoring(input)
+    gpuBatches, offsets, nus, rows, cols, vals, U, bFaceValues, RHS, N, bFaceMapping = getFaceBasedGpuInput2(input)
+    return offsets, nus, rows, cols, vals, U, bFaceValues, RHS, bFaceMapping, gpuBatches
+end
+
+
+function run_batchedFace_abstract2(
+    offsets,
+    nus,
+    rows,
+    cols,
+    vals,
+    U,
+    bFaceValues,
+    RHS,
+    bFaceMapping,
+    batches,
+    joinedBatches,
+    fused_pde
+)
+    backend = CUDABackend()
+    for color in 1:length(batches)
+        if color == joinedBatches
+            break
+        end
+        kernel_FusedBatchedFaceAssembly2(backend, 256)(
+            batches[color]...,
+            offsets,
+            nus,
+            rows,
+            cols,
+            vals,
+            U,
+            fused_pde;
+            ndrange=length(batches[color][1])
+        )
+        KernelAbstractions.synchronize(backend)
+    end
+    for joined in joinedBatches:length(batches)-1
+        kernel_joinedBatches(backend, 256)(
+            batches[joined]...,
+            offsets,
+            nus,
+            rows,
+            cols,
+            vals,
+            U,
+            fused_pde;
+            ndrange=length(batches[joined][1])
+        )
+        # no need to sync here, its atomic anyways
+    end
+    KernelAbstractions.synchronize(backend)
+
+    kernel_abstract_boundaryFace2(backend, 256)(
+        batches[end][1],
+        batches[end][3],
+        offsets,
+        nus,
+        vals,
+        bFaceValues,
+        RHS,
+        batches[end][6],
+        bFaceMapping,
+        fused_pde,
+        ndrange=length(batches[end][1])
+    )
+    KernelAbstractions.synchronize(backend)
+
+    return rows, cols, vals, RHS
+end
+
+@kernel function kernel_FusedBatchedFaceAssembly2(
+    @Const(iOwners),
+    @Const(iNeighbors),
+    @Const(gDiffs),
+    @Const(relativeToOwner),
+    @Const(relativesN),
+    @Const(Sf),
+    @Const(offsets),
+    @Const(nus),
+    rows,
+    cols,
+    vals,
+    @Const(U),
+    @Const(fused_pde)
+)
+    t = typeof(nus[1])
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    upper, lower = zero(t), zero(t)
+    upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
+
+    idx = offsets[iOwner]
+    cols[idx] = iOwner
+    rows[idx] = iOwner
+    vals[idx] += upper
+
+    idx = offsets[iOwner] + relativeToOwner[iFace]
+    cols[idx] = iOwner
+    rows[idx] = iNeighbor
+    vals[idx] += lower
+
+    idx = offsets[iNeighbor]
+    cols[idx] = iNeighbor
+    rows[idx] = iNeighbor
+    vals[idx] += lower
+
+    idx = offsets[iNeighbor] + relativesN[iFace]
+    cols[idx] = iNeighbor
+    rows[idx] = iOwner
+    vals[idx] += upper
+end
+
+
+@kernel function kernel_joinedBatches(
+    @Const(iOwners),
+    @Const(iNeighbors),
+    @Const(gDiffs),
+    @Const(relativeToOwner),
+    @Const(relativeToNeighbor),
+    @Const(Sf),
+    @Const(offsets),
+    @Const(nus),
+    rows,
+    cols,
+    vals,
+    @Const(U),
+    @Const(fused_pde)
+)
+    t = typeof(nus[1])
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    upper, lower = zero(t), zero(t)
+    upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
+
+    idx = offsets[iOwner]
+    cols[idx] = iOwner
+    rows[idx] = iOwner
+    Atomix.@atomic vals[idx] += upper
+
+    idx = offsets[iOwner] + relativeToOwner[iFace]
+    cols[idx] = iOwner
+    rows[idx] = iNeighbor
+    vals[idx] += lower
+    idx = offsets[iNeighbor]
+    cols[idx] = iNeighbor
+    rows[idx] = iNeighbor
+    Atomix.@atomic vals[idx] += lower
+
+    idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
+    cols[idx] = iNeighbor
+    rows[idx] = iOwner
+    vals[idx] += upper
+end
+
+@kernel function kernel_abstract_boundaryFace2(
+    @Const(iOwners),
+    @Const(gDiffs),
+    @Const(offsets),
+    @Const(nus),
+    vals,
+    @Const(bFaceValues),
+    RHS,
+    @Const(Sf),
+    @Const(bFaceMapping),
+    @Const(fused_pde)
+)
+    t = typeof(nus[1])
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    bFaceIndex = bFaceMapping[iFace]
+    if bFaceIndex != -1
+        diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
+        diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], diag, rhsx, rhsy, rhsz)
+
+        # Diagonal Entry        
+        idx = offsets[iOwner]
+        Atomix.@atomic vals[idx] += diag
+
+        # RHS/Source
+        nCells = length(nus)
+        Atomix.@atomic RHS[iOwner] += rhsx
+        Atomix.@atomic RHS[iOwner+nCells] += rhsy
+        Atomix.@atomic RHS[iOwner+nCells+nCells] += rhsz
+    end
+end
