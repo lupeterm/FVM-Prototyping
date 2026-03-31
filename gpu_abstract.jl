@@ -130,7 +130,7 @@ end
 end
 
 function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
-    numBatches, faceColors = getGreedyEdgeColoring(input)
+    numBatches, faceColors = getGreedyEdgeColoring(input) |> cu
     iOwners, iNeighbors, gDiffs, offsets, nus, rows, cols, vals, relativeToOwners, relativeToNbs, U, Sf, bFaceValues, RHS, N, bFaceMapping = getFaceBasedGpuInput(input)
     return iOwners, iNeighbors, gDiffs, offsets, nus, rows, cols, vals, relativeToOwners, relativeToNbs, U, Sf, bFaceValues, RHS, N, bFaceMapping, numBatches, input.mesh.numBoundaryFaces, faceColors
 end

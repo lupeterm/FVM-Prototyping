@@ -1044,7 +1044,7 @@ end
 
 function gpu_prepareBatchedFaceBased(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping = gpu_prepareFaceBased(input)
-    numBatches, faceColorMapping = getGreedyEdgeColoring(input)
+    numBatches, faceColorMapping = getGreedyEdgeColoring(input) |> cu
     return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, numBatches, faceColorMapping, U, Sf, bFaceMapping
 end
 
@@ -1085,7 +1085,8 @@ function getGreedyEdgeColoring(input::MatrixAssemblyInput)
             end
         end
     end
-    return maximum(faceColorMapping), CuArray{Int32}(faceColorMapping)
+    # return maximum(faceColorMapping), CuArray{Int32}(faceColorMapping)
+    return maximum(faceColorMapping), faceColorMapping
 end
 
 

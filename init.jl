@@ -9,3 +9,4 @@ using CUDA
 include("classes.jl")
 include("readMesh.jl")
 include("alles.jl")
+include("operators.jl")
