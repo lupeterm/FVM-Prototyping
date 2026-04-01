@@ -2,7 +2,7 @@ include("init.jl")
 include("gpu_faceBased.jl")
 include("gpu_helper.jl")
 include("gpu_batchedFace.jl")
-using KernelAbstractions, Atomix
+using KernelAbstractions, Atomix, SplitApplyCombine
 """
 'abstract', as in, using `KernelAbstractions`, and not CUDA.
 """
@@ -88,7 +88,7 @@ end
     iFace = @index(Global)
     iOwner = iOwners[iFace]
     iNeighbor = iNeighbors[iFace]
-    if iNeighbor >0 
+    if iNeighbor > 0
         upper, lower = 0.0, 0.0
         # upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
 
@@ -306,7 +306,7 @@ function flattenCells(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     iNeighbors[1:1+length(input.mesh.cells[1].iNeighbors)-1] = input.mesh.cells[1].iNeighbors
     for iCell in 2:length(input.mesh.cells)
         cell = input.mesh.cells[iCell]
-        start = iFaceOffsets[iCell-1] + length(input.mesh.cells[iCell-1].iFaces) 
+        start = iFaceOffsets[iCell-1] + length(input.mesh.cells[iCell-1].iFaces)
         iFaceOffsets[iCell] = start
         iFaces[start:start+length(cell.iFaces)-1] = cell.iFaces
         iNeighbors[start:start+length(cell.iNeighbors)-1] = cell.iNeighbors
@@ -349,11 +349,11 @@ end
     numFaces = facesPerCell[iElement]
     nCells = length(nus)
     diag = 0.0
-    startIndex = iFaceOffsets[iElement]-1
+    startIndex = iFaceOffsets[iElement] - 1
     for iFace in 1:numInteriors[iElement]
-        iFaceIndex = iFaces[startIndex + iFace]
+        iFaceIndex = iFaces[startIndex+iFace]
         valueUpper, valueLower = zero(t), zero(t)
-        valueUpper, valueLower = fused_pde(U[iElement], U[iNeighbors[startIndex + iFace]], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], valueUpper, valueLower)
+        valueUpper, valueLower = fused_pde(U[iElement], U[iNeighbors[startIndex+iFace]], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], valueUpper, valueLower)
 
         offdiag = ifelse(iOwners[iFaceIndex] == iElement, valueLower, valueUpper)
 
@@ -365,7 +365,7 @@ end
         diag += valueUpper
     end
     for iFace in numInteriors[iElement]+1:numFaces
-        iFaceIndex = iFaces[startIndex + iFace]
+        iFaceIndex = iFaces[startIndex+iFace]
         relativeFaceIndex = iFaceIndex - numInternalFaces
         bFaceIndex = bFaceMapping[relativeFaceIndex]
         if bFaceIndex != -1
@@ -405,8 +405,54 @@ function getBatchedFaceBasedGpuInput2(input::MatrixAssemblyInput{P}) where {P<:A
     return offsets, nus, rows, cols, vals, U, bFaceValues, RHS, bFaceMapping, gpuBatches
 end
 
+function run_batchedFace_abstract_presorted(
+    offsets,
+    nus,
+    rows,
+    cols,
+    vals,
+    U,
+    bFaceValues,
+    RHS,
+    bFaceMapping,
+    batches,
+    fused_pde
+)
+    backend = CUDABackend()
+    for color in 1:length(batches)-1
+        kernel_FusedBatchedFaceAssembly_presorted(backend, 256)(
+            batches[color]...,
+            offsets,
+            nus,
+            rows,
+            cols,
+            vals,
+            U,
+            fused_pde;
+            ndrange=length(batches[color][1])
+        )
+        KernelAbstractions.synchronize(backend)
+    end
 
-function run_batchedFace_abstract2(
+    kernel_abstract_boundaryFace_presorted(backend, 256)(
+        batches[end][1],
+        batches[end][3],
+        offsets,
+        nus,
+        vals,
+        bFaceValues,
+        RHS,
+        batches[end][6],
+        bFaceMapping,
+        fused_pde,
+        ndrange=length(batches[end][1])
+    )
+    KernelAbstractions.synchronize(backend)
+
+    return rows, cols, vals, RHS
+end
+
+function run_batchedFace_abstract_joinSmaller(
     offsets,
     nus,
     rows,
@@ -421,11 +467,11 @@ function run_batchedFace_abstract2(
     fused_pde
 )
     backend = CUDABackend()
-    for color in 1:length(batches)
+    for color in eachindex(batches)
         if color == joinedBatches
             break
         end
-        kernel_FusedBatchedFaceAssembly2(backend, 256)(
+        kernel_FusedBatchedFaceAssembly_presorted(backend, 256)(
             batches[color]...,
             offsets,
             nus,
@@ -454,7 +500,7 @@ function run_batchedFace_abstract2(
     end
     KernelAbstractions.synchronize(backend)
 
-    kernel_abstract_boundaryFace2(backend, 256)(
+    kernel_abstract_boundaryFace_presorted(backend, 256)(
         batches[end][1],
         batches[end][3],
         offsets,
@@ -472,7 +518,7 @@ function run_batchedFace_abstract2(
     return rows, cols, vals, RHS
 end
 
-@kernel function kernel_FusedBatchedFaceAssembly2(
+@kernel function kernel_FusedBatchedFaceAssembly_presorted(
     @Const(iOwners),
     @Const(iNeighbors),
     @Const(gDiffs),
@@ -558,7 +604,7 @@ end
     vals[idx] += upper
 end
 
-@kernel function kernel_abstract_boundaryFace2(
+@kernel function kernel_abstract_boundaryFace_presorted(
     @Const(iOwners),
     @Const(gDiffs),
     @Const(offsets),
