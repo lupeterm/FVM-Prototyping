@@ -359,3 +359,13 @@ time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_lo
 10.483473546218487,9.4090025,0.0,0.0,cases/Lid-Driven-Cavities/80/,cases/Lid-Driven-Cavities/80/,globalFaceBased,FusedGlobalFaceBased-256,julia,float64,cpu,false,true
 52.90652148421053,52.120709,0.0,0.0,cases/Lid-Driven-Cavities/80/,cases/Lid-Driven-Cavities/80/,batchedFace,FusedBatchedFaceBased-256,julia,float64,cpu,false,true
 14.437842358381502,13.312274,0.0,0.0,cases/Lid-Driven-Cavities/80/,cases/Lid-Driven-Cavities/80/,cellBased,FusedCellBased-256,julia,float64,cpu,false,true
+0.0226630497,0.022463,0.0,0.0,cases/Lid-Driven-Cavities/20/,cases/Lid-Driven-Cavities/20/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true
+0.0454096769,0.043822,0.0,0.0,cases/Lid-Driven-Cavities/40/,cases/Lid-Driven-Cavities/40/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true
+0.2008756437,0.199612,0.0,0.0,cases/Lid-Driven-Cavities/60/,cases/Lid-Driven-Cavities/60/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true
+0.44314497210000003,0.441429,0.0,0.0,cases/Lid-Driven-Cavities/80/,cases/Lid-Driven-Cavities/80/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true
+0.841252241524709,0.837693,0.0,0.0,cases/Lid-Driven-Cavities/100/,cases/Lid-Driven-Cavities/100/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true
+1.436857547235023,1.429983,0.0,0.0,cases/Lid-Driven-Cavities/120/,cases/Lid-Driven-Cavities/120/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true
+2.3456186089411766,2.341144,0.0,0.0,cases/Lid-Driven-Cavities/140/,cases/Lid-Driven-Cavities/140/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true
+3.478368933054393,3.476851,0.0,0.0,cases/Lid-Driven-Cavities/160/,cases/Lid-Driven-Cavities/160/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true
+4.955487857000993,4.947622,0.0,0.0,cases/Lid-Driven-Cavities/180/,cases/Lid-Driven-Cavities/180/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true
+6.802695209809264,6.794931,0.0,0.0,cases/Lid-Driven-Cavities/200/,cases/Lid-Driven-Cavities/200/,batchedFace,NonGroupedFusedDivLap,julia,float64,gpu,true,true

@@ -42,18 +42,22 @@ struct SOAFaces{P}
     patchIndex::Vector{Int32}
 end
 
-toSOAs(input) = SOAFaces(
-    [f.iOwner for f in input.mesh.faces],
-    [f.iNeighbor for f in input.mesh.faces],
-    [f.Sf for f in input.mesh.faces],
-    [f.gDiff for f in input.mesh.faces],
-    [f.batchId for f in input.mesh.faces],
-    [f.ownerIdx for f in input.mesh.faces],
-    [f.neighborIdx for f in input.mesh.faces],
-    [f.ownerRelOwnerIdx for f in input.mesh.faces],
-    [f.neighborRelNeighborIdx for f in input.mesh.faces],
-    [f.patchIndex for f in input.mesh.faces],
-)
+
+
+struct GPUSOAFaces{P<:AbstractFloat}
+    iOwner::CuArray{Int32}
+    iNeighbor::CuArray{Int32}
+    Sf::CuArray{SVector{3,P}}
+    gDiff::CuArray{P}
+    batchId::CuArray{Int32}
+    ownerIdx::CuArray{Int32}
+    neighborIdx::CuArray{Int32}
+    ownerRelOwnerIdx::CuArray{Int32}
+    neighborRelNeighborIdx::CuArray{Int32}
+    patchIndex::CuArray{Int32}
+end
+
+
 
 struct GpuFace{P}
     index::Int32
@@ -203,3 +207,43 @@ function toSOAInput(input::MatrixAssemblyInput)
         toSOACells(input)
     )
 end
+
+toSOAs(input::MatrixAssemblyInput) = SOAFaces(
+    [f.iOwner for f in input.mesh.faces],
+    [f.iNeighbor for f in input.mesh.faces],
+    [f.Sf for f in input.mesh.faces],
+    [f.gDiff for f in input.mesh.faces],
+    [f.batchId for f in input.mesh.faces],
+    [f.ownerIdx for f in input.mesh.faces],
+    [f.neighborIdx for f in input.mesh.faces],
+    [f.ownerRelOwnerIdx for f in input.mesh.faces],
+    [f.neighborRelNeighborIdx for f in input.mesh.faces],
+    [f.patchIndex for f in input.mesh.faces],
+)
+
+
+VectorToSOAs(faces::Vector{Face{P}}) where {P<:AbstractFloat} = SOAFaces(
+    [f.iOwner for f in faces],
+    [f.iNeighbor for f in faces],
+    [f.Sf for f in faces],
+    [f.gDiff for f in faces],
+    [f.batchId for f in faces],
+    [f.ownerIdx for f in faces],
+    [f.neighborIdx for f in faces],
+    [f.ownerRelOwnerIdx for f in faces],
+    [f.neighborRelNeighborIdx for f in faces],
+    [f.patchIndex for f in faces],
+)
+
+toGPUSOAs(soaFace::SOAFaces{P}) where{P<:AbstractFloat} = GPUSOAFaces{P}(
+    soaFace.iOwner |> cu,
+    soaFace.iNeighbor |> cu,
+    soaFace.Sf |> cu,
+    soaFace.gDiff |> cu,
+    soaFace.batchId |> cu,
+    soaFace.ownerIdx |> cu,
+    soaFace.neighborIdx |> cu,
+    soaFace.ownerRelOwnerIdx |> cu,
+    soaFace.neighborRelNeighborIdx |> cu,
+    soaFace.patchIndex |> cu,
+)

@@ -11,9 +11,9 @@ function getFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractF
     nu_g = CuArray(input.nu)
     nCells::Int32 = length(mesh.cells)
     RHS = CUDA.zeros(P, nCells * 3)
+    vals = CUDA.zeros(P, entriesNeeded)
     entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
     offsets = gpu_precalcOffsets(input)
-    vals = CUDA.zeros(P, entriesNeeded)
     rows = CUDA.zeros(Int32, entriesNeeded)
     cols = CUDA.zeros(Int32, entriesNeeded)
     prepareRelativeIndices!(input)
@@ -90,7 +90,7 @@ end
     iNeighbor = iNeighbors[iFace]
     if iNeighbor > 0
         upper, lower = 0.0, 0.0
-        # upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
+        upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
 
         idx = offsets[iOwner]
         cols[idx] = iOwner

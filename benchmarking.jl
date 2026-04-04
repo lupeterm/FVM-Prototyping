@@ -1,22 +1,25 @@
 include("init.jl")
-include("faceBased.jl")
-include("globalFaceBased.jl")
-include("cellBased.jl")
+# include("faceBased.jl")
+# include("globalFaceBased.jl")
+# include("cellBased.jl")
 include("gpu_abstract.jl")
-include("cpu_fused.jl")
+# include("cpu_fused.jl")
 include("gpu_faceBased.jl")
 include("gpu_batchedFace.jl")
 include("gpu_cellBased.jl")
 include("operators.jl")
-include("cpu_threaded.jl")
+# include("cpu_threaded.jl")
+include("investigateBatched.jl")
 using BenchmarkTools
 const CASES = [
-    # ("cases/LDC-S/", "LDC-S", "Lid-Driven-Cavity S")
-    # ("cases/Wind", "Wind", "WindsorBody"),
-    ("cases/LDC-M", "LDC-M", "Lid-Driven-Cavity M")
+
+# ("cases/LDC-S/", "LDC-S", "Lid-Driven-Cavity S")
+# ("cases/Wind", "Wind", "WindsorBody"),
+# ("cases/LDC-M", "LDC-M", "Lid-Driven-Cavity M")
 ]
-
-
+cases = [
+    ("cases/Lid-Driven-Cavities/$(i*20)", "LDC-$(i*20)", "Lid-Driven-Cavity $(i*20)") for i in 1:5
+]
 struct Result
     time_mean_ms::Float64
     time_median_ms::Float64
@@ -47,7 +50,7 @@ function bench_cpu(i=nothing)
 
         suite["cpu"][case_short] = BenchmarkGroup(["cpu", case_short])
         suite["cpu"][case_short]["faceBased"] = BenchmarkGroup(["cpu", "faceBased", case_long])
-        suite["cpu"][case_short]["faceBased"]["FusedDivLap"] = @benchmarkable FusedFaceBasedAssembly($input, $prep...,$pde)
+        suite["cpu"][case_short]["faceBased"]["FusedDivLap"] = @benchmarkable FusedFaceBasedAssembly($input, $prep..., $pde)
         suite["cpu"][case_short]["faceBased"]["LaplaceOnly"] = @benchmarkable LaplaceOnlyFaceBasedAssembly($input, $prep...)
         suite["cpu"][case_short]["faceBased"]["DivOnlyPrecalculatedWeightsUpwind"] = @benchmarkable DivOnlyPrecalculatedWeightsUpwindFaceBasedAssembly($input, $prep...)
         suite["cpu"][case_short]["faceBased"]["DivOnlyPrecalculatedWeightsCDF"] = @benchmarkable DivOnlyPrecalculatedWeightsCDFFaceBasedAssembly($input, $prep...)
@@ -63,7 +66,7 @@ function bench_cpu(i=nothing)
         suite["cpu"][case_short]["faceBased"]["DynamicUpwind"] = @benchmarkable DynamicUpwindFaceBasedAssembly($input, $prep..., $upwind)
 
         suite["cpu"][case_short]["cellBased"] = BenchmarkGroup(["cpu", "cellBased", case_long])
-        suite["cpu"][case_short]["cellBased"]["FusedDivLap"] = @benchmarkable FusedCellBasedAssembly($input, $prep...,$pde)
+        suite["cpu"][case_short]["cellBased"]["FusedDivLap"] = @benchmarkable FusedCellBasedAssembly($input, $prep..., $pde)
         suite["cpu"][case_short]["cellBased"]["LaplaceOnly"] = @benchmarkable LaplaceOnlyCellBasedAssembly($input, $prep...)
         suite["cpu"][case_short]["cellBased"]["PrecalculatedWeightsUpwind"] = @benchmarkable PrecalculatedWeightsUpwindCellBasedAssembly($input, $prep...)
         suite["cpu"][case_short]["cellBased"]["PrecalculatedWeightsCDF"] = @benchmarkable PrecalculatedWeightsCDFCellBasedAssembly($input, $prep...)
@@ -138,40 +141,41 @@ function bench_fused(i=nothing)
 end
 
 
-function bench_gpu(i=nothing, T=Float64)
+function bench_gpu(i=nothing, T=Float64, case_short="")
     suite = BenchmarkGroup()
-    for (case_path, case_short, case_long) in CASES
+
+    # for (case_path, case_short, case_long) in cases
         suite["gpu"] = BenchmarkGroup(["gpu"])
         println("loading $case_short")
-        input = if !isnothing(i)
-            i
-        else
-            ProcessCase(T, case_path)
-        end
-
+        # input = if !isnothing(i)
+        #     i
+        # else
+        #     ProcessCase(T, case_path)
+        # end
         suite["gpu"][case_short] = BenchmarkGroup(["gpu", case_short])
 
         # prep = gpu_prepareBatchedFaceBased(input)
-        wUp = CuArray(input.weightsUpwind)
-        wCdf = CuArray(input.weightsCdf)
-        fusedBatchedPrep = getBatchedFaceBasedGpuInput(input) 
+        # wUp = CuArray(input.weightsUpwind)
+        # wCdf = CuArray(input.weightsCdf)
+        fusedBatchedPrep = faceLikeInput(i, getGreedyEdgeColoring)
 
         pde = Div{Float64,UpwindScheme{Float64}}(UpwindScheme{Float64}(), 1.0) + Laplace(1.0)
-        suite["gpu"][case_short]["batchedFace"] = BenchmarkGroup(["gpu", "batchedFace", case_long])
-        suite["gpu"][case_short]["batchedFace"]["AbstractFusedDivLap"] = @benchmarkable run_batchedFace_abstract($fusedBatchedPrep..., $pde)
-        suite["gpu"][case_short]["batchedFace"]["DivOnlyPrecalculatedWeightsUpwind"] = @benchmarkable gpu_DivOnlyPrecalculatedWeightsBatchedFaceAssemblyRunner($prep..., $wUp)
-        suite["gpu"][case_short]["batchedFace"]["DivOnlyPrecalculatedWeightsCDF"] = @benchmarkable gpu_DivOnlyPrecalculatedWeightsBatchedFaceAssemblyRunner($prep..., $wCdf)
-        suite["gpu"][case_short]["batchedFace"]["PrecalculatedWeightsUpwind"] = @benchmarkable gpu_PrecalculatedWeightsBatchedFaceAssemblyRunner($prep..., $wUp)
-        suite["gpu"][case_short]["batchedFace"]["PrecalculatedWeightsCDF"] = @benchmarkable gpu_PrecalculatedWeightsBatchedFaceAssemblyRunner($prep..., $wCdf)
-        suite["gpu"][case_short]["batchedFace"]["LaplaceOnly"] = @benchmarkable gpu_LaplaceOnlyBatchedFaceAssemblyRunner($prep...)
-        suite["gpu"][case_short]["batchedFace"]["DivOnlyHardCodedUpwind"] = @benchmarkable gpu_DivOnlyHardcodedDivBatchedFaceAssemblyRunner($prep..., $"Upwind")
-        suite["gpu"][case_short]["batchedFace"]["DivOnlyHardCodedCDF"] = @benchmarkable gpu_DivOnlyHardcodedDivBatchedFaceAssemblyRunner($prep..., $"CDF")
-        suite["gpu"][case_short]["batchedFace"]["DivOnlyDynamicCDF"] = @benchmarkable gpu_DivOnlyDynamicBatchedFaceAssemblyRunner($prep..., $centralDifferencing)
-        suite["gpu"][case_short]["batchedFace"]["DivOnlyDynamicUpwind"] = @benchmarkable gpu_DivOnlyDynamicBatchedFaceAssemblyRunner($prep..., $upwind)
-        suite["gpu"][case_short]["batchedFace"]["HardCodedUpwind"] = @benchmarkable gpu_HardcodedBatchedFaceAssemblyRunner($prep..., $"Upwind")
-        suite["gpu"][case_short]["batchedFace"]["HardCodedCDF"] = @benchmarkable gpu_HardcodedBatchedFaceAssemblyRunner($prep..., $"CDF")
-        suite["gpu"][case_short]["batchedFace"]["DynamicCDF"] = @benchmarkable gpu_DynamicBatchedFaceAssemblyRunner($prep..., $centralDifferencing)
-        suite["gpu"][case_short]["batchedFace"]["DynamicUpwind"] = @benchmarkable gpu_DynamicBatchedFaceAssemblyRunner($prep..., $upwind)
+        suite["gpu"][case_short]["batchedFace"] = BenchmarkGroup(["gpu", "batchedFace", case_short])
+        suite["gpu"][case_short]["batchedFace"]["NonGroupedFusedDivLap"] = @benchmarkable NonGroupedBatchedAssembly($fusedBatchedPrep..., $pde)
+        # suite["gpu"][case_short]["batchedFace"]["AbstractFusedDivLap"] = @benchmarkable run_batchedFace_abstract($fusedBatchedPrep..., $pde)
+        # suite["gpu"][case_short]["batchedFace"]["DivOnlyPrecalculatedWeightsUpwind"] = @benchmarkable gpu_DivOnlyPrecalculatedWeightsBatchedFaceAssemblyRunner($prep..., $wUp)
+        # suite["gpu"][case_short]["batchedFace"]["DivOnlyPrecalculatedWeightsCDF"] = @benchmarkable gpu_DivOnlyPrecalculatedWeightsBatchedFaceAssemblyRunner($prep..., $wCdf)
+        # suite["gpu"][case_short]["batchedFace"]["PrecalculatedWeightsUpwind"] = @benchmarkable gpu_PrecalculatedWeightsBatchedFaceAssemblyRunner($prep..., $wUp)
+        # suite["gpu"][case_short]["batchedFace"]["PrecalculatedWeightsCDF"] = @benchmarkable gpu_PrecalculatedWeightsBatchedFaceAssemblyRunner($prep..., $wCdf)
+        # suite["gpu"][case_short]["batchedFace"]["LaplaceOnly"] = @benchmarkable gpu_LaplaceOnlyBatchedFaceAssemblyRunner($prep...)
+        # suite["gpu"][case_short]["batchedFace"]["DivOnlyHardCodedUpwind"] = @benchmarkable gpu_DivOnlyHardcodedDivBatchedFaceAssemblyRunner($prep..., $"Upwind")
+        # suite["gpu"][case_short]["batchedFace"]["DivOnlyHardCodedCDF"] = @benchmarkable gpu_DivOnlyHardcodedDivBatchedFaceAssemblyRunner($prep..., $"CDF")
+        # suite["gpu"][case_short]["batchedFace"]["DivOnlyDynamicCDF"] = @benchmarkable gpu_DivOnlyDynamicBatchedFaceAssemblyRunner($prep..., $centralDifferencing)
+        # suite["gpu"][case_short]["batchedFace"]["DivOnlyDynamicUpwind"] = @benchmarkable gpu_DivOnlyDynamicBatchedFaceAssemblyRunner($prep..., $upwind)
+        # suite["gpu"][case_short]["batchedFace"]["HardCodedUpwind"] = @benchmarkable gpu_HardcodedBatchedFaceAssemblyRunner($prep..., $"Upwind")
+        # suite["gpu"][case_short]["batchedFace"]["HardCodedCDF"] = @benchmarkable gpu_HardcodedBatchedFaceAssemblyRunner($prep..., $"CDF")
+        # suite["gpu"][case_short]["batchedFace"]["DynamicCDF"] = @benchmarkable gpu_DynamicBatchedFaceAssemblyRunner($prep..., $centralDifferencing)
+        # suite["gpu"][case_short]["batchedFace"]["DynamicUpwind"] = @benchmarkable gpu_DynamicBatchedFaceAssemblyRunner($prep..., $upwind)
         # prep2 = gpu_prepareFaceBased(input)
         # fusedFacePrep = getFaceBasedGpuInput(input) 
         # suite["gpu"][case_short]["faceBased"] = BenchmarkGroup(["gpu", "faceBased", case_long])
@@ -205,9 +209,9 @@ function bench_gpu(i=nothing, T=Float64)
         # suite["gpu"][case_short]["cellBased"]["HardCodedCDF"] = @benchmarkable gpu_HardcodedCDFCellBasedRunner($cellBasedPrep...)
         # suite["gpu"][case_short]["cellBased"]["DynamicCDF"] = @benchmarkable gpu_DynamicCellBasedRunner($cellBasedPrep, $centralDifferencing)
         # suite["gpu"][case_short]["cellBased"]["DynamicUpwind"] = @benchmarkable gpu_DynamicCellBasedRunner($cellBasedPrep, $upwind)
-    end
+    # end
     results = run(suite, verbose=true)
-    processResults(results, "results_f64.csv", Float64)
+    processResults(results, "scaling.csv", Float64)
     return suite
 end
 
@@ -249,7 +253,8 @@ function processResults(results::BenchmarkGroup, file::String, T)
                     println("\t\t\t --> time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language,precision,executor,use_kernelAbstractions,use_fusing")
                     println("\t\t\t --> $(ResultToCsvRow(r, cpu_gpu == "cpu", "float64", contains(variation,"Abstract") || contains(strategy, "Abstract"), contains(variation, "Fused")))\n")
                     open("results/$(file)", "a") do io
-                        write(io, ResultToCsvRow(r, cpu_gpu == "cpu", "float64", contains(variation,"Abstract") || contains(strategy, "Abstract"), contains(variation, "Fused")))
+                        # write(io, ResultToCsvRow(r, cpu_gpu == "cpu", "float64", contains(variation,"Abstract") || contains(strategy, "Abstract"), contains(variation, "Fused")))
+                        write(io, ResultToCsvRow(r, cpu_gpu == "cpu", "float64", contains(variation, "Abstract") || true, true))
                     end
                 end
             end

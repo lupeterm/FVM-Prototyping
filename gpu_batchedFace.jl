@@ -35,7 +35,7 @@ function gpu_LaplaceOnlyBatchedFaceAssemblyRunner(
     CUDA.@sync @cuda threads = 256 blocks = bblocks kernel_boundaryFace_LaplaceOnly(iOwners, gDiffs, offsets, nu_g, vals, entriesNeeded, bFaceValues, RHS, N, nCells, M, bFaceMapping)
 end
 
-function kernel_LaplaceOnlyBatchedFaceAssembly( # TODO -> Gpu Structs # TODO -> Gpu Structs
+function kernel_LaplaceOnlyBatchedFaceAssembly(
     iOwners,
     iNeighbors,
     gDiffs,
