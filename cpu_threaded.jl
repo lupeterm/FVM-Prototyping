@@ -3,6 +3,7 @@ include("cpu_helper.jl")
 using Atomix
 using SplitApplyCombine
 
+
 function FusedFaceBasedAssemblyThreaded(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, fused_pde::DiffEq) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
@@ -16,25 +17,11 @@ function FusedFaceBasedAssemblyThreaded(input::MatrixAssemblyInput{P}, rows::Vec
         valueUpper, valueLower = zero(P), zero(P)
         valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nu[iOwner], theFace.gDiff, valueUpper, valueLower)
 
-        idxUpper = offsets[iOwner]
-        cols[idxUpper] = iOwner
-        rows[idxUpper] = iOwner
-        idx = offsets[iNeighbor]
-        cols[idx] = iNeighbor
-        rows[idx] = iNeighbor
-        Atomix.@atomic vals[idxUpper] += valueUpper
-        Atomix.@atomic vals[idx] += valueLower
+        Atomix.@atomic vals[theFace.ownerIdx] += valueUpper
+        Atomix.@atomic vals[theFace.neighborIdx] += valueLower
 
-        # rowNeiStart + neiOffs[facei] -> (neigh, owner)
-        idx = offsets[iNeighbor] + theFace.relativeToNeighbor
-        cols[idx] = iNeighbor
-        rows[idx] = iOwner
-        vals[idx] += valueUpper
-        # rowOwnStart + ownOffs[facei] -> (owner, neigh)
-        idx = offsets[iOwner] + theFace.relativeToOwner
-        cols[idx] = iOwner
-        rows[idx] = iNeighbor
-        vals[idx] += valueLower
+        vals[theFace.neighborRelNeighborIdx] += valueUpper
+        vals[theFace.ownerRelOwnerIdx] += valueLower
     end
     Threads.@threads for iBoundary in eachindex(mesh.boundaries)
         if U_b[iBoundary].type != "fixedValue"
@@ -53,7 +40,7 @@ function FusedFaceBasedAssemblyThreaded(input::MatrixAssemblyInput{P}, rows::Vec
 
             cols[idx] = theFace.iOwner
             rows[idx] = theFace.iOwner
-            Atomix.@atomic vals[idx] += diag 
+            Atomix.@atomic vals[idx] += diag
             # RHS/Source
             Atomix.@atomic RHS[theFace.iOwner] += rhsx
             Atomix.@atomic RHS[theFace.iOwner+nCells] += rhsy
@@ -110,7 +97,7 @@ function FusedGlobalFaceBasedAssemblyThreaded(input::MatrixAssemblyInput{P}, row
 
             cols[idx] = theFace.iOwner
             rows[idx] = theFace.iOwner
-            Atomix.@atomic vals[idx] += diag 
+            Atomix.@atomic vals[idx] += diag
             # RHS/Source
             Atomix.@atomic RHS[theFace.iOwner] += rhsx
             Atomix.@atomic RHS[theFace.iOwner+nCells] += rhsy
@@ -165,11 +152,12 @@ function FusedCellBasedAssemblyThreaded(input::MatrixAssemblyInput{P}, rows::Vec
         idx = offsets[iElement]
         cols[idx] = iElement
         rows[idx] = iElement
-        Atomix.@atomic vals[idx] += diag    end
+        Atomix.@atomic vals[idx] += diag
+    end
     return rows, cols, vals, RHS
 end # function CellBasedAssembly
 
- function greedyEdgeColoring(input::MatrixAssemblyInput)
+function greedyEdgeColoring(input::MatrixAssemblyInput)
     mesh = input.mesh
     for face::Face in mesh.faces
         face.batchId = -1
@@ -213,11 +201,8 @@ function prepf(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     nCells = length(mesh.cells)
     entriesNeeded::Int32 = nCells + 2 * mesh.numInteriorFaces
     RHS = zeros(P, nCells * 3)
-    offsets::Vector{Int32} = input.offsets
     vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    return rows, vals, cols, RHS, offsets
+    return vals, RHS
 end
 
 function cpuBatchedPrep(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
@@ -228,7 +213,7 @@ end
 
 function getBatches(input::MatrixAssemblyInput)
     greedyEdgeColoring(input)
-    return group(x -> x.batchId, input.mesh.faces)
+    return group(x -> x.batchId, x -> x.index, input.mesh.faces)
 end
 
 function FusedBatchedFaceBasedAssemblyThreaded(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, batches, fused_pde::DiffEq) where {P<:AbstractFloat}
@@ -285,7 +270,7 @@ function FusedBatchedFaceBasedAssemblyThreaded(input::MatrixAssemblyInput{P}, ro
 
             cols[idx] = theFace.iOwner
             rows[idx] = theFace.iOwner
-            Atomix.@atomic vals[idx] += diag 
+            Atomix.@atomic vals[idx] += diag
             # RHS/Source
             Atomix.@atomic RHS[theFace.iOwner] += rhsx
             Atomix.@atomic RHS[theFace.iOwner+nCells] += rhsy

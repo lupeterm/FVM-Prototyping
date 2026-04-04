@@ -38,7 +38,7 @@ function getAmountAndStart(file::String)::Tuple{Int32,Int32}
     end
 end
 
-function readPointsFile(P::Type{<:AbstractFloat}, polyMeshDir::String)::Vector{SVector{3, P}}
+function readPointsFile(P::Type{<:AbstractFloat}, polyMeshDir::String)::Vector{SVector{3,P}}
     pointsFileName = joinpath(polyMeshDir, "points")
     if !isfile(pointsFileName)
         throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
@@ -202,6 +202,7 @@ function constructCells(P::Type{<:AbstractFloat}, nodes::Vector, boundaries::Vec
             Int32[],
             Int32[],
             MVector{3,P}(0.0, 0.0, 0.0),
+            zero(Int32)
         )
         for index in 1:numCells
     ]
@@ -324,7 +325,9 @@ function processBasicFaceGeometry(mesh::Mesh{P}, tmpFaces::Vector{TmpFace})::Mes
             -one(Int32),
             zero(Int32),
             zero(Int32),
-            -one(Int32)
+            zero(Int32),
+            zero(Int32),
+            -one(Int32),
         )
     end
     mesh.faces = faces
@@ -373,7 +376,7 @@ function processSecondaryFaceGeometry(mesh::Mesh{P})::Mesh{P} where {P<:Abstract
         neighborElement::Cell = mesh.cells[theFace.iNeighbor]
 
         # vector between cell centroids
-        CN::MVector{3, P} = neighborElement.centroid .- ownerElement.centroid
+        CN::MVector{3,P} = neighborElement.centroid .- ownerElement.centroid
         # length of said vector / direct distance between cell centroids
         magCN = magnitude(CN)
         # normalized vector to neighbor
@@ -515,7 +518,7 @@ function readField(P::Type{<:AbstractFloat}, filePath::String, mesh::Mesh)::Tupl
     internalValues = Vector{fieldType}(undef, numCells)
     if isUniform
         # println("isuniform")
-        value = getUniformValue(P,filePath)
+        value = getUniformValue(P, filePath)
         internalValues = fill(value, numCells)
         lines = readlines(filePath)
         i = 16
@@ -653,14 +656,19 @@ function prepareRelativeIndices!(input::MatrixAssemblyInput)
             iFaceIndex = cell.iFaces[iFace]
             theFace = mesh.faces[iFaceIndex]
             if ownerIdx == -1 && theFace.iOwner == cell.index && theFace.iOwner < theFace.iNeighbor
-                theFace.relativeToOwner = 0
+                theFace.ownerRelOwnerIdx = input.offsets[theFace.iOwner]
                 ownerIdx = iFace
                 continue
             end
             if cell.index == theFace.iOwner
-                theFace.relativeToOwner = iFace - ownerIdx + 1
+                # theFace.relativeToOwner = iFace - ownerIdx + 1
+                theFace.ownerIdx = input.offsets[theFace.iOwner]
+                theFace.ownerRelOwnerIdx = theFace.ownerIdx + (iFace - ownerIdx + 1)
+
             else
-                theFace.relativeToNeighbor = iFace - ownerIdx
+                # theFace.relativeToNeighbor = iFace - ownerIdx
+                theFace.neighborIdx = input.offsets[theFace.iNeighbor]
+                theFace.neighborRelNeighborIdx = theFace.neighborIdx + iFace - ownerIdx
             end
         end
         if ownerIdx == -1
@@ -670,10 +678,19 @@ function prepareRelativeIndices!(input::MatrixAssemblyInput)
             iFaceIndex = cell.iFaces[iFace]
             theFace = mesh.faces[iFaceIndex]
             if cell.index == theFace.iOwner
-                theFace.relativeToOwner = iFace - ownerIdx + 1
+                # theFace.relativeToOwner = iFace - ownerIdx + 1
+                theFace.ownerIdx = input.offsets[theFace.iOwner]
+                theFace.ownerRelOwnerIdx = theFace.ownerIdx + (iFace - ownerIdx + 1)
             else
-                theFace.relativeToNeighbor = iFace - ownerIdx
+                # theFace.relativeToNeighbor = iFace - ownerIdx
+                theFace.neighborIdx = input.offsets[theFace.iNeighbor]
+                theFace.neighborRelNeighborIdx = theFace.neighborIdx + (iFace - ownerIdx)
             end
+        end
+        for iFace in cell.nInternalFaces+1:length(cell.iFaces)
+            iFaceIndex = cell.iFaces[iFace]
+            theFace = mesh.faces[iFaceIndex]
+            theFace.ownerIdx = cell.index
         end
     end
 end
@@ -681,9 +698,10 @@ end
 function getOffsetsAndValues!(input::MatrixAssemblyInput)
     mesh = input.mesh
     nCells = length(mesh.cells)
-
+    mesh.cells[1].rowOffset = 1
     for iElement in 2:nCells
         input.offsets[iElement] += input.offsets[iElement-1] + mesh.cells[iElement-1].nInternalFaces
+        mesh.cells[iElement].rowOffset = input.offsets[iElement] 
     end
     for iElement in 1:nCells
         theElement = mesh.cells[iElement]
@@ -717,7 +735,7 @@ function ProcessCase(T::Type{<:AbstractFloat}, caseDirectory::String)::MatrixAss
         zeros(Int32, length(mesh.cells))
     )
     precalcWeights!(T, i)
-    prepareRelativeIndices!(i)
     getOffsetsAndValues!(i)
+    prepareRelativeIndices!(i)
     return i
 end # function ProcessCase

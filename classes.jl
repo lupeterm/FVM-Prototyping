@@ -15,7 +15,6 @@ end # struct TmpFace
 
 mutable struct Face{P}
     index::Int32
-    # iNodes::Vector{Int32}
     iOwner::Int32
     iNeighbor::Int32
     centroid::MVector{3,P}
@@ -23,10 +22,38 @@ mutable struct Face{P}
     area::P
     gDiff::P
     patchIndex::Int32
-    relativeToOwner::Int32
-    relativeToNeighbor::Int32
+    ownerIdx::Int32
+    neighborIdx::Int32
+    ownerRelOwnerIdx::Int32
+    neighborRelNeighborIdx::Int32
     batchId::Int32
 end # struct Face
+
+struct SOAFaces{P}
+    iOwner::Vector{Int32}
+    iNeighbor::Vector{Int32}
+    Sf::Vector{SVector{3,P}}
+    gDiff::Vector{P}
+    batchId::Vector{Int32}
+    ownerIdx::Vector{Int32}
+    neighborIdx::Vector{Int32}
+    ownerRelOwnerIdx::Vector{Int32}
+    neighborRelNeighborIdx::Vector{Int32}
+    patchIndex::Vector{Int32}
+end
+
+toSOAs(input) = SOAFaces(
+    [f.iOwner for f in input.mesh.faces],
+    [f.iNeighbor for f in input.mesh.faces],
+    [f.Sf for f in input.mesh.faces],
+    [f.gDiff for f in input.mesh.faces],
+    [f.batchId for f in input.mesh.faces],
+    [f.ownerIdx for f in input.mesh.faces],
+    [f.neighborIdx for f in input.mesh.faces],
+    [f.ownerRelOwnerIdx for f in input.mesh.faces],
+    [f.neighborRelNeighborIdx for f in input.mesh.faces],
+    [f.patchIndex for f in input.mesh.faces],
+)
 
 struct GpuFace{P}
     index::Int32
@@ -78,10 +105,27 @@ mutable struct Cell{P<:AbstractFloat}
     iNeighbors::Vector{Int32}
     faceSigns::Vector{Int32}
     centroid::MVector{3,P}
+    rowOffset::Int32
     # iNodes::Vector{Int32}
     # numNeighbors::Int32
     # oldVolume::P
 end # struct Cell
+
+struct SOACells
+    index::Vector{Int32}
+    nInternalFaces::Vector{Int32}
+    iFaces::Vector{Vector{Int32}}
+    iNeighbors::Vector{Vector{Int32}}
+    rowOffset::Vector{Int32}
+end # struct Cell
+
+toSOACells(input) = SOACells(
+    [c.index for c in input.mesh.cells],
+    [c.nInternalFaces for c in input.mesh.cells],
+    [c.iFaces for c in input.mesh.cells],
+    [c.iNeighbors for c in input.mesh.cells],
+    [c.rowOffset for c in input.mesh.cells],
+)
 
 struct GpuCell{P}
     index::Int32
@@ -138,3 +182,24 @@ struct MatrixAssemblyInput{P<:AbstractFloat}
 end
 
 
+struct SOAMatrixAssemblyInput{P<:AbstractFloat}
+    numInteriorFaces::Int32
+    boundaries::Vector{Boundary}
+    nu::Vector{P}
+    U_boundary::Vector{BoundaryField{P}}
+    U_internal::Vector{SVector{3,P}}
+    faces::SOAFaces{P}
+    cells::SOACells
+end
+
+function toSOAInput(input::MatrixAssemblyInput)
+    return SOAMatrixAssemblyInput(
+        input.mesh.numInteriorFaces,
+        input.mesh.boundaries,
+        input.nu,
+        input.U_boundary,
+        input.U_internal,
+        toSOAs(input),
+        toSOACells(input)
+    )
+end

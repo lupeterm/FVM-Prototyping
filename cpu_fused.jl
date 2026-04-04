@@ -27,14 +27,34 @@ function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int3
         valueUpper, valueLower = zero(P), zero(P)
         valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nu[iOwner], theFace.gDiff, valueUpper, valueLower)
 
-        # rowOwnStart + diagOffs[own]  -> (owner, owner)
-        setIndex!(iOwner, iOwner, valueUpper, rows, cols, vals, offsets[iOwner])
+        idxUpper = offsets[iOwner]
+        # cols[idxUpper] = iOwner
+        # rows[idxUpper] = iOwner
+        vals[idxUpper] += valueUpper
+        idx = offsets[iNeighbor]
+        # cols[idx] = iNeighbor
+        # rows[idx] = iNeighbor
+        vals[idx] += valueLower
+
         # rowNeiStart + neiOffs[facei] -> (neigh, owner)
-        setIndex!(iNeighbor, iOwner, valueUpper, rows, cols, vals, offsets[iNeighbor] + theFace.relativeToNeighbor)
-        # rowNeiStart + diagOffs[nei]  -> (neigh, neigh)
-        setIndex!(iNeighbor, iNeighbor, valueLower, rows, cols, vals, offsets[iNeighbor])
+        idx = offsets[iNeighbor] + theFace.relativeToNeighbor
+        # cols[idx] = iNeighbor
+        # rows[idx] = iOwner
+        vals[idx] += valueUpper
         # rowOwnStart + ownOffs[facei] -> (owner, neigh)
-        setIndex!(iOwner, iNeighbor, valueLower, rows, cols, vals, offsets[iOwner] + theFace.relativeToOwner)
+        idx = offsets[iOwner] + theFace.relativeToOwner
+        # cols[idx] = iOwner
+        # rows[idx] = iNeighbor
+        vals[idx] += valueLower
+
+        # # rowOwnStart + diagOffs[own]  -> (owner, owner)
+        # setIndex!(iOwner, iOwner, valueUpper, rows, cols, vals, offsets[iOwner])
+        # # rowNeiStart + neiOffs[facei] -> (neigh, owner)
+        # setIndex!(iNeighbor, iOwner, valueUpper, rows, cols, vals, offsets[iNeighbor] + theFace.relativeToNeighbor)
+        # # rowNeiStart + diagOffs[nei]  -> (neigh, neigh)
+        # setIndex!(iNeighbor, iNeighbor, valueLower, rows, cols, vals, offsets[iNeighbor])
+        # # rowOwnStart + ownOffs[facei] -> (owner, neigh)
+        # setIndex!(iOwner, iNeighbor, valueLower, rows, cols, vals, offsets[iOwner] + theFace.relativeToOwner)
     end
     @inbounds for iBoundary in eachindex(mesh.boundaries)
         if U_b[iBoundary].type != "fixedValue"
