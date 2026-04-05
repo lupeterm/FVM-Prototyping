@@ -22,112 +22,112 @@ function getFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractF
     return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, relativeToOwners, relativeToNbs, U, Sf, bFaceValues, RHS, input.mesh.numInteriorFaces, bFaceMapping
 end
 
-function run_faceBased_abstract(
-    iOwners,
-    iNeighbors,
-    gDiffs,
-    offsets,
-    nus,
-    rows,
-    cols,
-    vals,
-    relativeToOwner,
-    relativeToNeighbor,
-    U,
-    Sf,
-    bFaceValues,
-    RHS,
-    numInternalFaces,
-    bFaceMapping,
-    fused_pde
-)
-    backend = get_backend(iOwners)
-    kernel_FusedFaceBasedAssembly(backend, 256)(
-        iOwners,
-        iNeighbors,
-        gDiffs,
-        offsets,
-        nus,
-        rows,
-        cols,
-        vals,
-        relativeToOwner,
-        relativeToNeighbor,
-        U,
-        Sf,
-        bFaceValues,
-        RHS,
-        numInternalFaces,
-        bFaceMapping,
-        fused_pde;
-        ndrange=length(iOwners)
-    )
-    KernelAbstractions.synchronize(backend)
-    return rows, cols, vals, RHS
-end
+# function run_faceBased_abstract(
+#     iOwners,
+#     iNeighbors,
+#     gDiffs,
+#     offsets,
+#     nus,
+#     rows,
+#     cols,
+#     vals,
+#     relativeToOwner,
+#     relativeToNeighbor,
+#     U,
+#     Sf,
+#     bFaceValues,
+#     RHS,
+#     numInternalFaces,
+#     bFaceMapping,
+#     fused_pde
+# )
+#     backend = get_backend(iOwners)
+#     kernel_FusedFaceBasedAssembly(backend, 256)(
+#         iOwners,
+#         iNeighbors,
+#         gDiffs,
+#         offsets,
+#         nus,
+#         rows,
+#         cols,
+#         vals,
+#         relativeToOwner,
+#         relativeToNeighbor,
+#         U,
+#         Sf,
+#         bFaceValues,
+#         RHS,
+#         numInternalFaces,
+#         bFaceMapping,
+#         fused_pde;
+#         ndrange=length(iOwners)
+#     )
+#     KernelAbstractions.synchronize(backend)
+#     return rows, cols, vals, RHS
+# end
 
-@kernel function kernel_FusedFaceBasedAssembly(
-    @Const(iOwners),
-    @Const(iNeighbors),
-    @Const(gDiffs),
-    @Const(offsets),
-    @Const(nus),
-    rows,
-    cols,
-    vals,
-    @Const(relativeToOwner),
-    @Const(relativeToNeighbor),
-    @Const(U),
-    @Const(Sf),
-    @Const(bFaceValues),
-    RHS,
-    @Const(numInternalFaces),
-    @Const(bFaceMapping),
-    @Const(fused_pde)
-)
-    iFace = @index(Global)
-    iOwner = iOwners[iFace]
-    iNeighbor = iNeighbors[iFace]
-    if iNeighbor > 0
-        upper, lower = 0.0, 0.0
-        upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
+# @kernel function kernel_FusedFaceBasedAssembly(
+#     @Const(iOwners),
+#     @Const(iNeighbors),
+#     @Const(gDiffs),
+#     @Const(offsets),
+#     @Const(nus),
+#     rows,
+#     cols,
+#     vals,
+#     @Const(relativeToOwner),
+#     @Const(relativeToNeighbor),
+#     @Const(U),
+#     @Const(Sf),
+#     @Const(bFaceValues),
+#     RHS,
+#     @Const(numInternalFaces),
+#     @Const(bFaceMapping),
+#     @Const(fused_pde)
+# )
+#     iFace = @index(Global)
+#     iOwner = iOwners[iFace]
+#     iNeighbor = iNeighbors[iFace]
+#     if iNeighbor > 0
+#         upper, lower = 0.0, 0.0
+#         upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
 
-        idx = offsets[iOwner]
-        cols[idx] = iOwner
-        rows[idx] = iOwner
-        Atomix.@atomic vals[idx] += upper
+#         idx = offsets[iOwner]
+#         cols[idx] = iOwner
+#         rows[idx] = iOwner
+#         Atomix.@atomic vals[idx] += upper
 
-        idx = offsets[iOwner] + relativeToOwner[iFace]
-        cols[idx] = iOwner
-        rows[idx] = iNeighbor
-        vals[idx] += lower
-        idx = offsets[iNeighbor]
-        cols[idx] = iNeighbor
-        rows[idx] = iNeighbor
-        Atomix.@atomic vals[idx] += lower
+#         idx = offsets[iOwner] + relativeToOwner[iFace]
+#         cols[idx] = iOwner
+#         rows[idx] = iNeighbor
+#         vals[idx] += lower
+#         idx = offsets[iNeighbor]
+#         cols[idx] = iNeighbor
+#         rows[idx] = iNeighbor
+#         Atomix.@atomic vals[idx] += lower
 
-        idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
-        cols[idx] = iNeighbor
-        rows[idx] = iOwner
-        vals[idx] += upper
-    else
-        relativeFaceIndex = iFace - numInternalFaces
-        bFaceIndex = bFaceMapping[relativeFaceIndex]
-        if bFaceIndex != -1
-            diag, rhsx, rhsy, rhsz = 0.0, 0.0, 0.0, 0.0
-            diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], diag, rhsx, rhsy, rhsz)
-            # Diagonal Entry     
-            idx = offsets[iOwner]
-            CUDA.@atomic vals[idx] += diag
+#         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
+#         cols[idx] = iNeighbor
+#         rows[idx] = iOwner
+#         vals[idx] += upper
+#     else
+#         relativeFaceIndex = iFace - numInternalFaces
+#         bFaceIndex = bFaceMapping[relativeFaceIndex]
+#         if bFaceIndex != -1
+#             diag, rhsx, rhsy, rhsz = 0.0, 0.0, 0.0, 0.0
+#             diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], diag, rhsx, rhsy, rhsz)
+#             # Diagonal Entry     
+#             idx = offsets[iOwner]
+#             CUDA.@atomic vals[idx] += diag
 
-            # RHS/Source
-            nCells = length(nus)
-            CUDA.@atomic RHS[iOwner] += rhsx
-            CUDA.@atomic RHS[iOwner+nCells] += rhsy
-            CUDA.@atomic RHS[iOwner+nCells+nCells] += rhsz
-        end
-    end
-end
+#             # RHS/Source
+#             nCells = length(nus)
+#             CUDA.@atomic RHS[iOwner] += rhsx
+#             CUDA.@atomic RHS[iOwner+nCells] += rhsy
+#             CUDA.@atomic RHS[iOwner+nCells+nCells] += rhsz
+#         end
+#     end
+# end
 
 function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     numBatches, faceColors = getGreedyEdgeColoring(input) |> cu
@@ -135,67 +135,67 @@ function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:Ab
     return iOwners, iNeighbors, gDiffs, offsets, nus, rows, cols, vals, relativeToOwners, relativeToNbs, U, Sf, bFaceValues, RHS, N, bFaceMapping, numBatches, input.mesh.numBoundaryFaces, faceColors
 end
 
-function run_batchedFace_abstract(
-    iOwners,
-    iNeighbors,
-    gDiffs,
-    offsets,
-    nus,
-    rows,
-    cols,
-    vals,
-    relativeToOwners,
-    relativeToNbs,
-    U,
-    Sf,
-    bFaceValues,
-    RHS,
-    N,
-    bFaceMapping,
-    numBatches,
-    M,
-    faceColors,
-    fused_pde
-)
-    backend = CUDABackend()
-    for color in 1:numBatches
-        kernel_FusedBatchedFaceAssembly(backend, 256)(
-            iOwners,
-            iNeighbors,
-            gDiffs,
-            offsets,
-            nus,
-            rows,
-            cols,
-            vals,
-            relativeToOwners,
-            relativeToNbs,
-            faceColors,
-            color,
-            U,
-            Sf,
-            fused_pde;
-            ndrange=N
-        )
-        KernelAbstractions.synchronize(backend)
-    end
-    kernel_abstract_boundaryFace(backend, 256)(
-        iOwners,
-        gDiffs,
-        offsets,
-        nus,
-        vals,
-        bFaceValues,
-        RHS,
-        Sf,
-        bFaceMapping,
-        fused_pde,
-        ndrange=M
-    )
-    KernelAbstractions.synchronize(backend)
+# function run_batchedFace_abstract(
+#     iOwners,
+#     iNeighbors,
+#     gDiffs,
+#     offsets,
+#     nus,
+#     rows,
+#     cols,
+#     vals,
+#     relativeToOwners,
+#     relativeToNbs,
+#     U,
+#     Sf,
+#     bFaceValues,
+#     RHS,
+#     N,
+#     bFaceMapping,
+#     numBatches,
+#     M,
+#     faceColors,
+#     fused_pde
+# )
+#     backend = CUDABackend()
+#     for color in 1:numBatches
+#         kernel_FusedBatchedFaceAssembly(backend, 256)(
+#             iOwners,
+#             iNeighbors,
+#             gDiffs,
+#             offsets,
+#             nus,
+#             rows,
+#             cols,
+#             vals,
+#             relativeToOwners,
+#             relativeToNbs,
+#             faceColors,
+#             color,
+#             U,
+#             Sf,
+#             fused_pde;
+#             ndrange=N
+#         )
+#         KernelAbstractions.synchronize(backend)
+#     end
+#     kernel_abstract_boundaryFace(backend, 256)(
+#         iOwners,
+#         gDiffs,
+#         offsets,
+#         nus,
+#         vals,
+#         bFaceValues,
+#         RHS,
+#         Sf,
+#         bFaceMapping,
+#         fused_pde,
+#         ndrange=M
+#     )
+#     KernelAbstractions.synchronize(backend)
 
-    return rows, cols, vals, RHS
-end
+#     return rows, cols, vals, RHS
+# end
 
 
 @kernel function kernel_FusedBatchedFaceAssembly(

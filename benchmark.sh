@@ -1,9 +1,14 @@
 #!/bin/sh
 
-julia run_gpu.jl cases/Lid-Driven-Cavities/20/
-julia run_gpu.jl cases/Lid-Driven-Cavities/40/
-julia run_gpu.jl cases/Lid-Driven-Cavities/60/
-julia run_gpu.jl cases/Lid-Driven-Cavities/80/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/20/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/40/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/60/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/80/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/100/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/120/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/140/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/160/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/180/
 julia run_gpu.jl cases/Lid-Driven-Cavities/200/
 # julia run_gpu.jl cases/Lid-Driven-Cavities/20/
 # julia run_gpu.jl cases/Lid-Driven-Cavities/20/

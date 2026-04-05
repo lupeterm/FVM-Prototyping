@@ -51,8 +51,8 @@ function DumbEdgeColoring(input::MatrixAssemblyInput)
 end
 
 
-function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}, coloring::Function) where {P<:AbstractFloat}
-    coloring(input)
+function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+    getGreedyEdgeColoring(input)
     grouped = group(x -> x.batchId, input.mesh.faces)
     gpubatches = [toGPUSOAs(VectorToSOAs(bx)) for bx in grouped.values]
     bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
@@ -76,7 +76,7 @@ function faceLikeInput(input::MatrixAssemblyInput{P}, coloring) where {P<:Abstra
     return gpubatches, U, nus, bFaceValues, bFaceMapping, vals, RHS
 end
 
-function NonGroupedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fused_pde)
+function FusedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fused_pde)
     backend = CUDABackend()
     internalKernel! = nongrouped_internal(backend, 64)
     for color in eachindex(batches)
@@ -156,81 +156,6 @@ end
     end
 end
 
-function BatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fused_pde)
-    backend = CUDABackend()
-    internalKernel! = batched_internal(backend, 64)
-    for id in eachindex(batches)
-        if id == length(batches)
-            continue
-        end
-        internalKernel!(
-            batches[id].iOwner,
-            batches[id].iNeighbor,
-            batches[id].gDiff,
-            batches[id].ownerIdx,
-            batches[id].ownerRelOwnerIdx,
-            batches[id].neighborIdx,
-            batches[id].neighborRelNeighborIdx,
-            batches[id].Sf,
-            batches[id].batchId,
-            id,
-            nus,
-            U,
-            fused_pde,
-            vals;
-            ndrange=16384
-        )
-        KernelAbstractions.synchronize(backend)
-    end
-    batched_boundary(backend, 64)(
-        batches[end].iOwner,
-        batches[end].gDiff,
-        batches[end].ownerIdx,
-        batches[end].Sf,
-        nus,
-        bFaceValues,
-        bFaceMapping,
-        fused_pde,
-        vals,
-        RHS;
-        ndrange=16384
-    )
-    KernelAbstractions.synchronize(backend)
-end
-
-@kernel function batched_internal(
-    @Const(iOwners),
-    @Const(iNeighbors),
-    @Const(gDiffs),
-    @Const(ownerIdx),
-    @Const(ownerRelOwnerIdx),
-    @Const(neighborIdx),
-    @Const(neighborRelNeighborIdx),
-    @Const(Sf),
-    @Const(nus),
-    @Const(U),
-    @Const(fused_pde),
-    vals,
-    color
-)
-    t = eltype(nus)
-    nFaces = length(iOwners)
-    stride = @ndrange()[1]
-    i = @index(Global, Linear)
-    iFace = i
-    while iFace < nFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-
-        upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], zero(t), zero(t))
-        vals[ownerIdx[iFace]] += upper
-        vals[ownerRelOwnerIdx[iFace]] += lower
-        vals[neighborIdx[iFace]] += lower
-        vals[neighborRelNeighborIdx[iFace]] += upper
-        iFace += stride
-    end
-end
-
 @kernel function batched_boundary(
     @Const(iOwners),
     @Const(gDiffs),
@@ -246,21 +171,21 @@ end
     t = eltype(nus)
     iFace = @index(Global)
     if iFace <= length(bFaceMapping)
-    bFaceIndex = bFaceMapping[iFace]
-    if bFaceIndex != -1
-        iOwner = iOwners[iFace]
-        diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
-        diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], diag, rhsx, rhsy, rhsz)
+        bFaceIndex = bFaceMapping[iFace]
+        if bFaceIndex != -1
+            iOwner = iOwners[iFace]
+            diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
+            diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], diag, rhsx, rhsy, rhsz)
 
-        # Diagonal Entry        
-        Atomix.@atomic vals[ownerIdx[iFace]] += diag
+            # Diagonal Entry        
+            Atomix.@atomic vals[ownerIdx[iFace]] += diag
 
-        # RHS/Source
-        nCells = length(nus)
-        Atomix.@atomic RHS[iOwner] += rhsx
-        Atomix.@atomic RHS[iOwner+nCells] += rhsy
-        Atomix.@atomic RHS[iOwner+nCells+nCells] += rhsz
-    end
+            # RHS/Source
+            nCells = length(nus)
+            Atomix.@atomic RHS[iOwner] += rhsx
+            Atomix.@atomic RHS[iOwner+nCells] += rhsy
+            Atomix.@atomic RHS[iOwner+nCells+nCells] += rhsz
+        end
     end
 end
 
@@ -274,11 +199,11 @@ function faceInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     return gpuFaces, U, nus, bFaceValues, bFaceMapping, vals, RHS
 end
 
-function FaceAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fused_pde, wg, nd)
+function FaceAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fused_pde)
     backend = CUDABackend()
     # nthreads = cld(length(batches.iOwner), chunkSize)
 
-    stridedfacekernel(backend, wg)(
+    stridedfacekernel(backend, 64)(
         batches.iOwner,
         batches.iNeighbor,
         batches.gDiff,
@@ -294,65 +219,11 @@ function FaceAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fus
         fused_pde,
         vals,
         RHS;
-        ndrange=nd
+        ndrange=16384
     )
     KernelAbstractions.synchronize(backend)
 end
 
-@kernel function facekernel(
-    @Const(iOwners),
-    @Const(iNeighbors),
-    @Const(gDiffs),
-    @Const(ownerIdx),
-    @Const(ownerRelOwnerIdx),
-    @Const(neighborIdx),
-    @Const(neighborRelNeighborIdx),
-    @Const(Sf),
-    @Const(nus),
-    @Const(U),
-    @Const(bFaceValues),
-    @Const(bFaceMapping),
-    @Const(fused_pde),
-    vals,
-    RHS,
-    @Const(chunkSize)
-)
-    t = eltype(nus)
-    numFaces = length(iOwners)
-    numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    first = (tid - 1) * chunkSize + 1
-    last = min(first + chunkSize - 1, numFaces)
-
-    for iFace in first:last
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], zero(t), zero(t))
-
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                diag, rhsx, rhsy, rhsz = 0.0, 0.0, 0.0, 0.0
-                diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], diag, rhsx, rhsy, rhsz)
-                # Diagonal Entry     
-                Atomix.@atomic vals[ownerIdx[iFace]] += diag
-
-                # RHS/Source
-                nCells = length(nus)
-                CUDA.@atomic RHS[iOwner] += rhsx
-                CUDA.@atomic RHS[iOwner+nCells] += rhsy
-                CUDA.@atomic RHS[iOwner+nCells+nCells] += rhsz
-            end
-        end
-    end
-end
-
 @kernel function stridedfacekernel(
     @Const(iOwners),
     @Const(iNeighbors),
@@ -390,61 +261,7 @@ end
             relativeFaceIndex = iFace - numInternalFaces
             bFaceIndex = bFaceMapping[relativeFaceIndex]
             if bFaceIndex != -1
-                diag, rhsx, rhsy, rhsz = 0.0, 0.0, 0.0, 0.0
-                diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], diag, rhsx, rhsy, rhsz)
-                # Diagonal Entry     
-                Atomix.@atomic vals[ownerIdx[iFace]] += diag
-
-                # RHS/Source
-                nCells = length(nus)
-                CUDA.@atomic RHS[iOwner] += rhsx
-                CUDA.@atomic RHS[iOwner+nCells] += rhsy
-                CUDA.@atomic RHS[iOwner+nCells+nCells] += rhsz
-            end
-        end
-        iFace += stride
-    end
-end
-
-@kernel function stridedfacekernel(
-    @Const(iOwners),
-    @Const(iNeighbors),
-    @Const(gDiffs),
-    @Const(ownerIdx),
-    @Const(ownerRelOwnerIdx),
-    @Const(neighborIdx),
-    @Const(neighborRelNeighborIdx),
-    @Const(Sf),
-    @Const(nus),
-    @Const(U),
-    @Const(bFaceValues),
-    @Const(bFaceMapping),
-    @Const(fused_pde),
-    vals,
-    RHS
-)
-    t = eltype(nus)
-    numFaces = length(iOwners)
-    numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], zero(t), zero(t))
-
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                diag, rhsx, rhsy, rhsz = 0.0, 0.0, 0.0, 0.0
-                diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], diag, rhsx, rhsy, rhsz)
+                diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], zero(t), zero(t), zero(t), zero(t))
                 # Diagonal Entry     
                 Atomix.@atomic vals[ownerIdx[iFace]] += diag
 

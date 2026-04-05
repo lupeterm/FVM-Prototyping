@@ -5,6 +5,7 @@ using BenchmarkTools
 using StaticArrays
 using .Threads
 using CUDA
+using Atomix
 # using Metal
 include("classes.jl")
 include("readMesh.jl")
