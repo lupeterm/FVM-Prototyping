@@ -27,30 +27,6 @@ function gpu_precalcOffsets(input::MatrixAssemblyInput)::CuArray{Int32}
     return gpu_offsets
 end
 
-function mtl_precalcOffsets(input::MatrixAssemblyInput)
-    mesh = input.mesh
-    nCells = length(mesh.cells)
-    offsets = ones(Int32, nCells)
-    negOffsets::Vector{Int32} = zeros(Int32, nCells)
-    for iElement in 2:nCells
-        offsets[iElement] += offsets[iElement-1] + mesh.cells[iElement-1].nInternalFaces
-    end
-    for iElement in 1:nCells
-        theElement = mesh.cells[iElement]
-        for iFace in 1:theElement.nInternalFaces
-            iFaceIndex = theElement.iFaces[iFace]
-            theFace = mesh.faces[iFaceIndex]
-            if theFace.iNeighbor > iElement
-                negOffsets[theFace.iNeighbor] += 1
-            end
-        end
-        offsets[iElement] += negOffsets[iElement]  # increase offset
-    end
-    gpu_offsets = mtl(offsets)
-    offsets = []
-    negOffsets = []
-    return gpu_offsets
-end
 
 function gpu_prepareFaceBased(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
     mesh = input.mesh
@@ -70,57 +46,6 @@ function gpu_prepareFaceBased(input::MatrixAssemblyInput{P})::Tuple where {P<:Ab
     bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
     iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs, Sf = facesToGPUarrays(mesh.faces)
     return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, mesh.numInteriorFaces, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping
-end
-
-function gpu_prepareFaceBased_metal(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
-    mesh = input.mesh
-    nu = input.nu
-    nu_g = MtlArray{P}(undef, length(nu))
-    copyto!(nu_g, nu)
-    nCells::Int32 = length(mesh.cells)
-    RHS = mtl(zeros(nCells * 3))
-    entriesNeeded::Int32 = length(mesh.cells) + 2 * mesh.numInteriorFaces
-    offsets = mtl_precalcOffsets(input)
-    vals = mtl(zeros(entriesNeeded))
-    rows = mtl(1:entriesNeeded)
-    cols = mtl(1:entriesNeeded)
-    N::Int32 = length(mesh.faces)
-    M = mesh.numBoundaryFaces
-    threads::Int32 = 256
-    numBlocks::Int32 = cld(N, threads)
-    prepareRelativeIndices!(input)
-    bFaceValues, U, bFaceMapping = mtl_getFaceValues(input)
-    iOwners, iNeighbors, gDiffs, relativeToOwners, relativeToNbs, Sf = facesToMTLarrays(mesh.faces)
-    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, mesh.numInteriorFaces, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping
-end
-
-function gpu_prepFused(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
-    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping = gpu_prepareFaceBased(input)
-    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, RHS, relativeToOwners, N, relativeToNbs, U, Sf, bFaceMapping, bFaceValues, M, nCells
-end
-
-function mtl_prepFused(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
-    iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, numBlocks, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping = gpu_prepareFaceBased_metal(input)
-    return iOwners, iNeighbors, gDiffs, offsets, nu_g, rows, cols, vals, entriesNeeded, relativeToOwners, N, relativeToNbs, bFaceValues, RHS, nCells, M, U, Sf, bFaceMapping
-end
-
-function mtl_getFaceValues(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}
-    useBfaces::Vector{Int32} = fill(-1, input.mesh.numBoundaryFaces)
-    i = 1
-    for iBoundary in eachindex(input.mesh.boundaries)
-        theBoundary = input.mesh.boundaries[iBoundary]
-        startFace = theBoundary.startFace + 1
-        endFace = startFace + theBoundary.nFaces
-        for iFace in startFace:endFace-1
-            theFace = input.mesh.faces[iFace]
-            if input.U_boundary[iBoundary].type == "fixedValue"
-                useBfaces[theFace.index - input.mesh.numInteriorFaces] = i
-                i += 1
-            end
-        end
-    end
-    velocities = [b.values for b in input.U_boundary]
-    return mtl(reduce(vcat, velocities)), mtl(input.U_internal), mtl(useBfaces)
 end
 
 function gpu_getFaceValues(input::MatrixAssemblyInput{P})::Tuple where {P<:AbstractFloat}

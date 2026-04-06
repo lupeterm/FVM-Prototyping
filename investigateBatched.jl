@@ -52,7 +52,7 @@ end
 
 
 function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
-    getGreedyEdgeColoring(input)
+    colors, _ = getGreedyEdgeColoring(input)
     grouped = group(x -> x.batchId, input.mesh.faces)
     gpubatches = [toGPUSOAs(VectorToSOAs(bx)) for bx in grouped.values]
     bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
@@ -60,12 +60,12 @@ function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:Ab
     entriesNeeded::Int32 = length(input.mesh.cells) + 2 * input.mesh.numInteriorFaces
     RHS = CUDA.zeros(P, length(input.mesh.cells) * 3)
     vals = CUDA.zeros(P, entriesNeeded)
-    return gpubatches, U, nus, bFaceValues, bFaceMapping, vals, RHS
+    return gpubatches, U, nus, bFaceValues, bFaceMapping, vals, RHS, colors
 end
 
 
-function faceLikeInput(input::MatrixAssemblyInput{P}, coloring) where {P<:AbstractFloat}
-    coloring(input)
+function faceLikeInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+    colors, _ = getGreedyEdgeColoring(input)
     grouped = group(x -> x.iNeighbor < 1, input.mesh.faces)
     gpubatches = [toGPUSOAs(VectorToSOAs(bx)) for bx in grouped.values]
     bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
@@ -73,16 +73,13 @@ function faceLikeInput(input::MatrixAssemblyInput{P}, coloring) where {P<:Abstra
     entriesNeeded::Int32 = length(input.mesh.cells) + 2 * input.mesh.numInteriorFaces
     RHS = CUDA.zeros(P, length(input.mesh.cells) * 3)
     vals = CUDA.zeros(P, entriesNeeded)
-    return gpubatches, U, nus, bFaceValues, bFaceMapping, vals, RHS
+    return gpubatches, U, nus, bFaceValues, bFaceMapping, vals, RHS, colors
 end
 
-function FusedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fused_pde)
+function FusedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, colors, fused_pde, wg, nd)
     backend = CUDABackend()
-    internalKernel! = nongrouped_internal(backend, 64)
-    for color in eachindex(batches)
-        if color == length(batches)
-            continue
-        end
+    internalKernel! = nongrouped_internal(backend, wg)
+    for color in 1:colors
         internalKernel!(
             batches[1].iOwner,
             batches[1].iNeighbor,
@@ -98,11 +95,11 @@ function FusedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, 
             U,
             fused_pde,
             vals;
-            ndrange=16384
+            ndrange=nd
         )
         KernelAbstractions.synchronize(backend)
     end
-    batched_boundary(backend, 64)(
+    batched_boundary(backend, wg)(
         batches[2].iOwner,
         batches[2].gDiff,
         batches[2].ownerIdx,
@@ -113,9 +110,90 @@ function FusedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, 
         fused_pde,
         vals,
         RHS;
-        ndrange=16384
+        ndrange=nd
     )
     KernelAbstractions.synchronize(backend)
+    return vals, RHS
+
+end
+
+function FusedBatchedAssembly2(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, colors, fused_pde, wg, nd)
+    backend = CUDABackend()
+    internalKernel! = nongrouped_internal(backend, wg)
+    for color in 1:colors
+        internalKernel!(
+            batches[color].iOwner,
+            batches[color].iNeighbor,
+            batches[color].gDiff,
+            batches[color].ownerIdx,
+            batches[color].ownerRelOwnerIdx,
+            batches[color].neighborIdx,
+            batches[color].neighborRelNeighborIdx,
+            batches[color].Sf,
+            batches[color].batchId,
+            color,
+            nus,
+            U,
+            fused_pde,
+            vals;
+            ndrange=nd
+        )
+        KernelAbstractions.synchronize(backend)
+    end
+    batched_boundary(backend, wg)(
+        batches[end].iOwner,
+        batches[end].gDiff,
+        batches[end].ownerIdx,
+        batches[end].Sf,
+        nus,
+        bFaceValues,
+        bFaceMapping,
+        fused_pde,
+        vals,
+        RHS;
+        ndrange=nd
+    )
+    KernelAbstractions.synchronize(backend)
+    return vals, RHS
+end
+
+
+@kernel function nongrouped_internal2(
+    @Const(iOwners),
+    @Const(iNeighbors),
+    @Const(gDiffs),
+    @Const(ownerIdx),
+    @Const(ownerRelOwnerIdx),
+    @Const(neighborIdx),
+    @Const(neighborRelNeighborIdx),
+    @Const(Sf),
+    @Const(colors),
+    @Const(currentColor),
+    @Const(nus),
+    @Const(U),
+    @Const(fused_pde),
+    vals,
+)
+    t = eltype(nus)
+    nFaces = length(iOwners)
+    stride = @ndrange()[1]
+    i = @index(Global, Linear)
+    iFace = i
+    while iFace < nFaces
+        if currentColor != colors[iFace]
+            iFace += stride
+            continue
+        end
+        iOwner = iOwners[iFace]
+        iNeighbor = iNeighbors[iFace]
+
+        upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], zero(t), zero(t))
+        vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+        iFace += stride
+    end
 end
 
 @kernel function nongrouped_internal(
@@ -199,11 +277,11 @@ function faceInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     return gpuFaces, U, nus, bFaceValues, bFaceMapping, vals, RHS
 end
 
-function FaceAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fused_pde)
+function FaceAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fused_pde, wg, nd)
     backend = CUDABackend()
     # nthreads = cld(length(batches.iOwner), chunkSize)
 
-    stridedfacekernel(backend, 64)(
+    stridedfacekernel(backend, wg)(
         batches.iOwner,
         batches.iNeighbor,
         batches.gDiff,
@@ -219,9 +297,57 @@ function FaceAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fus
         fused_pde,
         vals,
         RHS;
-        ndrange=16384
+        ndrange=nd
     )
     KernelAbstractions.synchronize(backend)
+end
+
+
+@kernel function noStridefacekernel(
+    @Const(iOwners),
+    @Const(iNeighbors),
+    @Const(gDiffs),
+    @Const(ownerIdx),
+    @Const(ownerRelOwnerIdx),
+    @Const(neighborIdx),
+    @Const(neighborRelNeighborIdx),
+    @Const(Sf),
+    @Const(nus),
+    @Const(U),
+    @Const(bFaceValues),
+    @Const(bFaceMapping),
+    @Const(fused_pde),
+    vals,
+    RHS
+)
+    t = eltype(nus)
+    numFaces = length(iOwners)
+    numInternalFaces = numFaces - length(bFaceMapping)
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], zero(t), zero(t))
+
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], zero(t), zero(t), zero(t), zero(t))
+            # Diagonal Entry     
+            Atomix.@atomic vals[ownerIdx[iFace]] += diag
+
+            # RHS/Source
+            nCells = length(nus)
+            CUDA.@atomic RHS[iOwner] += rhsx
+            CUDA.@atomic RHS[iOwner+nCells] += rhsy
+            CUDA.@atomic RHS[iOwner+nCells+nCells] += rhsz
+        end
+    end
 end
 
 @kernel function stridedfacekernel(
@@ -277,7 +403,8 @@ end
 end
 
 function test(args...)
-    workgroups = (64, 128, 256, 512, 1024)
+    workgroups = (1,2,4,8,16,32, 64, 128, 256, 512, 1024)
+    # 64, 128, 256, 512, 1024)
     multipliers = (32, 64, 128, 256)
     for wg in workgroups
         for m in multipliers

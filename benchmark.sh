@@ -1,5 +1,12 @@
 #!/bin/sh
 
+julia run_gpu.jl cases/Lid-Driven-Cavities/20/ 32
+# julia run_gpu.jl cases/Wind/ 32
+# julia run_gpu.jl cases/Wind/ 64
+# julia run_gpu.jl cases/Wind/ 128
+# julia run_gpu.jl cases/Wind/ 256
+# julia run_gpu.jl cases/Wind/ 512
+# julia run_gpu.jl cases/Wind/ 1024
 # julia run_gpu.jl cases/Lid-Driven-Cavities/20/
 # julia run_gpu.jl cases/Lid-Driven-Cavities/40/
 # julia run_gpu.jl cases/Lid-Driven-Cavities/60/
@@ -9,7 +16,7 @@
 # julia run_gpu.jl cases/Lid-Driven-Cavities/140/
 # julia run_gpu.jl cases/Lid-Driven-Cavities/160/
 # julia run_gpu.jl cases/Lid-Driven-Cavities/180/
-julia run_gpu.jl cases/Lid-Driven-Cavities/200/
+# julia run_gpu.jl cases/Lid-Driven-Cavities/200/
 # julia run_gpu.jl cases/Lid-Driven-Cavities/20/
 # julia run_gpu.jl cases/Lid-Driven-Cavities/20/
 # julia run_gpu.jl cases/Lid-Driven-Cavities/20/

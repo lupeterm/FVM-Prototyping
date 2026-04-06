@@ -196,15 +196,6 @@ function greedyEdgeColoring(input::MatrixAssemblyInput)
 end
 
 
-function prepf(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
-    mesh = input.mesh
-    nCells = length(mesh.cells)
-    entriesNeeded::Int32 = nCells + 2 * mesh.numInteriorFaces
-    RHS = zeros(P, nCells * 3)
-    vals = zeros(P, entriesNeeded)
-    return vals, RHS
-end
-
 function cpuBatchedPrep(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     groupedFaces = getBatches(input)
     prep = prepf(input)

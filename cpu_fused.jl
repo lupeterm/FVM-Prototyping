@@ -1,20 +1,8 @@
 include("init.jl")
 include("cpu_helper.jl")
-include("operators.jl")
 
 
-function prepf(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
-    mesh = input.mesh
-    nCells = length(mesh.cells)
-    entriesNeeded::Int32 = nCells + 2 * mesh.numInteriorFaces
-    RHS = zeros(P, nCells * 3)
-    offsets::Vector{Int32} = input.offsets
-    vals = zeros(P, entriesNeeded)
-    rows = zeros(Int32, entriesNeeded)
-    cols = zeros(Int32, entriesNeeded)
-    return rows, vals, cols, RHS, offsets
-end
-function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, fused_pde::DiffEq) where {P<:AbstractFloat}
+function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P}, vals::Vector{P}, RHS::Vector{P}, fused_pde::DiffEq) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     U_b = input.U_boundary
@@ -27,34 +15,10 @@ function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int3
         valueUpper, valueLower = zero(P), zero(P)
         valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nu[iOwner], theFace.gDiff, valueUpper, valueLower)
 
-        idxUpper = offsets[iOwner]
-        # cols[idxUpper] = iOwner
-        # rows[idxUpper] = iOwner
-        vals[idxUpper] += valueUpper
-        idx = offsets[iNeighbor]
-        # cols[idx] = iNeighbor
-        # rows[idx] = iNeighbor
-        vals[idx] += valueLower
-
-        # rowNeiStart + neiOffs[facei] -> (neigh, owner)
-        idx = offsets[iNeighbor] + theFace.relativeToNeighbor
-        # cols[idx] = iNeighbor
-        # rows[idx] = iOwner
-        vals[idx] += valueUpper
-        # rowOwnStart + ownOffs[facei] -> (owner, neigh)
-        idx = offsets[iOwner] + theFace.relativeToOwner
-        # cols[idx] = iOwner
-        # rows[idx] = iNeighbor
-        vals[idx] += valueLower
-
-        # # rowOwnStart + diagOffs[own]  -> (owner, owner)
-        # setIndex!(iOwner, iOwner, valueUpper, rows, cols, vals, offsets[iOwner])
-        # # rowNeiStart + neiOffs[facei] -> (neigh, owner)
-        # setIndex!(iNeighbor, iOwner, valueUpper, rows, cols, vals, offsets[iNeighbor] + theFace.relativeToNeighbor)
-        # # rowNeiStart + diagOffs[nei]  -> (neigh, neigh)
-        # setIndex!(iNeighbor, iNeighbor, valueLower, rows, cols, vals, offsets[iNeighbor])
-        # # rowOwnStart + ownOffs[facei] -> (owner, neigh)
-        # setIndex!(iOwner, iNeighbor, valueLower, rows, cols, vals, offsets[iOwner] + theFace.relativeToOwner)
+        vals[theFace.ownerIdx] += valueUpper
+        vals[theFace.neighborIdx] += valueLower
+        vals[theFace.neighborRelNeighborIdx] += valueUpper
+        vals[theFace.ownerRelOwnerIdx] += valueLower
     end
     @inbounds for iBoundary in eachindex(mesh.boundaries)
         if U_b[iBoundary].type != "fixedValue"
@@ -69,17 +33,17 @@ function FusedFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int3
             diag, rhsx, rhsy, rhsz = zeros(P, 4)
             diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], theFace.Sf, nu[theFace.iOwner], theFace.gDiff, diag, rhsx, rhsy, rhsz)
 
-            setIndex!(theFace.iOwner, theFace.iOwner, diag, rows, cols, vals, offsets[theFace.iOwner])
+            vals[theFace.ownerIdx] += diag
             # RHS/Source
             @inbounds RHS[theFace.iOwner] += rhsx
             @inbounds RHS[theFace.iOwner+nCells] += rhsy
             @inbounds RHS[theFace.iOwner+nCells+nCells] += rhsz
         end
     end
-    return rows, cols, vals, RHS
+    return vals, RHS
 end # function batchedFaceBasedAssembly
 
-function FusedGlobalFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, fused_pde::DiffEq) where {P<:AbstractFloat}
+function FusedGlobalFaceBasedAssembly(input::MatrixAssemblyInput{P}, vals::Vector{P}, RHS::Vector{P}, fused_pde::DiffEq) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     U_b = input.U_boundary
@@ -92,14 +56,10 @@ function FusedGlobalFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vecto
             valueUpper, valueLower = zero(P), zero(P)
             valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], theFace.Sf, nu[iOwner], theFace.gDiff, valueUpper, valueLower)
 
-            # rowOwnStart + diagOffs[own]  -> (owner, owner)
-            setIndex!(iOwner, iOwner, valueUpper, rows, cols, vals, offsets[iOwner])
-            # rowNeiStart + neiOffs[facei] -> (neigh, owner)
-            setIndex!(iNeighbor, iOwner, valueUpper, rows, cols, vals, offsets[iNeighbor] + theFace.relativeToNeighbor)
-            # rowNeiStart + diagOffs[nei]  -> (neigh, neigh)
-            setIndex!(iNeighbor, iNeighbor, valueLower, rows, cols, vals, offsets[iNeighbor])
-            # rowOwnStart + ownOffs[facei] -> (owner, neigh)
-            setIndex!(iOwner, iNeighbor, valueLower, rows, cols, vals, offsets[iOwner] + theFace.relativeToOwner)
+            vals[theFace.ownerIdx] += valueUpper
+            vals[theFace.neighborIdx] += valueLower
+            vals[theFace.neighborRelNeighborIdx] += valueUpper
+            vals[theFace.ownerRelOwnerIdx] += valueLower
         else
             iBoundary = theFace.patchIndex
             boundaryType = U_b[iBoundary].type
@@ -111,18 +71,16 @@ function FusedGlobalFaceBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vecto
             diag, rhsx, rhsy, rhsz = zeros(P, 4)
             diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], theFace.Sf, nu[theFace.iOwner], theFace.gDiff, diag, rhsx, rhsy, rhsz)
 
-            setIndex!(theFace.iOwner, theFace.iOwner, diag, rows, cols, vals, offsets[theFace.iOwner])
-            # RHS/Source
+            vals[theFace.ownerIdx] += diag
             @inbounds RHS[theFace.iOwner] += rhsx
             @inbounds RHS[theFace.iOwner+nCells] += rhsy
             @inbounds RHS[theFace.iOwner+nCells+nCells] += rhsz
         end
     end
-
-    return rows, cols, vals, RHS
+    return vals, RHS
 end # function batchedFaceBasedAssembly
 
-function FusedCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int32}, vals::Vector{P}, cols::Vector{Int32}, RHS::Vector{P}, offsets::Vector{Int32}, fused_pde::DiffEq) where {P<:AbstractFloat}
+function FusedCellBasedAssembly(input::MatrixAssemblyInput{P}, vals::Vector{P}, RHS::Vector{P}, fused_pde::DiffEq) where {P<:AbstractFloat}
     mesh = input.mesh
     nu = input.nu
     U_b = input.U_boundary
@@ -131,19 +89,15 @@ function FusedCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int3
     for theElement in mesh.cells
         iElement = theElement.index
         numFaces = length(theElement.iFaces)
-        diag = 0.0
+        diag = zero(P)
         for iFace in 1:theElement.nInternalFaces
             iFaceIndex = theElement.iFaces[iFace]
             theFace = mesh.faces[iFaceIndex]
-            valueUpper = 0.0
-            valueLower = 0.0
-            valueUpper, valueLower = fused_pde(U[iElement], U[theElement.iNeighbors[iFace]], theFace.Sf, nu[iFace], theFace.gDiff, valueUpper, valueLower)
+            valueUpper, valueLower = fused_pde(U[iElement], U[theElement.iNeighbors[iFace]], theFace.Sf, nu[iElement], theFace.gDiff, zero(P), zero(P))
 
             offdiag = ifelse(theFace.iOwner == iElement, valueLower, valueUpper)
 
-            idx = offsets[iElement] + ifelse(theFace.iOwner == iElement, theFace.relativeToOwner, theFace.relativeToNeighbor)
-            cols[idx] = iElement
-            rows[idx] = theElement.iNeighbors[iFace]
+            idx = ifelse(theFace.iOwner == iElement, theFace.neighborRelNeighborIdx, theFace.ownerRelOwnerIdx)
             vals[idx] += offdiag
 
             diag += valueUpper
@@ -157,13 +111,12 @@ function FusedCellBasedAssembly(input::MatrixAssemblyInput{P}, rows::Vector{Int3
             end
             relativeFaceIndex = iFaceIndex - mesh.boundaries[iBoundary].startFace
             theFace = mesh.faces[iFaceIndex]
-            rhsx, rhsy, rhsz = zeros(P, 3)
-            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], theFace.Sf, nu[theFace.iOwner], theFace.gDiff, diag, rhsx, rhsy, rhsz)
+            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], theFace.Sf, nu[theFace.iOwner], theFace.gDiff, diag, zero(P), zero(P), zero(P))
             RHS[iElement] += rhsx
             RHS[iElement+nCells] += rhsy
             RHS[iElement+nCells+nCells] += rhsz
         end
-        setIndex!(theElement.index, theElement.index, diag, rows, cols, vals, offsets[iElement])
+        vals[theElement.rowOffset] = diag
     end
-    return rows, cols, vals, RHS
+    return vals, RHS
 end # function CellBasedAssembly
