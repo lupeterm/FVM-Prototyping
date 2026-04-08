@@ -494,6 +494,7 @@ time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_lo
 5.221352282131662,5.181438,0.0,0.0,cases/Lid-Driven-Cavities/180/,cases/Lid-Driven-Cavities/180/,faceBased,PrecalculatedWeightsCDF,julia,float64,gpu,true,true
 5.036974050403226,5.033787,0.0,0.0,cases/Lid-Driven-Cavities/180/,cases/Lid-Driven-Cavities/180/,faceBased,HardCodedCDF,julia,float64,gpu,true,true
 5.041558940464177,5.037115,0.0,0.0,cases/Lid-Driven-Cavities/180/,cases/Lid-Driven-Cavities/180/,faceBased,DynamicUpwind,julia,float64,gpu,true,true
+
 0.0661915421,0.062721,0.0,0.0,cases/Lid-Driven-Cavities/20/,cases/Lid-Driven-Cavities/20/,batchedFace,FusedDivLap,julia,float64,gpu,true,true
 0.0757515757,0.072724,0.0,0.0,cases/Lid-Driven-Cavities/40/,cases/Lid-Driven-Cavities/40/,batchedFace,FusedDivLap,julia,float64,gpu,true,true
 0.09958583879999999,0.0963785,0.0,0.0,cases/Lid-Driven-Cavities/60/,cases/Lid-Driven-Cavities/60/,batchedFace,FusedDivLap,julia,float64,gpu,true,true

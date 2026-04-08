@@ -1,6 +1,6 @@
 #!/bin/sh
 
-julia run_gpu.jl cases/Lid-Driven-Cavities/20/ 32
+julia run_gpu.jl cases/Wind/ 32
 # julia run_gpu.jl cases/Wind/ 32
 # julia run_gpu.jl cases/Wind/ 64
 # julia run_gpu.jl cases/Wind/ 128
