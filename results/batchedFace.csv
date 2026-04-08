@@ -15,7 +15,6 @@ time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_lo
 16.665916586666665,16.6826405,0.0,0.0,cases/Wind/,cases/Wind/,batchedFace-Nosplit,WG128-#faces,julia,float64,gpu,true,true
 17.935360910394266,17.858151,0.0,0.0,cases/Wind/,cases/Wind/,batchedFace-Nosplit,WG64-#faces,julia,float64,gpu,true,true
 16.223506181229773,16.226735,0.0,0.0,cases/Wind/,cases/Wind/,batchedFace-Nosplit,WG512-16384,julia,float64,gpu,true,true
-time_mean_ms,time_median_ms,gc_time_mean_ms,gc_time_median_ms,case_short,case_long,strategy,variant,language,precision,executor,use_kernelAbstractions,use_fusing
 30.858852438271605,30.905698,0.0,0.0,cases/Wind/,cases/Wind/,batchedFace-split,WG64-32768,julia,float64,gpu,true,true
 65.60465132467532,65.447312,0.0,0.0,cases/Wind/,cases/Wind/,batchedFace-split,WG64-8192,julia,float64,gpu,true,true
 41.865005475000004,41.8583805,0.0,0.0,cases/Wind/,cases/Wind/,batchedFace-split,WG64-16384,julia,float64,gpu,true,true
