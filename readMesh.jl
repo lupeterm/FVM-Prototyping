@@ -690,7 +690,7 @@ function prepareRelativeIndices!(input::MatrixAssemblyInput)
         for iFace in cell.nInternalFaces+1:length(cell.iFaces)
             iFaceIndex = cell.iFaces[iFace]
             theFace = mesh.faces[iFaceIndex]
-            theFace.ownerIdx = cell.index
+            theFace.ownerIdx = input.offsets[cell.index]
         end
     end
 end
@@ -701,7 +701,6 @@ function getOffsetsAndValues!(input::MatrixAssemblyInput)
     mesh.cells[1].rowOffset = 1
     for iElement in 2:nCells
         input.offsets[iElement] += input.offsets[iElement-1] + mesh.cells[iElement-1].nInternalFaces
-        mesh.cells[iElement].rowOffset = input.offsets[iElement] 
     end
     for iElement in 1:nCells
         theElement = mesh.cells[iElement]
@@ -713,6 +712,9 @@ function getOffsetsAndValues!(input::MatrixAssemblyInput)
             end
         end
         input.offsets[iElement] += input.negOffsets[iElement]  # increase offset
+    end
+    for ioff in eachindex(input.offsets)
+        mesh.cells[ioff].rowOffset = input.offsets[ioff] 
     end
 end
 

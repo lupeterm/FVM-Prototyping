@@ -313,13 +313,6 @@ function flattenCells(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     return CuArray(iFaces), CuArray(iNeighbors), CuArray(numInts), CuArray(iFaceOffsets), CuArray(nIFaces)
 end
 
-function CellBased(args, pde, wg, nd)
-    backend = CUDABackend()
-    kernel_FusedCellBasedAssembly(backend, wg)(args..., pde; ndrange=nd)
-    KernelAbstractions.synchronize(backend)
-end
-
-
 
 function CellInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     gpuFaces = toGPUSOAs(VectorToSOAs(input.mesh.faces))
@@ -327,16 +320,24 @@ function CellInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     iFaces, iNeighbors, numInteriors, iFaceOffsets, facesPerCell = flattenCells(input)
     nus = CuArray(input.nu)
     bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
-    ownerIdx = [c.rowOffset for c in input.mesh.cells] |> cu
+    # ownerIdx = [c.rowOffset for c in input.mesh.cells] |> cu
+    rowOffsets = input.offsets |> cu
     nCells::Int32 = length(input.mesh.cells)
     RHS = CUDA.zeros(P, nCells * 3)
     entriesNeeded::Int32 = length(input.mesh.cells) + 2 * input.mesh.numInteriorFaces
     vals = CUDA.zeros(P, entriesNeeded)
 
-    return iFaces, iNeighbors, numInteriors, iFaceOffsets, facesPerCell, nus, gpuFaces.Sf, gpuFaces.gDiff, U, ownerIdx, gpuFaces.ownerRelOwnerIdx, gpuFaces.neighborRelNeighborIdx, bFaceValues, bFaceMapping, gpuFaces.iOwner, vals, RHS
+    return iFaces, iNeighbors, numInteriors, iFaceOffsets, facesPerCell, nus, gpuFaces.Sf, gpuFaces.gDiff, U, rowOffsets, gpuFaces.ownerRelOwnerIdx, gpuFaces.neighborRelNeighborIdx, bFaceValues, bFaceMapping, gpuFaces.iOwner, vals, RHS
 end 
 
-@kernel function kernel_FusedCellBasedAssembly(
+function CellBased(args, pde, wg, nd)
+    backend = CUDABackend()
+    CellBasedKernelStrided(backend, wg)(args..., pde; ndrange=nd)
+    KernelAbstractions.synchronize(backend)
+    return args[end-1:end]
+end
+
+@kernel function CellBasedKernelStrided(
     @Const(iFaces),
     @Const(iNeighbors),
     @Const(numInteriors),
@@ -362,7 +363,7 @@ end
     numInternalFaces = length(Sf) - length(bFaceMapping)
     iElement = tid
     stride = @ndrange()[1]
-    while iElement < nCells
+    while iElement <= nCells
         numFaces = facesPerCell[iElement]
         diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
         startIndex = iFaceOffsets[iElement] - 1
@@ -370,23 +371,20 @@ end
             iFaceIndex = iFaces[startIndex+iFace]
             isOwner = iOwners[iFaceIndex] == iElement
 
-            valueUpper, valueLower = zero(t), zero(t)
-            valueUpper, valueLower = fused_pde(U[iElement], U[iNeighbors[startIndex+iFace]], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], valueUpper, valueLower)
+            valueUpper, valueLower = fused_pde(U[iElement], U[iNeighbors[iFaceIndex]], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], zero(t), zero(t))
 
             offdiag = ifelse(isOwner, valueLower, valueUpper)
-
-            idx = ifelse(isOwner, ownerRelOwnerIdx[iFace], neighborRelNeighborIdx[iFace])
-            
+            diagValue = ifelse(isOwner, valueUpper, valueLower)
+            idx = ifelse(isOwner, ownerRelOwnerIdx[iFaceIndex], neighborRelNeighborIdx[iFaceIndex])
             Atomix.@atomic vals[idx] += offdiag
-
-            diag += valueUpper
+            diag += diagValue
         end
         for iFace in numInteriors[iElement]+1:numFaces
             iFaceIndex = iFaces[startIndex+iFace]
             relativeFaceIndex = iFaceIndex - numInternalFaces
             bFaceIndex = bFaceMapping[relativeFaceIndex]
             if bFaceIndex != -1
-                diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iElement], gDiffs[iFace], diag, zero(t), zero(t), zero(t))
+                diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], diag, rhsx, rhsy, rhsz)
             end
         end
         RHS[iElement] += rhsx

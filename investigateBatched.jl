@@ -63,6 +63,18 @@ function getBatchedFaceBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:Ab
     return gpubatches, U, nus, bFaceValues, bFaceMapping, vals, RHS, colors
 end
 
+function getBatchedFaceBasedGpuInput2(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+    colors, _ = getGreedyEdgeColoring(input)
+    grouped = group(x -> x.batchId, input.mesh.faces)
+    gpubatches = [toGPUSOAs(VectorToSOAs(bx)) for bx in grouped.values]
+    bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
+    nus = CuArray(input.nu)
+    entriesNeeded::Int32 = length(input.mesh.cells) + 2 * input.mesh.numInteriorFaces
+    RHS = CUDA.zeros(P, length(input.mesh.cells) * 3)
+    vals = CUDA.zeros(P, entriesNeeded)
+    return gpubatches, U, nus, bFaceValues, bFaceMapping, vals, RHS, colors
+end
+
 
 function faceLikeInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     colors, _ = getGreedyEdgeColoring(input)
@@ -179,7 +191,7 @@ end
     stride = @ndrange()[1]
     i = @index(Global, Linear)
     iFace = i
-    while iFace < nFaces
+    while iFace <= nFaces
         if currentColor != colors[iFace]
             iFace += stride
             continue
@@ -217,7 +229,7 @@ end
     stride = @ndrange()[1]
     i = @index(Global, Linear)
     iFace = i
-    while iFace < nFaces
+    while iFace <= nFaces
         if currentColor != colors[iFace]
             iFace += stride
             continue
@@ -247,8 +259,10 @@ end
     RHS
 )
     t = eltype(nus)
-    iFace = @index(Global)
-    if iFace <= length(bFaceMapping)
+    stride = @ndrange()[1]
+    i = @index(Global, Linear)
+    iFace = i
+    while iFace <= length(bFaceMapping)
         bFaceIndex = bFaceMapping[iFace]
         if bFaceIndex != -1
             iOwner = iOwners[iFace]
@@ -264,6 +278,7 @@ end
             Atomix.@atomic RHS[iOwner+nCells] += rhsy
             Atomix.@atomic RHS[iOwner+nCells+nCells] += rhsz
         end
+        iFace += stride
     end
 end
 
@@ -373,7 +388,7 @@ end
     tid = @index(Global, Linear)
     stride = @ndrange()[1]
     iFace = tid
-    while iFace < numFaces
+    while iFace <= numFaces
         iOwner = iOwners[iFace]
         iNeighbor = iNeighbors[iFace]
         if iNeighbor > 0
@@ -413,57 +428,6 @@ function test(args...)
             @time begin
                 BatchedAssembly(args..., wg, nd)
             end
-        end
-    end
-end
-
-
-@kernel function empty_kernel!(
-    @Const(iOwners),
-    @Const(iNeighbors),
-    @Const(gDiffs),
-    @Const(ownerIdx),
-    @Const(ownerRelOwnerIdx),
-    @Const(neighborIdx),
-    @Const(neighborRelNeighborIdx),
-    @Const(Sf),
-    @Const(nus),
-    @Const(U),
-    @Const(bFaceValues),
-    @Const(bFaceMapping),
-    @Const(fused_pde),
-    vals,
-    RHS
-)
-    i = @index(Global, Linear)
-end
-
-function b(batches, U, nus, bFaceValues, bFaceMapping, vals, RHS, fused_pde)
-    backend = CUDABackend()
-
-    # warmup: compile once
-    KernelAbstractions.synchronize(backend)
-    @btime begin
-        for i in 1:6
-            $empty_kernel!($backend, 256)(
-                $batches.iOwner,
-                $batches.iNeighbor,
-                $batches.gDiff,
-                $batches.ownerIdx,
-                $batches.ownerRelOwnerIdx,
-                $batches.neighborIdx,
-                $batches.neighborRelNeighborIdx,
-                $batches.Sf,
-                $nus,
-                $U,
-                $bFaceValues,
-                $bFaceMapping,
-                $fused_pde,
-                $vals,
-                $RHS;
-                ndrange=256
-            )
-            KernelAbstractions.synchronize($backend)
         end
     end
 end
