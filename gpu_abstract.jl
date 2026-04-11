@@ -221,27 +221,18 @@ end
     iNeighbor = iNeighbors[iFace]
 
     if faceColors[iFace] == color[1]  # CuArray{Int32, 1, 1}
-        upper, lower = zero(t), zero(t)
-        upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], upper, lower)
+        upper, lower = fused_pde(U[iOwner], U[iNeighbor], Sf[iFace], nus[iOwner], gDiffs[iFace], zero(t), zero(t))
 
         idx = offsets[iOwner]
-        cols[idx] = iOwner
-        rows[idx] = iOwner
         vals[idx] += upper
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
-        cols[idx] = iOwner
-        rows[idx] = iNeighbor
         vals[idx] += lower
 
         idx = offsets[iNeighbor]
-        cols[idx] = iNeighbor
-        rows[idx] = iNeighbor
         vals[idx] += lower
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
-        cols[idx] = iNeighbor
-        rows[idx] = iOwner
         vals[idx] += upper
     end
 end
@@ -320,7 +311,6 @@ function CellInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     iFaces, iNeighbors, numInteriors, iFaceOffsets, facesPerCell = flattenCells(input)
     nus = CuArray(input.nu)
     bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
-    # ownerIdx = [c.rowOffset for c in input.mesh.cells] |> cu
     rowOffsets = input.offsets |> cu
     nCells::Int32 = length(input.mesh.cells)
     RHS = CUDA.zeros(P, nCells * 3)
@@ -328,16 +318,17 @@ function CellInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     vals = CUDA.zeros(P, entriesNeeded)
 
     return iFaces, iNeighbors, numInteriors, iFaceOffsets, facesPerCell, nus, gpuFaces.Sf, gpuFaces.gDiff, U, rowOffsets, gpuFaces.ownerRelOwnerIdx, gpuFaces.neighborRelNeighborIdx, bFaceValues, bFaceMapping, gpuFaces.iOwner, vals, RHS
-end 
+end
 
 function CellBased(args, pde, wg, nd)
     backend = CUDABackend()
-    CellBasedKernelStrided(backend, wg)(args..., pde; ndrange=nd)
+    CellBasedKernel(backend, wg)(args..., pde; ndrange=nd)
     KernelAbstractions.synchronize(backend)
     return args[end-1:end]
 end
 
-@kernel function CellBasedKernelStrided(
+
+@kernel function CellBasedKernel(
     @Const(iFaces),
     @Const(iNeighbors),
     @Const(numInteriors),
@@ -357,32 +348,24 @@ end
     RHS,
     @Const(fused_pde)
 )
-    tid = @index(Global, Linear)
+    iElement = @index(Global)
     t = eltype(nus)
     nCells = length(nus)
     numInternalFaces = length(Sf) - length(bFaceMapping)
-    iElement = tid
-    stride = @ndrange()[1]
-    while iElement <= nCells
-        numFaces = facesPerCell[iElement]
+    if iElement <= nCells
         diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
         startIndex = iFaceOffsets[iElement] - 1
         for iFace in 1:numInteriors[iElement]
             iFaceIndex = iFaces[startIndex+iFace]
             isOwner = iOwners[iFaceIndex] == iElement
-
             valueUpper, valueLower = fused_pde(U[iElement], U[iNeighbors[iFaceIndex]], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], zero(t), zero(t))
-
-            offdiag = ifelse(isOwner, valueLower, valueUpper)
-            diagValue = ifelse(isOwner, valueUpper, valueLower)
             idx = ifelse(isOwner, ownerRelOwnerIdx[iFaceIndex], neighborRelNeighborIdx[iFaceIndex])
-            Atomix.@atomic vals[idx] += offdiag
-            diag += diagValue
+            vals[idx] += ifelse(isOwner, valueLower, valueUpper)
+            diag += ifelse(!isOwner, valueLower, valueUpper)
         end
-        for iFace in numInteriors[iElement]+1:numFaces
+        for iFace in numInteriors[iElement]+1:facesPerCell[iElement]
             iFaceIndex = iFaces[startIndex+iFace]
-            relativeFaceIndex = iFaceIndex - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
+            bFaceIndex = bFaceMapping[iFaceIndex-numInternalFaces]
             if bFaceIndex != -1
                 diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], diag, rhsx, rhsy, rhsz)
             end
@@ -390,22 +373,10 @@ end
         RHS[iElement] += rhsx
         RHS[iElement+nCells] += rhsy
         RHS[iElement+nCells+nCells] += rhsz
-        Atomix.@atomic vals[rowOffsets[iElement]] += diag
-        iElement += stride
+        vals[rowOffsets[iElement]] += diag
     end
 end
 
-function test(args...)
-    workgroups = (1,2,4,8,16,32, 64, 128, 256, 512, 1024)
-    for i in [1,2,4,8,16,32,64, 128]
-        for nd in workgroups
-            println("wg: $i, threads: $(nd*i)")
-            @time begin
-                CellBased(args...,i, nd*i)
-            end
-        end
-    end
-end
 
 function getFaceBasedGpuInput2(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     mesh = input.mesh

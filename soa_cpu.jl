@@ -11,15 +11,14 @@ function SOAFusedFaceBasedAssemblyThreaded(input::SOAMatrixAssemblyInput{P}, val
     Threads.@threads for iFace in 1:input.numInteriorFaces
         @inbounds iOwner = faces.iOwner[iFace]
         @inbounds iNeighbor = faces.iNeighbor[iFace]
-        valueUpper, valueLower = zero(P), zero(P)
-        @inbounds valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], faces.Sf[iFace], nu[iOwner], faces.gDiff[iFace], valueUpper, valueLower)
+        @inbounds valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], faces.Sf[iFace], nu[iOwner], faces.gDiff[iFace], zero(P), zero(P))
 
         Atomix.@atomic vals[faces.ownerIdx[iFace]] += valueUpper
         Atomix.@atomic vals[faces.neighborIdx[iFace]] += valueLower
         @inbounds vals[faces.neighborRelNeighborIdx[iFace]] += valueUpper
         @inbounds vals[faces.ownerRelOwnerIdx[iFace]] += valueLower
     end
-    for iBoundary in eachindex(input.boundaries)
+    Threads.@threads for iBoundary in eachindex(input.boundaries)
         if U_b[iBoundary].type != "fixedValue"
             continue
         end
@@ -28,8 +27,7 @@ function SOAFusedFaceBasedAssemblyThreaded(input::SOAMatrixAssemblyInput{P}, val
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            diag, rhsx, rhsy, rhsz = zeros(P, 4)
-            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], diag, rhsx, rhsy, rhsz)
+            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], zero(P), zero(P), zero(P), zero(P))
             Atomix.@atomic vals[faces.ownerIdx[iFace]] += diag
             # RHS/Source
             Atomix.@atomic RHS[faces.iOwner[iFace]] += rhsx
@@ -48,10 +46,9 @@ function SOAFusedFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::Vecto
     U = input.U_internal
     nCells = length(input.cells.index)
     @inbounds for iFace in 1:input.numInteriorFaces
-        iOwner = faces.iOwner[iFace]
-        iNeighbor = faces.iNeighbor[iFace]
-        valueUpper, valueLower = zero(P), zero(P)
-        valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], faces.Sf[iFace], nu[iOwner], faces.gDiff[iFace], valueUpper, valueLower)
+        @inbounds iOwner = faces.iOwner[iFace]
+        @inbounds iNeighbor = faces.iNeighbor[iFace]
+        @inbounds valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], faces.Sf[iFace], nu[iOwner], faces.gDiff[iFace], zero(P), zero(P))
 
         @inbounds vals[faces.ownerIdx[iFace]] += valueUpper
         @inbounds vals[faces.neighborIdx[iFace]] += valueLower
@@ -67,8 +64,7 @@ function SOAFusedFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::Vecto
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            diag, rhsx, rhsy, rhsz = zeros(P, 4)
-            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], diag, rhsx, rhsy, rhsz)
+            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], zero(P), zero(P), zero(P), zero(P))
 
             @inbounds vals[faces.ownerIdx[iFace]] += diag
             # RHS/Source
@@ -90,8 +86,7 @@ function SOAFusedGlobalFaceBasedAssemblyThreaded(input::SOAMatrixAssemblyInput{P
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         if faces.iNeighbor[iFace] > 0
-            valueUpper, valueLower = zero(P), zero(P)
-            valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], faces.Sf[iFace], nu[iOwner], faces.gDiff[iFace], valueUpper, valueLower)
+            valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], faces.Sf[iFace], nu[iOwner], faces.gDiff[iFace], zero(P), zero(P))
 
             Atomix.@atomic vals[faces.ownerIdx[iFace]] += valueUpper
             Atomix.@atomic vals[faces.neighborIdx[iFace]] += valueLower
@@ -104,8 +99,7 @@ function SOAFusedGlobalFaceBasedAssemblyThreaded(input::SOAMatrixAssemblyInput{P
                 continue
             end
             relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            diag, rhsx, rhsy, rhsz = zeros(P, 4)
-            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], diag, rhsx, rhsy, rhsz)
+            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], zero(P), zero(P), zero(P), zero(P))
 
             Atomix.@atomic vals[faces.ownerIdx[iFace]] += diag
             # RHS/Source
@@ -128,8 +122,7 @@ function SOAFusedGlobalFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals:
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         if faces.iNeighbor[iFace] > 0
-            valueUpper, valueLower = zero(P), zero(P)
-            valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], faces.Sf[iFace], nu[iOwner], faces.gDiff[iFace], valueUpper, valueLower)
+            valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbor], faces.Sf[iFace], nu[iOwner], faces.gDiff[iFace], zero(P), zero(P))
 
             @inbounds vals[faces.ownerIdx[iFace]] += valueUpper
             @inbounds vals[faces.neighborIdx[iFace]] += valueLower
@@ -142,11 +135,9 @@ function SOAFusedGlobalFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals:
                 continue
             end
             relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            diag, rhsx, rhsy, rhsz = zeros(P, 4)
-            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], diag, rhsx, rhsy, rhsz)
+            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], zero(P), zero(P), zero(P), zero(P))
 
             @inbounds vals[faces.ownerIdx[iFace]] += diag
-            # RHS/Source
             @inbounds RHS[faces.iOwner[iFace]] += rhsx
             @inbounds RHS[faces.iOwner[iFace]+nCells] += rhsy
             @inbounds RHS[faces.iOwner[iFace]+nCells+nCells] += rhsz
@@ -165,37 +156,28 @@ function SOAFusedCellBasedAssemblyThreaded(input::SOAMatrixAssemblyInput{P}, val
     U = input.U_internal
     nCells = length(cells.index)
     Threads.@threads for iElement in eachindex(cells.index)
-        numFaces = length(cells.iFaces[iElement])
-        diag = zero(P)
+        diag, rhsx, rhsy, rhsz = zero(P), zero(P), zero(P), zero(P)
         for localIndex in 1:cells.nInternalFaces[iElement]
             iFace = cells.iFaces[iElement][localIndex]
-            valueUpper = zero(P)
-            valueLower = zero(P)
-            valueUpper, valueLower = fused_pde(U[iElement], U[cells.iNeighbors[iElement][localIndex]], faces.Sf[iFace], nu[iElement], faces.gDiff[iFace], valueUpper, valueLower)
-
-            offdiag = ifelse(faces.iOwner[iFace] == iElement, valueLower, valueUpper)
-
-            idx = ifelse(faces.iOwner[iFace] == iElement, faces.ownerRelOwnerIdx[iFace], faces.neighborRelNeighborIdx[iFace])
-            Atomix.@atomic vals[idx] += offdiag
-
-            diag += valueUpper
+            isOwner = faces.iOwner[iFace] == iElement
+            valueUpper, valueLower = fused_pde(U[iElement], U[faces.iNeighbor[iFace]], faces.Sf[iFace], nu[iElement], faces.gDiff[iFace], zero(P), zero(P))
+            idx = ifelse(isOwner, faces.ownerRelOwnerIdx[iFace], faces.neighborRelNeighborIdx[iFace])
+            vals[idx] += ifelse(isOwner, valueLower, valueUpper)
+            diag += ifelse(!isOwner, valueLower, valueUpper)
         end
-        for localIndex in cells.nInternalFaces[iElement]+1:numFaces
-            iFace = cells.iFaces[iElement][localIndex]
+        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:end]
             iBoundary = faces.patchIndex[iFace]
             boundaryType = U_b[iBoundary].type
             if boundaryType != "fixedValue"
                 continue
             end
             relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            rhsx, rhsy, rhsz = zeros(P, 3)
             diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[iElement], faces.gDiff[iFace], diag, rhsx, rhsy, rhsz)
-            Atomix.@atomic RHS[iElement] += rhsx
-            Atomix.@atomic RHS[iElement+nCells] += rhsy
-            Atomix.@atomic RHS[iElement+nCells+nCells] += rhsz
         end
-        idx = cells.rowOffset[iElement]
-        vals[idx] += diag
+        RHS[iElement] += rhsx
+        RHS[iElement+nCells] += rhsy
+        RHS[iElement+nCells+nCells] += rhsz
+        vals[cells.rowOffset[iElement]] += diag
     end
     return vals, RHS
 end
@@ -207,37 +189,28 @@ function SOAFusedCellBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::Vecto
     U = input.U_internal
     nCells = length(cells.index)
     for iElement in eachindex(cells.index)
-        numFaces = length(cells.iFaces[iElement])
-        diag = zero(P)
+        diag, rhsx, rhsy, rhsz = zero(P), zero(P), zero(P), zero(P)
         for localIndex in 1:cells.nInternalFaces[iElement]
             iFace = cells.iFaces[iElement][localIndex]
-            valueUpper = zero(P)
-            valueLower = zero(P)
-            valueUpper, valueLower = fused_pde(U[iElement], U[cells.iNeighbors[iElement][localIndex]], faces.Sf[iFace], nu[iElement], faces.gDiff[iFace], valueUpper, valueLower)
-
-            offdiag = ifelse(faces.iOwner[iFace] == iElement, valueLower, valueUpper)
-
-            idx = ifelse(faces.iOwner[iFace] == iElement, faces.ownerRelOwnerIdx[iFace], faces.neighborRelNeighborIdx[iFace])
-            vals[idx] += offdiag
-
-            diag += valueUpper
+            isOwner = faces.iOwner[iFace] == iElement
+            valueUpper, valueLower = fused_pde(U[iElement], U[faces.iNeighbor[iFace]], faces.Sf[iFace], nu[iElement], faces.gDiff[iFace], zero(P), zero(P))
+            idx = ifelse(isOwner, faces.ownerRelOwnerIdx[iFace], faces.neighborRelNeighborIdx[iFace])
+            vals[idx] += ifelse(isOwner, valueLower, valueUpper)
+            diag += ifelse(!isOwner, valueLower, valueUpper)
         end
-        for localIndex in cells.nInternalFaces[iElement]+1:numFaces
-            iFace = cells.iFaces[iElement][localIndex]
+        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:end]
             iBoundary = faces.patchIndex[iFace]
             boundaryType = U_b[iBoundary].type
             if boundaryType != "fixedValue"
                 continue
             end
             relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            rhsx, rhsy, rhsz = zeros(P, 3)
             diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[iElement], faces.gDiff[iFace], diag, rhsx, rhsy, rhsz)
-            RHS[iElement] += rhsx
-            RHS[iElement+nCells] += rhsy
-            RHS[iElement+nCells+nCells] += rhsz
         end
-        idx = cells.rowOffset[iElement]
-        vals[idx] += diag
+        RHS[iElement] += rhsx
+        RHS[iElement+nCells] += rhsy
+        RHS[iElement+nCells+nCells] += rhsz
+        vals[cells.rowOffset[iElement]] += diag
     end
     return vals, RHS
 end
@@ -253,8 +226,7 @@ function SOAFusedBatchedFaceBasedAssemblyThreaded(input::SOAMatrixAssemblyInput{
             continue
         end
         Threads.@threads for iFace in batches[id]
-            valueUpper, valueLower = zero(P), zero(P)
-            valueUpper, valueLower = fused_pde(U[faces.iOwner[iFace]], U[faces.iNeighbor[iFace]], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], valueUpper, valueLower)
+            valueUpper, valueLower = fused_pde(U[faces.iOwner[iFace]], U[faces.iNeighbor[iFace]], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], zero(P), zero(P))
 
             vals[faces.ownerIdx[iFace]] += valueUpper
             vals[faces.neighborIdx[iFace]] += valueLower
@@ -271,8 +243,7 @@ function SOAFusedBatchedFaceBasedAssemblyThreaded(input::SOAMatrixAssemblyInput{
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            diag, rhsx, rhsy, rhsz = zeros(P, 4)
-            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], diag, rhsx, rhsy, rhsz)
+            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], zero(P), zero(P), zero(P), zero(P))
 
             Atomix.@atomic vals[faces.ownerIdx[iFace]] += diag
             # RHS/Source
@@ -294,8 +265,8 @@ function SOAFusedBatchedFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals
             continue
         end
         for iFace in batches[id]
-            valueUpper, valueLower = zero(P), zero(P)
-            valueUpper, valueLower = fused_pde(U[faces.iOwner[iFace]], U[faces.iNeighbor[iFace]], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], valueUpper, valueLower)
+            valueUpper, valueLower = 
+            valueUpper, valueLower = fused_pde(U[faces.iOwner[iFace]], U[faces.iNeighbor[iFace]], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], zero(P), zero(P))
 
             vals[faces.ownerIdx[iFace]] += valueUpper
             vals[faces.neighborIdx[iFace]] += valueLower
@@ -312,8 +283,7 @@ function SOAFusedBatchedFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            diag, rhsx, rhsy, rhsz = zeros(P, 4)
-            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], diag, rhsx, rhsy, rhsz)
+            diag, rhsx, rhsy, rhsz = fused_pde(U_b[iBoundary].values[relativeFaceIndex], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], zero(P), zero(P), zero(P), zero(P))
 
             vals[faces.ownerIdx[iFace]] += diag
             # RHS/Source
@@ -351,10 +321,8 @@ function innerFace(
     gDiff::P
 ) where {P<:AbstractFloat}
     valueUpper, valueLower = fused_pde(U_c, U_n, Sf, nu, gDiff, zero(P), zero(P))
-    vals[ownerIdx] += valueUpper
-    vals[neighborIdx] += valueLower
+    Atomix.@atomic vals[ownerIdx] += valueUpper
+    Atomix.@atomic vals[neighborIdx] += valueLower
     vals[neighborRelNeighborIdx] += valueUpper
     vals[ownerRelOwnerIdx] += valueLower
 end
-
-# const SOAFUNCTIONS = [SOAFusedFaceBasedAssembly, SOAFusedFaceBasedAssemblyThreaded, SOAFusedCellBasedAssembly, SOAFusedCellBasedAssemblyThreaded, SOAFusedGlobalFaceBasedAssembly, SOAFusedGlobalFaceBasedAssemblyThreaded, SOAFusedBatchedFaceBasedAssemblyThreaded]
