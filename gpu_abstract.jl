@@ -295,7 +295,7 @@ function flattenCells(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     iNeighbors[1:1+length(input.mesh.cells[1].iNeighbors)-1] = input.mesh.cells[1].iNeighbors
     for iCell in 2:length(input.mesh.cells)
         cell = input.mesh.cells[iCell]
-        start = iFaceOffsets[iCell-1] + length(input.mesh.cells[iCell-1].iFaces)
+        start = Int32(iFaceOffsets[iCell-1] + length(input.mesh.cells[iCell-1].iFaces))
         iFaceOffsets[iCell] = start
         iFaces[start:start+length(cell.iFaces)-1] = cell.iFaces
         iNeighbors[start:start+length(cell.iNeighbors)-1] = cell.iNeighbors
@@ -327,7 +327,6 @@ function CellBased(args, pde, wg, nd)
     return args[end-1:end]
 end
 
-
 @kernel function CellBasedKernel(
     @Const(iFaces),
     @Const(iNeighbors),
@@ -354,26 +353,27 @@ end
     numInternalFaces = length(Sf) - length(bFaceMapping)
     if iElement <= nCells
         diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
-        startIndex = iFaceOffsets[iElement] - 1
-        for iFace in 1:numInteriors[iElement]
-            iFaceIndex = iFaces[startIndex+iFace]
-            isOwner = iOwners[iFaceIndex] == iElement
-            valueUpper, valueLower = fused_pde(U[iElement], U[iNeighbors[iFaceIndex]], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], zero(t), zero(t))
-            idx = ifelse(isOwner, ownerRelOwnerIdx[iFaceIndex], neighborRelNeighborIdx[iFaceIndex])
-            vals[idx] += ifelse(isOwner, valueLower, valueUpper)
-            diag += ifelse(!isOwner, valueLower, valueUpper)
+        @inbounds startIndex = iFaceOffsets[iElement] - Int32(1)
+        @inbounds for iFace in one(Int32):numInteriors[iElement]
+            @inbounds iFaceIndex = iFaces[startIndex+iFace]
+            @inbounds isOwner = iOwners[iFaceIndex] == iElement
+            @inbounds valueUpper, valueLower = fused_pde(U[iElement], U[iNeighbors[iFaceIndex]], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], zero(t), zero(t))
+            @inbounds idx = ifelse(isOwner, ownerRelOwnerIdx[iFaceIndex], neighborRelNeighborIdx[iFaceIndex])
+            @inbounds vals[idx] += ifelse(isOwner, valueLower, valueUpper)
+            @inbounds diag += ifelse(!isOwner, valueLower, valueUpper)
+
         end
-        for iFace in numInteriors[iElement]+1:facesPerCell[iElement]
-            iFaceIndex = iFaces[startIndex+iFace]
-            bFaceIndex = bFaceMapping[iFaceIndex-numInternalFaces]
+        @inbounds for iFace in numInteriors[iElement]+1:facesPerCell[iElement]
+            @inbounds iFaceIndex = iFaces[startIndex+iFace]
+            @inbounds bFaceIndex = bFaceMapping[iFaceIndex-numInternalFaces]
             if bFaceIndex != -1
-                diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], diag, rhsx, rhsy, rhsz)
+                @inbounds diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], diag, rhsx, rhsy, rhsz)
             end
         end
-        RHS[iElement] += rhsx
-        RHS[iElement+nCells] += rhsy
-        RHS[iElement+nCells+nCells] += rhsz
-        vals[rowOffsets[iElement]] += diag
+        @inbounds RHS[iElement] += rhsx
+        @inbounds RHS[iElement+nCells] += rhsy
+        @inbounds RHS[iElement+nCells+nCells] += rhsz
+        @inbounds vals[rowOffsets[iElement]] += diag
     end
 end
 

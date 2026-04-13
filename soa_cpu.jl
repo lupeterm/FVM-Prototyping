@@ -265,7 +265,6 @@ function SOAFusedBatchedFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals
             continue
         end
         for iFace in batches[id]
-            valueUpper, valueLower = 
             valueUpper, valueLower = fused_pde(U[faces.iOwner[iFace]], U[faces.iNeighbor[iFace]], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], zero(P), zero(P))
 
             vals[faces.ownerIdx[iFace]] += valueUpper

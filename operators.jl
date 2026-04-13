@@ -42,12 +42,9 @@ function (d::Div{P,S})(
     valueUpper::P,
     valueLower::P
 ) where {P<:AbstractFloat,S}
-    Uf = 0.5(U_c + U_n)
-    ϕf::P = dot(Uf, Sf)
+    @inbounds ϕf = dot(0.5(U_c + U_n), Sf)
     weights_f = d.scheme(ϕf)
-    valueUpper += ϕf * weights_f
-    valueLower += -ϕf * (1 - weights_f)
-    return valueUpper, valueLower
+    return valueUpper + ϕf * weights_f, valueLower - ϕf * (1 - weights_f)
 end
 
 
@@ -62,12 +59,12 @@ function (d::Div{P,S})(
     valueRHSy::P,
     valueRHSz::P
 ) where {P<:AbstractFloat,S}
-    ϕf = dot(U_b, Sf)
-    conv = U_b .* ϕf
-    valueRHSx -= conv[1]
-    valueRHSy -= conv[2]
-    valueRHSz -= conv[3] 
-    return valueDiag, valueRHSx, valueRHSy, valueRHSz
+    # ϕf = dot(U_b, Sf)
+    conv = U_b .* dot(U_b, Sf)
+    # valueRHSx -= conv[1]
+    # valueRHSy -= conv[2]
+    # valueRHSz -= conv[3] 
+    @inbounds return valueDiag, valueRHSx -conv[1], valueRHSy -conv[2], valueRHSz-conv[3]
 end
 
 #### Diffusion
@@ -76,6 +73,15 @@ end
 struct Laplace{P}
     scale::P
 end
+# (t::Laplace{P})(
+#     _::SVector{3,P},
+#     _::SVector{3,P},
+#     Sf::SVector{3,P},
+#     nu::P,
+#     gDiff::P,
+#     valueUpper::P,
+#     valueLower::P
+# ) where {P<:AbstractFloat} = fma(valueUpper, -nu, gDiff), fma(valueLower, nu, gDiff)
 
 function (t::Laplace{P})(
     _::SVector{3,P},
@@ -87,9 +93,9 @@ function (t::Laplace{P})(
     valueLower::P
 ) where {P<:AbstractFloat}
     diffusion = nu * gDiff
-    valueUpper += -diffusion
-    valueLower += diffusion
-    return valueUpper, valueLower
+    # valueUpper += -diffusion
+    # valueLower += diffusion
+    return valueUpper -diffusion, valueLower + diffusion
 end
 
 # facebased boundary 
