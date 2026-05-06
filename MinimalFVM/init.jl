@@ -1,3 +1,3 @@
 using Pkg;
-Pkg.activate(pwd())
+Pkg.activate(@__DIR__)
 using MinimalFVM
