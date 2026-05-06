@@ -1,3 +1,3 @@
 using Pkg;
-Pkg.activate("/home/peter/Documents/uni/FVM-Prototyping/MinimalFVM")
+Pkg.activate(pwd())
 using MinimalFVM
