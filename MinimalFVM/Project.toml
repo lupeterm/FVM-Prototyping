@@ -1,0 +1,12 @@
+name = "MinimalFVM"
+uuid = "64a5002a-5e2d-4182-be9a-6fa6f45952bb"
+version = "0.1.0"
+authors = ["Lukas Petermann <lukas.petermann13@gmail.com>"]
+
+[deps]
+Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
+
+[compat]
+Pkg = "1.12.0"
+PrecompileTools = "1.3.3"
