@@ -3,11 +3,11 @@ abstract type DivScheme{P} end
 
 struct Noop{P} <: DivScheme{P} end
 
-struct UpwindScheme{P} <: DivScheme{P} end
-@inline (s::UpwindScheme{P})(ϕ) where {P<:AbstractFloat} = ifelse(ϕ ≥ 0, one(P), zero(P))
+struct upwind{P} <: DivScheme{P} end
+@inline (s::upwind{P})(ϕ) where {P<:AbstractFloat} = ifelse(ϕ ≥ 0, one(P), zero(P))
 
-struct CentralDiffScheme{P} <: DivScheme{P} end
-@inline (u::CentralDiffScheme{P})(ϕf) where {P<:AbstractFloat} = P(0.5)
+struct linear{P} <: DivScheme{P} end
+@inline (u::linear{P})(ϕf) where {P<:AbstractFloat} = P(0.5)
 
 #### DDT SCHEMES
 abstract type DdtScheme{P} end
