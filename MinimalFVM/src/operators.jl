@@ -49,8 +49,12 @@ end
 
 # facebased boundary 
 function (d::Div{P,S})(
-    U_b::Vector{P},
-    Sf::Vector{P},
+    refValue::Vector{P},
+    refGradient::Vector{P},
+    flux::P,
+    valueFraction::P,
+    deltaCoeffGlobal::P,
+    _::P,
     _::P,
     _::P,
     valueDiag::P,
@@ -58,9 +62,9 @@ function (d::Div{P,S})(
     valueRHSy::P,
     valueRHSz::P
 ) where {P<:AbstractFloat,S}
-    # ϕf = dot(U_b, Sf)
-    conv = U_b .* dot(U_b, Sf)
-    @inbounds return valueDiag, valueRHSx - conv[1], valueRHSy - conv[2], valueRHSz - conv[3]
+    valFrac2 = 1.0 - valueFraction
+    v = flux * valueFraction .* refValue + valFrac2 .* refGradient / deltaCoeffGlobal
+    return valueDiag + flux * valFrac2, valueRHSx - v[1], valueRHSy - v[2], valueRHSz - v[3]
 end
 
 #### Diffusion
@@ -86,21 +90,25 @@ end
 
 # facebased boundary 
 function (d::Laplace{P})(
-    _::Vector{P},
-    _::Vector{P},
-    nu::P,
-    gDiff::P,
+    refValue::Vector{P},
+    refGradient::Vector{P},
+    _::P,
+    valueFraction::P,
+    deltaCoeffGlobal::P,
+    deltaCoeffBoundary::P,
+    gamma::P,
+    magFaceArea::P,
     valueDiag::P,
     valueRHSx::P,
     valueRHSy::P,
     valueRHSz::P
 ) where {P<:AbstractFloat}
-    diffusion = nu * gDiff
-    valueDiag -= diffusion
-    valueRHSx -= diffusion
-    valueRHSy -= diffusion
-    valueRHSz -= diffusion
-    return valueDiag, valueRHSx, valueRHSy, valueRHSz
+    flux = gamma * magFaceArea
+    valueMat = flux * valueFraction * deltaCoeffBoundary
+    v = flux * (valueFraction * deltaCoeffBoundary .* refValue
+                +
+                (1.0 - valueFraction) .* refGradient)
+    return valueDiag - valueMat, valueRHSx - v[1], valueRHSy - v[2], valueRHSz - v[3]
 end
 
 #### Operator Fusing
@@ -131,13 +139,26 @@ end
 #     return diag, rhsx, rhsy, rhsz
 # end
 
-# facebased boundary 
-@inline function (o::DiffEq)(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
-    diag, rhsx, rhsy, rhsz = o.a(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
-    diag, rhsx, rhsy, rhsz = o.b(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
-    return diag, rhsx, rhsy, rhsz
-end
 
+# facebased boundary 
+@inline function (o::DiffEq)(
+    refValue,
+    refGradient,
+    flux,
+    valueFraction,
+    deltaCoeffGlobal,
+    deltaCoeffBoundary,
+    gamma,
+    magFaceArea,
+    valueDiag,
+    valueRHSx,
+    valueRHSy,
+    valueRHSz
+)
+    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.a(refValue, refGradient, flux, valueFraction, deltaCoeffGlobal, deltaCoeffBoundary, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
+    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.b(refValue, refGradient, flux, valueFraction, deltaCoeffGlobal, deltaCoeffBoundary, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
+    return valueDiag, valueRHSx, valueRHSy, valueRHSz
+end
 
 # cellbased inner 
 # @inline function (DiffEq)(U_c, U_n, Sf, nu, gdiff, volume, dt, valueUpper, valueDiag, valueLower)
