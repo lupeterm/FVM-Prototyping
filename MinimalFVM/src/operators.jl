@@ -43,7 +43,7 @@ function (d::Div{P,S})(
 ) where {P<:AbstractFloat,S}
     # ϕf = dot(0.5(U_c + U_n), Sf)     #### von NeoFoam/NeoN schon vorberechnet
     weights_f = d.scheme(faceFlux)
-    return valueUpper - faceFlux * weights_f, valueLower + faceFlux * (1 - weights_f)
+    return valueUpper - faceFlux * weights_f * d.scale, valueLower + faceFlux * (1 - weights_f) * d.scale
 end
 
 
@@ -64,7 +64,7 @@ function (d::Div{P,S})(
 ) where {P<:AbstractFloat,S}
     valFrac2 = 1.0 - valueFraction
     v = flux * valueFraction .* refValue + valFrac2 .* refGradient / deltaCoeffGlobal
-    return valueDiag + flux * valFrac2, valueRHSx - v[1], valueRHSy - v[2], valueRHSz - v[3]
+    return valueDiag + flux * valFrac2 * d.scale, valueRHSx - v[1] * d.scale, valueRHSy - v[2] * d.scale, valueRHSz - v[3] * d.scale
 end
 
 #### Diffusion
@@ -85,7 +85,7 @@ function (t::Laplace{P})(
     diffusion = gamma * deltaCoeffs * magFaceArea
     # valueUpper += -diffusion
     # valueLower += diffusion
-    return valueUpper - diffusion, valueLower + diffusion
+    return valueUpper + diffusion * t.scale, valueLower + diffusion * t.scale
 end
 
 # facebased boundary 
@@ -104,11 +104,11 @@ function (d::Laplace{P})(
     valueRHSz::P
 ) where {P<:AbstractFloat}
     flux = gamma * magFaceArea
-    valueMat = flux * valueFraction * deltaCoeffBoundary
-    v = flux * (valueFraction * deltaCoeffBoundary .* refValue
+    valueMat = flux * valueFraction * deltaCoeffGlobal
+    v = flux * (valueFraction * deltaCoeffGlobal .* refValue
                 +
                 (1.0 - valueFraction) .* refGradient)
-    return valueDiag - valueMat, valueRHSx - v[1], valueRHSy - v[2], valueRHSz - v[3]
+    return valueDiag - valueMat * d.scale, valueRHSx - v[1] * d.scale, valueRHSy - v[2] * d.scale, valueRHSz - v[3] * d.scale
 end
 
 #### Operator Fusing
@@ -117,27 +117,11 @@ struct DiffEq{A,B}
     b::B
 end
 
-# facebased inner first call 
-# @inline function (o::DiffEq)(U_c, U_n, Sf, nu, gdiff)
-#     valueUpper, valueLower = o.a(U_c, U_n, Sf, nu, gdiff, zero(typeof(nu)), zero(typeof(nu)))
-#     valueUpper, valueLower = o.b(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
-#     return valueUpper, valueLower
-# end
-# facebased inner 
-# @inline function (o::DiffEq)(U_c, U_n, faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
 @inline function (o::DiffEq)(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
     valueUpper, valueLower = o.a(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
     valueUpper, valueLower = o.b(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
     return valueUpper, valueLower
 end
-
-# facebased boundary first call
-# @inline function (o::DiffEq)(U_b, Sf, nu, gdiff)
-#     t = typeof(nu)
-#     diag, rhsx, rhsy, rhsz = o.a(U_b, Sf, nu, gdiff, zero(t), zero(t), zero(t), zero(t))
-#     diag, rhsx, rhsy, rhsz = o.b(U_b, Sf, nu, gdiff, diag, rhsx, rhsy, rhsz)
-#     return diag, rhsx, rhsy, rhsz
-# end
 
 
 # facebased boundary 
