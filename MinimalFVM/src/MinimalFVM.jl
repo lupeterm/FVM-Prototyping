@@ -129,22 +129,28 @@ function faceBasedAll(
     refValue::Vector{Float64},
     refGradient::Vector{Float64},
     RHS::Vector{Float64},
-    surfaceCells::Vector{Int32}
+    surfaceCells::Vector{Int32},
+    bValues::Vector{Float64},
+    bRhs::Vector{Float64}
 )
     fused_pde = eval(Meta.parse(opString))
-    numCells = length(rowOffs) - 1
+    numCells = length(rowOffs) -1
     for iFace in 1:numInteriorFaces
         iOwner = owner[iFace] + 1
         iNeighbor = neighbour[iFace] + 1
 
-        rowNeiStart = rowOffs[iNeighbor] + 1
-        rowOwnStart = rowOffs[iOwner] + 1
+        rowNeiStart = rowOffs[iNeighbor]
+        rowOwnStart = rowOffs[iOwner]
 
         valueUpper, valueLower = fused_pde(faceFlux[iFace], gamma[iFace], deltaCoeffs[iFace], magFaceArea[iFace], 0.0, 0.0)
-        vals[rowNeiStart+neiOffs[iFace]] += valueUpper
-        vals[rowOwnStart+diagOffs[iOwner]] -= valueUpper
-        vals[rowOwnStart+ownOffs[iFace]] += valueLower
-        vals[rowNeiStart+diagOffs[iNeighbor]] -= valueLower
+        idx = (rowNeiStart+neiOffs[iFace])*3+1
+        vals[idx:idx+2] .+= valueUpper
+        idx = (rowOwnStart+diagOffs[iOwner])*3+1
+        vals[idx:idx+2] .-= valueUpper
+        idx = (rowOwnStart+ownOffs[iFace])*3+1
+        vals[idx:idx+2] .+= valueLower
+        idx = (rowNeiStart+diagOffs[iNeighbor])*3+1
+        vals[idx:idx+2] .-= valueLower
     end
     for facei in numInteriorFaces+1:length(faceFlux)
         bcfacei = facei - numInteriorFaces
@@ -162,20 +168,40 @@ function faceBasedAll(
             0.0, 0.0, 0.0, 0.0
         )
         own = surfaceCells[bcfacei] + 1
-        rowOwnStart = rowOffs[own] + 1
-        # operatorScalingOwn = operatorScaling[own]
 
-        vals[rowOwnStart+diagOffs[own]] += valueDiag
-        # bValues[bcfacei] = valueDiag
+        vIdx = (rowOffs[own]+diagOffs[own])*3+1 
+        if bcfacei == 1
+            println("writing in $vIdx : $(vIdx+2)")
+        end
+        vals[vIdx:vIdx+2] .+= valueDiag
+
+        bValues[bcfacei*3-2:bcfacei*3] .= valueDiag
+
         # rhs[own] -= valueRhs
-        RHS[own] += valueRHSx
-        RHS[own+numCells] += valueRHSy
-        RHS[own+numCells+numCells] += valueRHSz
+        # FIXME dont forget, changed this back to [vec3, vec3] instead of [xxxyyyzzz] for now
+        RHS[own*3-2:own*3] += [valueRHSx, valueRHSy, valueRHSz]
+        # RHS[own] += valueRHSx
+        # RHS[own+numCells] += valueRHSy
+        # RHS[own+numCells+numCells] += valueRHSz
 
+        bRhs[own*3-2:own*3] += [valueRHSx, valueRHSy, valueRHSz]
         # bRhs[own] += valueRHSx
         # bRhs[own+numCells] += valueRHSy
         # bRhs[own+numCells+numCells] += valueRHSz
     end
+    # for i in 1:2
+    #     if i*3+2 > length(vals)
+    #         break
+    #     end
+    #     a = vals[i*3:i*3+2]
+    #     b = bValues[i*3:i*3+2]
+    #     c = RHS[[i,i+numCells,i+2*numCells]]
+    #     d = bRhs[[i,i+numCells,i+2*numCells]]
+    #     println("value $i: $(a)")
+    #     println("bvalue $i: $(b)")
+    #     println("RHS $i: $(c)")
+    #     println("value $i: $(d)")
+    # end
 end
 
 
@@ -226,7 +252,6 @@ function faceBasedBoundary(
     refGradient_::Matrix{Float64},
     RHS::Vector{Float64}
 )
-
     fused_pde = eval(Meta.parse(opString))
     numCells = length(rowOffs) - 1
     for facei in numInteriorFaces+1:length(faceFlux)
@@ -269,7 +294,7 @@ function warmup(op::String)
         ones(UInt8, 2),
         ones(UInt8, 2),
         ones(Int32, 2),
-        zeros(Float64, 4),
+        zeros(Float64, 12),
         op,
         ones(Float64, 2),
         ones(Float64, 2),
@@ -278,8 +303,10 @@ function warmup(op::String)
         ones(Float64, 2),
         ones(Float64, 3),
         ones(Float64, 3),
-        zeros(Float64, 9),
+        zeros(Float64, 12),
         zeros(Int32, 2),
+        zeros(Float64, 12),
+        zeros(Float64, 12),
     )
 end
 
@@ -289,7 +316,6 @@ end
     warmup("Laplace{Float64}(1)")
     warmup("Div{Float64, upwind{Float64}}(upwind{Float64}(), 1) + Laplace{Float64}(-5)")
     warmup("Div{Float64, upwind{Float64}}(upwind{Float64}(), 1) + Laplace{Float64}(1)")
-
 end
 export faceBased, Div, Noop, linear, upwind, BDF1, Laplace, test, faceBasedBoundary, faceBasedAll
 
