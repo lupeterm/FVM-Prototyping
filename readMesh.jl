@@ -29,7 +29,12 @@ function readOpenFoamMesh(P::Type{<:AbstractFloat}, caseDir::String)::Mesh
 end # function readOpenFoamMesh
 
 function getAmountAndStart(file::String)::Tuple{Int32,Int32}
-    for (j, line) in enumerate(eachline(file))
+    file_ = if islink(file)
+        abspath(dirname(file), readlink(file))
+    else
+        file
+    end
+    for (j, line) in enumerate(eachline(file_))
         amount = tryparse(Int32, line)
         if isnothing(amount)
             continue
@@ -40,13 +45,18 @@ end
 
 function readPointsFile(P::Type{<:AbstractFloat}, polyMeshDir::String)::Vector{SVector{3,P}}
     pointsFileName = joinpath(polyMeshDir, "points")
-    if !isfile(pointsFileName)
-        throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
-    end
+    # if !isfile(pointsFileName)
+    #     throw(CaseDirError("Points file '$(pointsFileName)' does not exist."))
+    # end
     nNodes, start = getAmountAndStart(pointsFileName)
     centroids = Vector{SVector{3,P}}(undef, nNodes)
     i = 1
-    for (j, line) in enumerate(eachline(pointsFileName))
+    file_ = if islink(pointsFileName)
+        abspath(dirname(pointsFileName), readlink(pointsFileName))
+    else
+        pointsFileName
+    end
+    for (j, line) in enumerate(eachline(file_))
         if j < start
             continue
         end
@@ -62,13 +72,18 @@ end # function readPointsFile
 
 function readOwnersFile(polyMeshDir::String)
     ownersFileName = joinpath(polyMeshDir, "owner")
-    if !isfile(ownersFileName)
-        throw(CaseDirError("Owners file '$(ownersFileName)' does not exist."))
-    end
+    # if !isfile(ownersFileName)
+    #     throw(CaseDirError("Owners file '$(ownersFileName)' does not exist."))
+    # end
     nOwners, start = getAmountAndStart(ownersFileName)
     owners::Vector{Int32} = zeros(nOwners)
     i = 1
-    for (j, line) in enumerate(eachline(ownersFileName))
+    file_ = if islink(ownersFileName)
+        abspath(dirname(ownersFileName), readlink(ownersFileName))
+    else
+        ownersFileName
+    end
+    for (j, line) in enumerate(eachline(file_))
         if j < start
             continue
         end
@@ -83,13 +98,18 @@ end # function readPointsFile
 
 function readFacesFile(P::Type{<:AbstractFloat}, polyMeshDir::String, owners::Vector{Int32})::Vector{TmpFace}
     facesFileName = joinpath(polyMeshDir, "faces")
-    if !isfile(facesFileName)
-        throw(CaseDirError("Faces file '$(facesFileName)' does not exist."))
-    end
+    # if !isfile(facesFileName)
+    #     throw(CaseDirError("Faces file '$(facesFileName)' does not exist."))
+    # end
     nFaces, start = getAmountAndStart(facesFileName)
     faces = Vector{TmpFace}(undef, nFaces)
     i::Int32 = 1
-    for (j, line) in enumerate(eachline(facesFileName))
+    file_ = if islink(facesFileName)
+        abspath(dirname(facesFileName), readlink(facesFileName))
+    else
+        facesFileName
+    end
+    for (j, line) in enumerate(eachline(file_))
         if j < start
             continue
         end
@@ -118,12 +138,17 @@ end # function readPointsFile
 
 function readNeighborsFile(polyMeshDir::String, faces::Vector{TmpFace})::Tuple{Int32,Vector{TmpFace}}
     neighborsFileName = joinpath(polyMeshDir, "neighbour")
-    if !isfile(neighborsFileName)
-        throw(CaseDirError("Neighbors file '$(neighborsFileName)' does not exist."))
-    end
+    # if !isfile(neighborsFileName)
+    #     throw(CaseDirError("Neighbors file '$(neighborsFileName)' does not exist."))
+    # end
     numNeighbors, start = getAmountAndStart(neighborsFileName)
     i = 1
-    for (j, line) in enumerate(eachline(neighborsFileName))
+    file_ = if islink(neighborsFileName)
+        abspath(dirname(neighborsFileName), readlink(neighborsFileName))
+    else
+        neighborsFileName
+    end
+    for (j, line) in enumerate(eachline(file_))
         if j < start
             continue
         end
@@ -138,9 +163,9 @@ end # function readPointsFile
 
 function readBoundaryFile(polyMeshDir::String)::Vector{Boundary}
     boundariesFileName = joinpath(polyMeshDir, "boundary")
-    if !isfile(boundariesFileName)
-        throw(CaseDirError("Boundary file '$(boundariesFileName)' does not exist."))
-    end
+    # if !isfile(boundariesFileName)
+    #     throw(CaseDirError("Boundary file '$(boundariesFileName)' does not exist."))
+    # end
     numBoundaries, start = getAmountAndStart(boundariesFileName)
     i = 17
 
@@ -442,7 +467,7 @@ function readFields(dir::String, mesh::Mesh{P})::Tuple{Vector{Vector{BoundaryFie
     mappings = Dict()
     for (i, variableFile) in enumerate(files)
         fileName = joinpath(dir, variableFile)
-        bfields = readField(fileName, mesh)
+        bfields = readField(P, fileName, mesh)
         mappings[i] = variableFile
         push!(fields, bfields)
     end
@@ -507,8 +532,10 @@ end
 
 function readField(P::Type{<:AbstractFloat}, filePath::String, mesh::Mesh)::Tuple{Vector{BoundaryField{P}},Vector{SVector{3,P}}}
     fileName = rsplit(filePath, "/", limit=1)[1]
-    if !isfile(filePath)
-        throw(CaseDirError("Field file '$(filePath)' does not exist."))
+    filePath = if islink(filePath)
+        abspath(dirname(filePath), readlink(filePath))
+    else
+        filePath
     end
     isUniform = isUniforminternalField(filePath)
     # so far not used?
@@ -599,11 +626,15 @@ function readField(P::Type{<:AbstractFloat}, filePath::String, mesh::Mesh)::Tupl
 end
 
 function readPropertiesFile(P::Type{<:AbstractFloat}, path::String)::P
-    # println("Reading $(path)")
     if !isfile(path)
         throw(CaseDirError("Field file '$(path)' does not exist."))
     end
-    file = read(path, String)
+    filePath = if islink(path)
+        abspath(dirname(path), path)
+    else
+        path
+    end
+    file = read(filePath, String)
     variable = match(r"nu\s*(?:\[[\s\d-]+\])?\s*([\.\d\-e]+(?:E-\d)?);", file)
     val = tryparse(P, variable[1])
     return val
@@ -714,7 +745,7 @@ function getOffsetsAndValues!(input::MatrixAssemblyInput)
         input.offsets[iElement] += input.negOffsets[iElement]  # increase offset
     end
     for ioff in eachindex(input.offsets)
-        mesh.cells[ioff].rowOffset = input.offsets[ioff] 
+        mesh.cells[ioff].rowOffset = input.offsets[ioff]
     end
 end
 
