@@ -13,4 +13,10 @@ struct linear{P} <: DivScheme{P} end
 abstract type DdtScheme{P} end
 
 struct BDF1{P} <: DdtScheme{P} end
-@inline (s::BDF1)(vol_c, Δt) = vol_c * Δt
+@inline function (s::BDF1{P})(vol_c, Δt, oldVector::Vector{P},::Vector{P}) where {P<:AbstractFloat}
+    vol_c * 1 / Δt
+    return 
+end
+
+struct BDF2{P} <: DdtScheme{P} end
+@inline (s::BDF2)(vol_c, Δt,) = vol_c * Δt

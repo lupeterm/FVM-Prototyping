@@ -4,13 +4,13 @@ include("schemes.jl")
 
 struct Ddt{P,S}
     scheme::S
+    Δt::P
     scale::P
 end
 
 # cellbased inner 
 function (d::Ddt{P,S})(
-    # _::Vector{P},
-    # _::Vector{P},
+    _::Vector{P},
     _::Vector{P},
     _::P,
     _::P,
@@ -20,7 +20,7 @@ function (d::Ddt{P,S})(
     valueDiag::P,
     valueLower::P
 ) where {P<:AbstractFloat,S}
-    valueDiag += d.scheme(volume, dt)
+    # valueDiag += d.scheme(volume, dt, oldVector, oldOldVector)
     return valueUpper, valueDiag, valueLower
 end
 
