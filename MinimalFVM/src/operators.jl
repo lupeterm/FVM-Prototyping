@@ -7,21 +7,30 @@ struct Ddt{P,S}
     scale::P
 end
 
-# cellbased inner 
+# cellbased
 function (d::Ddt{P,S})(
-    # _::Vector{P},
-    # _::Vector{P},
-    _::Vector{P},
-    _::P,
-    _::P,
+    oldVector::Vector{P},
+    oldOldVector::Vector{P},
     volume::P,
-    dt::P,
-    valueUpper::P,
     valueDiag::P,
-    valueLower::P
+    valueRHSx::P,
+    valueRHSy::P,
+    valueRHSz::P
 ) where {P<:AbstractFloat,S}
-    valueDiag += d.scheme(volume, dt)
-    return valueUpper, valueDiag, valueLower
+    ret = d.scale * d.scheme(volume, oldVector, oldOldVector)
+    return valueDiag + ret[1], valueRHSx, +ret[2][1], valueRHSy, +ret[2][2], valueRHSz + ret[2][3]
+end
+# cellbased inner 
+function (d::Ddt{P,BDF1{P}})(
+    oldVector::Vector{P},
+    volume::P,
+    valueDiag::P,
+    valueRHSx::P,
+    valueRHSy::P,
+    valueRHSz::P
+) where {P<:AbstractFloat}
+    ret = d.scale * d.scheme(volume, oldVector)
+    return valueDiag + ret[1], valueRHSx, +ret[2][1], valueRHSy, +ret[2][2], valueRHSz + ret[2][3]
 end
 
 #### Convection
@@ -154,3 +163,22 @@ end
 PTERM = Union{DiffEq,Ddt,Div,Laplace}
 
 Base.:+(a::PTERM, b::PTERM) = DiffEq(a, b)
+Base.:+(a::PTERM, _::Nothing) = a
+Base.:+(_::Nothing, a::PTERM) = a
+Base.:+(_::Nothing, _::Nothing) = nothing
+Base.:+(a::Tuple, b::Tuple) = a[1] + b[1], a[2] + b[2]
+Base.:*(a::P, b::Tuple{P}) where {P<:AbstractFloat} = a * b[1], a * b[2]
+Base.:*(a::P, b::Tuple{P, Vector{P}}) where {P<:AbstractFloat} = a * b[1], a .* b[2]
+
+hasTransient(t::DiffEq) = hasTransient(t.a) || hasTransient(t.b)
+hasTransient(t::Ddt) = true
+hasTransient(t::Union{Div,Laplace}) = false
+
+splitTempSpat(t::DiffEq) = splitTempSpat(t.a) + splitTempSpat(t.b)
+splitTempSpat(t::Ddt) = t, nothing
+splitTempSpat(t::Union{Div,Laplace}) = nothing, t
+
+# Base.show(io::IO, t::DiffEq) = print(io, print(t.a), print(t.b)) 
+# Base.show(io::IO, t::Div) = print(io, "$(t.scale) * Div{P, $(t.scheme)}" ) 
+# Base.show(io::IO, t::Ddt) = print(io, "$(t.scale) * Ddt{P, $(t.scheme)}" ) 
+# Base.show(io::IO, t::Laplace) = print(io, "+ $(t.scale) * Laplace{P}" ) 

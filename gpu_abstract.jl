@@ -305,6 +305,23 @@ function flattenCells(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
 end
 
 
+function ChunkedCellInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
+    dev = collect(devices())
+    numDevices = length(dev)
+    gpuFaces = toGPUSOAs(VectorToSOAs(input.mesh.faces))
+
+    iFaces, iNeighbors, numInteriors, iFaceOffsets, facesPerCell = flattenCells(input)
+    nus = CuArray(input.nu)
+    bFaceValues, U, bFaceMapping = gpu_getFaceValues(input)
+    rowOffsets = input.offsets |> cu
+    nCells::Int32 = length(input.mesh.cells)
+    RHS = CUDA.zeros(P, nCells * 3)
+    entriesNeeded::Int32 = length(input.mesh.cells) + 2 * input.mesh.numInteriorFaces
+    vals = CUDA.zeros(P, entriesNeeded)
+
+    return iFaces, iNeighbors, numInteriors, iFaceOffsets, facesPerCell, nus, gpuFaces.Sf, gpuFaces.gDiff, U, rowOffsets, gpuFaces.ownerRelOwnerIdx, gpuFaces.neighborRelNeighborIdx, bFaceValues, bFaceMapping, gpuFaces.iOwner, vals, RHS
+end
+
 function CellInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
     gpuFaces = toGPUSOAs(VectorToSOAs(input.mesh.faces))
 
