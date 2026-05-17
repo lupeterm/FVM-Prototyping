@@ -9,9 +9,9 @@ end
 
 # cellbased inner 
 function (d::Ddt{P,S})(
-    # _::Vector{P},
-    # _::Vector{P},
-    _::Vector{P},
+    _::SVector{3,P},
+    _::SVector{3,P},
+    _::SVector{3,P},
     _::P,
     _::P,
     volume::P,
@@ -34,23 +34,27 @@ end
 
 # facebased inner
 function (d::Div{P,S})(
-    faceFlux::P,
+    U_c::SVector{3,P},
+    U_n::SVector{3,P},
+    Sf::SVector{3,P},
     _::P,
-    _::Vector{P},
     _::P,
     valueUpper::P,
     valueLower::P
 ) where {P<:AbstractFloat,S}
-    # ϕf = dot(0.5(U_c + U_n), Sf)     #### von NeoFoam/NeoN schon vorberechnet
-    weights_f = d.scheme(faceFlux)
-    return valueUpper - faceFlux * weights_f, valueLower + faceFlux * (1 - weights_f)
+    Uf = 0.5(U_c + U_n)
+    ϕf::P = dot(Uf, Sf)
+    weights_f = d.scheme(ϕf)
+    valueUpper += ϕf * weights_f
+    valueLower += -ϕf * (1 - weights_f)
+    return valueUpper, valueLower
 end
 
 
 # facebased boundary 
 function (d::Div{P,S})(
-    U_b::Vector{P},
-    Sf::Vector{P},
+    U_b::SVector{3,P},
+    Sf::SVector{3,P},
     _::P,
     _::P,
     valueDiag::P,
@@ -58,9 +62,12 @@ function (d::Div{P,S})(
     valueRHSy::P,
     valueRHSz::P
 ) where {P<:AbstractFloat,S}
-    # ϕf = dot(U_b, Sf)
-    conv = U_b .* dot(U_b, Sf)
-    @inbounds return valueDiag, valueRHSx - conv[1], valueRHSy - conv[2], valueRHSz - conv[3]
+    ϕf = dot(U_b, Sf)
+    conv = U_b .* ϕf
+    valueRHSx -= conv[1]
+    valueRHSy -= conv[2]
+    valueRHSz -= conv[3] 
+    return valueDiag, valueRHSx, valueRHSy, valueRHSz
 end
 
 #### Diffusion
@@ -70,24 +77,34 @@ struct Laplace{P}
     scale::P
 end
 
+
+
+
+
+
+
+
+
+
 function (t::Laplace{P})(
-    faceFlux::P,
-    gamma::P,
-    deltaCoeffs::Vector{P},
-    magFaceArea::P,
+    _::SVector{3,P},
+    _::SVector{3,P},
+    Sf::SVector{3,P},
+    nu::P,
+    gDiff::P,
     valueUpper::P,
     valueLower::P
 ) where {P<:AbstractFloat}
-    diffusion = gamma * gDiff * magFaceArea
-    # valueUpper += -diffusion
-    # valueLower += diffusion
-    return valueUpper - diffusion, valueLower + diffusion
+    diffusion = nu * gDiff
+    valueUpper += -diffusion
+    valueLower += diffusion
+    return valueUpper, valueLower
 end
 
 # facebased boundary 
 function (d::Laplace{P})(
-    _::Vector{P},
-    _::Vector{P},
+    _::SVector{3,P},
+    _::SVector{3,P},
     nu::P,
     gDiff::P,
     valueDiag::P,
@@ -100,7 +117,7 @@ function (d::Laplace{P})(
     valueRHSx -= diffusion
     valueRHSy -= diffusion
     valueRHSz -= diffusion
-    return valueDiag, valueRHSx, valueRHSy, valueRHSz
+    return valueDiag, valueRHSx, valueRHSy, valueRHSz  
 end
 
 #### Operator Fusing
@@ -116,10 +133,9 @@ end
 #     return valueUpper, valueLower
 # end
 # facebased inner 
-# @inline function (o::DiffEq)(U_c, U_n, faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
-@inline function (o::DiffEq)(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
-    valueUpper, valueLower = o.a(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
-    valueUpper, valueLower = o.b(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
+@inline function (o::DiffEq)(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
+    valueUpper, valueLower = o.a(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
+    valueUpper, valueLower = o.b(U_c, U_n, Sf, nu, gdiff, valueUpper, valueLower)
     return valueUpper, valueLower
 end
 

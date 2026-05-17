@@ -16,23 +16,24 @@ cases = [
     # "cases/Lid-Driven-Cavities/140/",
     # "cases/Lid-Driven-Cavities/160/",
     # "cases/Lid-Driven-Cavities/180/",
-    "cases/Lid-Driven-Cavities/200/",
+    #"cases/Lid-Driven-Cavities/200/",
 ]
 suite = BenchmarkGroup()
 suite["gpu"] = BenchmarkGroup(["gpu"])
-pde = Div{Float64, UpwindScheme{Float64}}(UpwindScheme{Float64}(), 1.0) + Laplace(1.0)
+pde = Div{Float64, upwind{Float64}}(upwind{Float64}(), 1.0) + Laplace(1.0)
 # for case in cases
+println("reading $case")
 suite["gpu"][case] = BenchmarkGroup(["gpu", case])
 input = ProcessCase(Float64, case)
 cellinput = CellInput(input);
-facelinkinput = faceLikeInput(input);
-faceinput = faceInput(input);
-for wg in 64:64:384
-    # suite["gpu"][case]["cellBased"]["FusedCellBased-$wg"] = @benchmarkable CellBased($cellinput, $pde, $wg, $input.mesh.numCells)
-    suite["gpu"][case]["faceBased"]["FusedFaceBased-$wg"] = @benchmarkable FaceBasedAssembly($facelinkinput[1:end-1]..., $pde, $wg, $input.mesh.numInteriorFaces)
-    suite["gpu"][case]["batchedFace"]["FusedBatchedFace-$wg"] = @benchmarkable FusedBatchedAssembly($facelinkinput..., $pde, $wg, $input.mesh.numInteriorFaces)
-    suite["gpu"][case]["globalFaceBased"]["FusedGlobalFaceBased-$wg"] = @benchmarkable GlobalFaceAssembly($faceinput..., $pde, $wg, $length(input.mesh.faces))
-end
+#facelinkinput = faceLikeInput(input);
+#faceinput = faceInput(input);
+#for wg in 64:64:384
+suite["gpu"][case]["cellBased"]["FusedCellBased-1gpu"] = @benchmarkable CellBased($cellinput, $pde, $64, $input.mesh.numCells)
+#suite["gpu"][case]["faceBased"]["FusedFaceBased-1gpu"] = @benchmarkable FaceBasedAssembly($facelinkinput[1:end-1]..., $pde, $64, $input.mesh.numInteriorFaces)
+#suite["gpu"][case]["batchedFace"]["FusedBatchedFace-1gpu"] = @benchmarkable FusedBatchedAssembly($facelinkinput..., $pde, $64, $input.mesh.numInteriorFaces)
+#suite["gpu"][case]["globalFaceBased"]["FusedGlobalFaceBased-1gpu"] = @benchmarkable GlobalFaceAssembly($faceinput..., $pde, $64, $length(input.mesh.faces))
+#end
 # end
 results = run(suite, verbose=true)
-processResults(results, "gpuScaling.csv", Float64)
+processResults(results, "clusterGpuScaling.csv", Float64)

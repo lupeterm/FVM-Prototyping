@@ -1,37 +1,32 @@
-#!/bin/sh
-
-# julia run_gpu.jl cases/Wind/ 32
-# julia run_gpu.jl cases/Wind/ 32
-# julia run_gpu.jl cases/Wind/ 64
-# julia run_gpu.jl cases/Wind/ 128
-# julia run_gpu.jl cases/Wind/ 256
-# julia run_gpu.jl cases/Wind/ 512
-# julia run_gpu.jl cases/Wind/ 1024
-# julia run_gpu.jl cases/Lid-Driven-Cavities/20/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/40/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/60/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/80/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/100/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/120/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/140/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/160/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/180/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/200/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/20/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/20/
-# julia run_gpu.jl cases/Lid-Driven-Cavities/20/
-# julia -t 2 run_threaded.jl cases/Lid-Driven-Cavities/20/
-for dir in cases/Lid-Driven-Cavities/*/     # list directories in the form "/tmp/dirname/"
+#!/bin/bash
+numcases=$(find ../nobackup/julia/view/base/mesh/ -maxdepth 1 |wc -l)
+total=$(($numcases*8))
+finished=0
+for dir in /storage/home/lupeterm/nobackup/julia/workspace/*
 do
-    echo Benchmarking "${dir}"   
-    # julia run_gpu.jl $dir
-    # julia -t 2 run_gpu.jl $dir
-    # julia -t 4 run_gpu.jl $dir
-    # julia -t 8 run_gpu.jl $dir
-    julia -t 24 run_threaded.jl $dir
-    # julia -t 32 run_gpu.jl $dir
-    # julia -t 64 run_gpu.jl $dir
-    # julia -t 128 run_gpu.jl $dir
-    # julia -t 256 run_gpu.jl $dir
+    echo "[$finished / $total] Benchmarking ${dir}"   
+    if [ ! -d "$dir/case/constant/polyMesh" ]; then
+ 	 echo "$dir/case/constant/polyMesh does not exist."
+	 continue
+    fi
+    ncells=$(sed -nE 's/.* ([0-9]{2,3}).*/\1/p' $dir/case/system/blockMeshDict)
+    ncells=$((ncells * ncells * ncells))
+    if [  $ncells !=  64000000 ]; then
+    	continue
+	fi
+	for nthreads in 1 2 4  8 16 32 64 128
+    do
+    #	if grep -Eq "LDC-$ncells,.+-$nthreads" results/clusterCPUScalingNew.csv
+    #	then
+	#		echo "[$finished / $total] already calculated for $ncells cells and $nthreads threads"
+	#	    finished=$(($finished+1))
+	#		continue
+	#	else
+	#		echo "[$finished / $total] not yet calculated for $ncells cells and $nthreads"
+	#	fi
+    	    
+	 	~/.juliaup/bin/julialauncher -t $nthreads run_threaded.jl $dir
+    done
 done
+echo "Done With benchmark."
 

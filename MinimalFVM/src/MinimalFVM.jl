@@ -2,7 +2,6 @@ module MinimalFVM
 
 include("operators.jl")
 using PrecompileTools
-using SnoopCompile, AbstractTrees, SnoopCompileCore
 
 # function cellBased()
 #     for celli in 1:numCells

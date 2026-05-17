@@ -1,5 +1,5 @@
 import Pkg
-Pkg.activate(".")
+Pkg.activate(@__DIR__)
 using LinearAlgebra
 using BenchmarkTools
 using StaticArrays
