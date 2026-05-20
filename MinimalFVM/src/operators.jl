@@ -34,6 +34,21 @@ function (d::Ddt{P,BDF1{P}})(
     return valueDiag + ret[1], valueRHSx, +ret[2][1], valueRHSy, +ret[2][2], valueRHSz + ret[2][3]
 end
 
+# gpu version 
+function (d::Ddt{P,BDF1{P}})(
+    oldVectorx::P,
+    oldVectory::P,
+    oldVectorz::P,
+    volume::P,
+    valueDiag::P,
+    valueRHSx::P,
+    valueRHSy::P,
+    valueRHSz::P
+) where {P<:AbstractFloat}
+    r1,r2,r3,r4 = d.scale * d.scheme(volume, oldVectorx, oldVectory, oldVectorz)
+    return valueDiag + r1, valueRHSx, +r2, valueRHSy, +r3, valueRHSz + r4
+end
+
 #### Convection
 # ∇(ϕ,U) (in momentum equation)
 
@@ -240,7 +255,7 @@ Base.:+(_::Nothing, a::PTERM) = a
 Base.:+(_::Nothing, _::Nothing) = nothing
 Base.:+(a::Tuple, b::Tuple) = a[1] + b[1], a[2] + b[2]
 Base.:*(a::P, b::Tuple{P}) where {P<:AbstractFloat} = a * b[1], a * b[2]
-Base.:*(a::P, b::Tuple{P, Vector{P}}) where {P<:AbstractFloat} = a * b[1], a .* b[2]
+Base.:*(a::P, b::Tuple{P, P, P, P}) where {P<:AbstractFloat} = a * b[1], a * b[2], a*b[3], a*b[4]
 
 hasTransient(t::DiffEq) = hasTransient(t.a) || hasTransient(t.b)
 hasTransient(t::Ddt) = true

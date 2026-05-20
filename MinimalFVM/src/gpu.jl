@@ -58,35 +58,79 @@ function assemble_gpu(
 	volumes= ptrToGpu(_volumes, numCells, Float64)
 	oldVectors= ptrToGpu(_oldVectors, numCells*3, Float64)
 	
-	
-    fused_pde = eval(Meta.parse(opString))
-    ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
+	dt = "$_dt"
+    opstring2 = replace(opString, "DELTAT" => dt)
+    opstring3 = replace(opstring2, "BDF2" => "BDF1")
+    fused_pde = eval(Meta.parse(opstring3))
 
+    ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
 	backend = get_backend(vals)
-	println("total: $numTotalFaces, interior: $numInteriorFaces")
-	face_kernel(backend, 64)(
-	    numInteriorFaces,
-   		owner,
-   		neighbour,
-  		diagOffs,
- 		ownOffs,
-   		neiOffs,
-   		rowOffs,
-   		vals,
-   		faceFlux,
-   		gamma,
-   		deltaCoeffs,
-   		magFaceArea,
-   		valueFractions,
-   		refValue,
-   		refGradient,
-   		RHS,
-   		surfaceCells,
-   		bValues,
-   		bRhs,
-   		spatials;
-		ndrange=numTotalFaces
+	if !isnothing(ddt)
+		ddt_kernel(backend, 64)(
+			ddt,
+			volumes,
+			oldVectors,
+			diagOffs,
+			rowOffs,
+			vals,
+			RHS
+			;
+			ndrange=numCells
+		)		
+	end
+	if !isnothing(spatials)
+		face_kernel(backend, 64)(
+			numInteriorFaces,
+			owner,
+			neighbour,
+			diagOffs,
+			ownOffs,
+			neiOffs,
+			rowOffs,
+			vals,
+			faceFlux,
+			gamma,
+			deltaCoeffs,
+			magFaceArea,
+			valueFractions,
+			refValue,
+			refGradient,
+			RHS,
+			surfaceCells,
+			bValues,
+			bRhs,
+			spatials;
+			ndrange=numTotalFaces
+		)
+	end
+end
+
+@kernel function ddt_kernel(
+	@Const(temporals),
+    @Const(volumes),
+    @Const(oldVectors),
+    @Const(diagOffs),
+    @Const(rowOffs),
+    vals,
+    RHS
+)
+	celli = @index(Global)
+	idx2D = (celli - 1) * 3 + 1
+	valueDiag, rx, ry, rz = temporals(
+		oldVectors[idx2D],
+		oldVectors[idx2D+1],
+		oldVectors[idx2D+2],
+		volumes[celli],
+		0.0,
+		0.0,
+		0.0,
+		0.0
 	)
+	idx = rowOffs[celli] + 1 + diagOffs[celli]
+	vals[idx] = valueDiag
+	RHS[idx2D] = rx
+	RHS[idx2D+1] = rz
+	RHS[idx2D+2] = rz
 end
 
 @kernel function face_kernel(
