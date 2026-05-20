@@ -1,7 +1,9 @@
 module MinimalFVM
 
 include("operators.jl")
+include("gpu.jl")
 using PrecompileTools
+using Atomix 
 
 function cellBased_(
     temporals::Union{DiffEq,Ddt},
@@ -416,7 +418,14 @@ function faceBasedAll_(
         rowNeiStart = rowOffs[iNeighbor]
         rowOwnStart = rowOffs[iOwner]
 
-        valueUpper, valueLower = fused_pde(faceFlux[iFace], gamma[iFace], deltaCoeffs[iFace], magFaceArea[iFace], 0.0, 0.0)
+        valueUpper, valueLower = fused_pde(
+            faceFlux[iFace], 
+            gamma[iFace], 
+            deltaCoeffs[iFace], 
+            magFaceArea[iFace], 
+            0.0, 
+            0.0
+        )
         idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
         vals[idx:idx+2] .+= valueUpper
         idx = (rowOwnStart + diagOffs[iOwner]) * 3 + 1
@@ -659,6 +668,6 @@ end
     warmup("Div{Float64, upwind{Float64}}(upwind{Float64}(), 1) + Laplace{Float64}(-5)")
     warmup("Div{Float64, upwind{Float64}}(upwind{Float64}(), 1) + Laplace{Float64}(1)")
 end
-export faceBased, Div, Noop, linear, upwind, BDF1, Laplace, test, faceBasedBoundary, faceBasedAll, Ddt, hasTransient, splitTempSpat, BDF2, DELTAT
+export faceBased, Div, Noop, linear, upwind, BDF1, Laplace, test, faceBasedBoundary, faceBasedAll, Ddt, hasTransient, splitTempSpat, BDF2, DELTAT, assemble_gpu
 
 end # module MinimalFVM

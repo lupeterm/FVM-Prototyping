@@ -8,7 +8,7 @@ function readOpenFoamMesh(P::Type{<:AbstractFloat}, caseDir::String)::Mesh
     end
     polymeshDir = joinpath(caseDir, "constant/polyMesh")
     if !isdir(polymeshDir)
-        throw(CaseDirError("PolyMesh Directory '$(caseDir)' does not exist"))
+        throw(CaseDirError("PolyMesh Directory '$(polymeshDir)' does not exist"))
     end
     # println("Reading Points..")
     nodes = readPointsFile(P, polymeshDir)
@@ -630,7 +630,7 @@ function readPropertiesFile(P::Type{<:AbstractFloat}, path::String)::P
         throw(CaseDirError("Field file '$(path)' does not exist."))
     end
     filePath = if islink(path)
-        abspath(dirname(path), path)
+        abspath(dirname(path), readlink(path))
     else
         path
     end

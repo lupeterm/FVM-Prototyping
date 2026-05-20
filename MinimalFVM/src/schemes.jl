@@ -41,10 +41,10 @@ end
 
 
 function BDF2(d::Nothing)::BDF2{Float64}
-    println("[BDF2] No Δt was passed to assemble.")
+    #println("[BDF2] No Δt was passed to assemble.")
     return BDF2{Float64}(1.0, 1.0, 1.0)
 end
 function BDF1(d::Nothing)::BDF1{Float64}
-    println("[BDF1] No Δt was passed to assemble.")
+    #println("[BDF1] No Δt was passed to assemble.")
     return BDF1{Float64}(1.0)
 end

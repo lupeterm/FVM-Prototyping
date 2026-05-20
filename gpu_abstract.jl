@@ -338,8 +338,12 @@ function CellInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}
 end
 
 function CellBased(args, pde, wg, nd)
-    backend = CUDABackend()
-    CellBasedKernel(backend, wg)(args..., pde; ndrange=nd)
+    devices = collect(CUDA.devices())
+    subsize = div(nd,length(devices))
+    for (i, dev) in enumerate(devices)
+    	backend = CUDABackend()
+    	CellBasedKernel(backend, wg)(args..., pde, i; ndrange=subsize)
+    end    	
     KernelAbstractions.synchronize(backend)
     return args[end-1:end]
 end
@@ -362,9 +366,11 @@ end
     @Const(iOwners),
     vals,
     RHS,
-    @Const(fused_pde)
+    @Const(fused_pde),
+    @Const(devId)
 )
-    iElement = @index(Global)
+    nItems = @ndrange()
+    iElement = @index(Global) + nItems*(devId-1)
     t = eltype(nus)
     nCells = length(nus)
     numInternalFaces = length(Sf) - length(bFaceMapping)
