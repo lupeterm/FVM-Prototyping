@@ -9,6 +9,14 @@ function ptrToGpu(ptr::Ptr{Cvoid}, size, dType)
 	return arr
 end
 
+function updateIDelta(value, size)
+    Core.eval(@__MODULE__, Expr(:(=), :IDELTACOEFFS, ptrToGpu(value, size, Float64)))
+end
+
+function updateBDelta(value, size)
+    Core.eval(@__MODULE__, Expr(:(=), :BDELTACOEFFS, ptrToGpu(value, size, Float64)))
+end
+
 function assemble_gpu(
     numInteriorFaces::Int32,
 	_owner::Ptr{Cvoid},
@@ -20,8 +28,11 @@ function assemble_gpu(
 	_vals::Ptr{Cvoid},
 	opString::String,
 	_faceFlux::Ptr{Cvoid},
+	_bfaceFlux::Ptr{Cvoid},
 	_gamma::Ptr{Cvoid},
+	_bgamma::Ptr{Cvoid},
 	_deltaCoeffs::Ptr{Cvoid},
+	_bdeltaCoeffs::Ptr{Cvoid},
 	_magFaceArea::Ptr{Cvoid},
 	_valueFractions::Ptr{Cvoid},
 	_refValue::Ptr{Cvoid},
@@ -36,6 +47,7 @@ function assemble_gpu(
 	numCells::Int32,
 	numTotalFaces::Int32
 )
+	println("totalFace: $numTotalFaces")
 	boundaryFaces = numTotalFaces - numInteriorFaces
 	owner = ptrToGpu(_owner, numInteriorFaces, Int32)	
 	neighbour = ptrToGpu(_neighbour, numInteriorFaces, Int32)
@@ -44,9 +56,12 @@ function assemble_gpu(
 	neiOffs = ptrToGpu(_neiOffs, numInteriorFaces, UInt8)
 	rowOffs = ptrToGpu(_rowOffs, numCells, Int32)
 	vals = ptrToGpu(_vals, (numCells + 2*numInteriorFaces)*3, Float64)
-	faceFlux = ptrToGpu(_faceFlux, numTotalFaces, Float64)
-	gamma = ptrToGpu(_gamma, numTotalFaces, Float64)
+	faceFlux = ptrToGpu(_faceFlux, numInteriorFaces, Float64)
+	bfaceFlux = ptrToGpu(_faceFlux, boundaryFaces, Float64)
+	gamma = ptrToGpu(_gamma, numInteriorFaces, Float64)
+	bgamma = ptrToGpu(_bgamma, boundaryFaces, Float64)
 	deltaCoeffs = ptrToGpu(_deltaCoeffs, numInteriorFaces, Float64)
+	bdeltaCoeffs = ptrToGpu(_bdeltaCoeffs, boundaryFaces, Float64)
 	magFaceArea = ptrToGpu(_magFaceArea, numTotalFaces, Float64)
 	valueFractions = ptrToGpu(_valueFractions, numTotalFaces, Float64)
 	refValue = ptrToGpu(_refValue, boundaryFaces*3, Float64)
@@ -73,10 +88,10 @@ function assemble_gpu(
 			diagOffs,
 			rowOffs,
 			vals,
-			RHS
-			;
+			RHS;
 			ndrange=numCells
 		)		
+		KernelAbstractions.synchronize(backend)
 	end
 	if !isnothing(spatials)
 		face_kernel(backend, 64)(
@@ -89,8 +104,11 @@ function assemble_gpu(
 			rowOffs,
 			vals,
 			faceFlux,
+			bfaceFlux,
 			gamma,
+			bgamma,
 			deltaCoeffs,
+			bdeltaCoeffs,
 			magFaceArea,
 			valueFractions,
 			refValue,
@@ -102,6 +120,7 @@ function assemble_gpu(
 			spatials;
 			ndrange=numTotalFaces
 		)
+		KernelAbstractions.synchronize(backend)
 	end
 end
 
@@ -143,8 +162,11 @@ end
     @Const(rowOffs),
     vals,
     @Const(faceFlux),  
+    @Const(bfaceFlux),  
     @Const(gamma),   
+    @Const(bgamma),   
     @Const(deltaCoeffs),
+    @Const(bdeltaCoeffs),
     @Const(magFaceArea),
     @Const(valueFractions),
     @Const(refValue),
@@ -175,7 +197,7 @@ end
             0.0, 
             0.0
         )
-       
+
 		idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
         vals[idx]   += valueUpper
         vals[idx+1] += valueUpper
@@ -195,57 +217,49 @@ end
 		idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
         # FIXME when going back to scalar values
         # vals[idx:idx+2] -= valueLower
+
         Atomix.@atomic vals[idx]   -= valueLower
         Atomix.@atomic vals[idx+1] -= valueLower
         Atomix.@atomic vals[idx+2] -= valueLower
 	else
 		bcfacei = iFace - numInteriorFaces
         start = bcfacei * 3 - 2
-        end_ = start + 2
-        # helperSVector1 = SVector{3,Float64}(refValue[start:end_])
-        # helperSVector2 = SVector{3,Float64}(refGradient[start:end_])
-        valueDiag, valueRHSx, valueRHSy, valueRHSz = fused_pde(
+        fluxContrib, valueRHSx, valueRHSy, valueRHSz = fused_pde(
 			refValue[start],
 			refValue[start+1],
 			refValue[start+2],
 			refGradient[start],
 			refGradient[start+1],
 			refGradient[start+2],
-			faceFlux[iFace],
+			bfaceFlux[bcfacei],
 			valueFractions[bcfacei],
-			6.0,
-			3.0,
-			gamma[iFace],
+			bdeltaCoeffs[bcfacei],
+			bgamma[bcfacei],
 			magFaceArea[iFace],
 			0.0, 0.0, 0.0, 0.0
         )
 
+
 		own = surfaceCells[bcfacei] + 1
+		vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
 
-        vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
+        bValues[bcfacei*3-2] -= fluxContrib
+        bValues[bcfacei*3-1] -= fluxContrib
+        bValues[bcfacei*3] 	 -= fluxContrib
 
-		Atomix.@atomic vals[vIdx]   += valueDiag
-        Atomix.@atomic vals[vIdx+1] += valueDiag
-        Atomix.@atomic vals[vIdx+2] += valueDiag
+		Atomix.@atomic vals[vIdx]   += fluxContrib
+        Atomix.@atomic vals[vIdx+1] += fluxContrib
+        Atomix.@atomic vals[vIdx+2] += fluxContrib
 		
-        bValues[bcfacei*3-2] = valueDiag
-        bValues[bcfacei*3-1] = valueDiag
-        bValues[bcfacei*3] 	 = valueDiag
-
-
-        # FIXME dont forget, changed this back to [xyzxyzxyz] instead of [xxxyyyzzz] for now
+        # # FIXME dont forget, changed this back to [xyzxyzxyz] instead of [xxxyyyzzz] for now
         Atomix.@atomic RHS[own*3-2] += valueRHSx
         Atomix.@atomic RHS[own*3-1] += valueRHSy
         Atomix.@atomic RHS[own*3] += valueRHSz
         
-		RHS[own*3-2] += valueRHSx
-        RHS[own*3-1] += valueRHSy
-        RHS[own*3] += valueRHSz
-
         # bRhs[bcfacei*3-2:bcfacei*3] += [valueRHSx, valueRHSy, valueRHSz]
-		Atomix.@atomic bRhs[bcfacei*3-2] += valueRHSx
-        Atomix.@atomic bRhs[bcfacei*3-1] += valueRHSy
-        Atomix.@atomic bRhs[bcfacei*3] += valueRHSz
+		bRhs[bcfacei*3-2] -= valueRHSx
+        bRhs[bcfacei*3-1] -= valueRHSy
+        bRhs[bcfacei*3] -= valueRHSz
     end
 end
 

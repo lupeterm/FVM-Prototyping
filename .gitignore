@@ -29,3 +29,5 @@ JuliaLocalPreferences.toml
 cases
 .vscode
 .DS_STORE
+
+variants/venv

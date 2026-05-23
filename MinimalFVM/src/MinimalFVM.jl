@@ -5,6 +5,7 @@ include("gpu.jl")
 using PrecompileTools
 using Atomix 
 
+
 function cellBased_(
     temporals::Union{DiffEq,Ddt},
     volumes::Vector{P},
@@ -69,8 +70,9 @@ function cellBased2(
     vals::Vector{Float64},
     opString::String,
     faceFlux::Vector{Float64},
+    bfaceFlux::Vector{Float64},
     gamma::Vector{Float64},
-    deltaCoeffs::Vector{Float64},
+    bgamma::Vector{Float64},
     magFaceArea::Vector{Float64},
     matrixColumnIdxV::Vector{Int32},
     volumes::Vector{Float64},
@@ -87,9 +89,9 @@ function cellBased2(
     temporals = !isnothing(ddt) ? ddt : f(args...) = (0.0, 0.0, 0.0, 0.0)
     for celli in 1:numCells
         diagValue = 0.0
-        numFaces = cellFacesSegments[celli+1] - cellFacesSegments[celli]
+        numInternalFaces = cellFacesSegments[celli+1] - cellFacesSegments[celli]
         startIdx = cellFacesSegments[celli]
-        for i in 1:numFaces
+        for i in 1:numInternalFaces
             faceIdx = cellFacesValues[startIdx+i] + 1
             sign = faceSignV[startIdx+i]
 
@@ -119,6 +121,23 @@ function cellBased2(
         vals[diagIdx] += diagValue
         RHS[idx2D:idx2D+2] = [rx, ry, rz]
     end
+
+    faceBasedBoundary(
+        numInteriorFaces,
+        owner,
+        diagOffs,
+        rowOffs,
+        vals,
+        opString,
+        bfaceFlux,
+        bgamma,
+        bdeltaCoeffs,
+        magFaceArea,
+        valueFractions,
+        refValue,
+        refGradient_,
+        RHS
+    )
 end
 
 # no temporals
@@ -133,8 +152,11 @@ function assemble(
     vals::Vector{Float64},
     opString::String,
     faceFlux::Vector{Float64},
+    bfaceFlux::Vector{Float64},
     gamma::Vector{Float64},
+    bgamma::Vector{Float64},
     deltaCoeffs::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
     magFaceArea::Vector{Float64},
     valueFractions::Vector{Float64},
     refValue::Vector{Float64},
@@ -160,8 +182,11 @@ function assemble(
             vals,
             spatials,
             faceFlux,
+            bfaceFlux,
             gamma,
+            bgamma,
             deltaCoeffs,
+            bdeltaCoeffs,
             magFaceArea,
             valueFractions,
             refValue,
@@ -185,8 +210,11 @@ function assemble(
     vals::Vector{Float64},
     opString::String,
     faceFlux::Vector{Float64},
+    bfaceFlux::Vector{Float64},
     gamma::Vector{Float64},
+    bgamma::Vector{Float64},
     deltaCoeffs::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
     magFaceArea::Vector{Float64},
     valueFractions::Vector{Float64},
     refValue::Vector{Float64},
@@ -207,7 +235,6 @@ function assemble(
     fused_pde = eval(Meta.parse(opstring3))
     ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
     if !isnothing(ddt)
-        println("Calculating $ddt cell-based")
         cellBased_(
             ddt,
             volumes,
@@ -220,7 +247,6 @@ function assemble(
     end
     if !isnothing(spatials)
         if Threads.nthreads() == 1
-            println("Single threaded")
             faceBasedAll_(
                 numInteriorFaces,
                 owner,
@@ -232,8 +258,11 @@ function assemble(
                 vals,
                 spatials,
                 faceFlux,
-                gamma,
+                bfaceFlux,
+                gamma,            
+                bgamma,            
                 deltaCoeffs,
+                bdeltaCoeffs,
                 magFaceArea,
                 valueFractions,
                 refValue,
@@ -244,7 +273,6 @@ function assemble(
                 bRhs
             )
         else
-            println("Multi threaded with $(Threads.nthreads())")
             faceBasedAll_threaded(
                 numInteriorFaces,
                 owner,
@@ -256,9 +284,11 @@ function assemble(
                 vals,
                 spatials,
                 faceFlux,
+                bfaceFlux,
                 gamma,
+                bgamma,
                 deltaCoeffs,
-                magFaceArea,
+                bdeltaCoeffs,
                 valueFractions,
                 refValue,
                 refGradient,
@@ -282,8 +312,11 @@ function assemble(
     vals::Vector{Float64},
     opString::String,
     faceFlux::Vector{Float64},
+    bfaceFlux::Vector{Float64},
     gamma::Vector{Float64},
+    bgamma::Vector{Float64},
     deltaCoeffs::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
     magFaceArea::Vector{Float64},
     valueFractions::Vector{Float64},
     refValue::Vector{Float64},
@@ -326,8 +359,11 @@ function assemble(
             vals,
             spatials,
             faceFlux,
+            bfaceFlux,
             gamma,
+            bgamma,
             deltaCoeffs,
+            bdeltaCoeffs,
             magFaceArea,
             valueFractions,
             refValue,
@@ -354,6 +390,7 @@ function faceBasedAll(
     faceFlux::Vector{Float64},
     gamma::Vector{Float64},
     deltaCoeffs::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
     magFaceArea::Vector{Float64},
     valueFractions::Vector{Float64},
     refValue::Vector{Float64},
@@ -377,6 +414,7 @@ function faceBasedAll(
         faceFlux,
         gamma,
         deltaCoeffs,
+        bdeltaCoeffs,
         magFaceArea,
         valueFractions,
         refValue,
@@ -399,8 +437,11 @@ function faceBasedAll_(
     vals::Vector{Float64},
     fused_pde::PTERM,
     faceFlux::Vector{Float64},
+    bfaceFlux::Vector{Float64},
     gamma::Vector{Float64},
+    bgamma::Vector{Float64},
     deltaCoeffs::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
     magFaceArea::Vector{Float64},
     valueFractions::Vector{Float64},
     refValue::Vector{Float64},
@@ -435,18 +476,17 @@ function faceBasedAll_(
         idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
         vals[idx:idx+2] .-= valueLower
     end
-    for facei in numInteriorFaces+1:length(faceFlux)
+    for facei in numInteriorFaces+1:numInteriorFaces+length(faceFlux)
         bcfacei = facei - numInteriorFaces
         start = bcfacei * 3 - 2
         end_ = start + 2
         valueDiag, valueRHSx, valueRHSy, valueRHSz = fused_pde(
             refValue[start:end_],
             refGradient[start:end_],
-            faceFlux[facei],
+            bfaceFlux[bcfacei],
             valueFractions[bcfacei],
-            6.0,
-            3.0,
-            gamma[facei],
+            bdeltaCoeffs[bcfacei],
+            bgamma[bcfacei],
             magFaceArea[facei],
             0.0, 0.0, 0.0, 0.0
         )
@@ -455,7 +495,7 @@ function faceBasedAll_(
         vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
         vals[vIdx:vIdx+2] .+= valueDiag
 
-        bValues[bcfacei*3-2:bcfacei*3] .= valueDiag
+        bValues[bcfacei*3-2:bcfacei*3] .-= valueDiag
 
         # rhs[own] -= valueRhs
         # FIXME dont forget, changed this back to [vec3, vec3] instead of [xxxyyyzzz] for now
@@ -464,10 +504,14 @@ function faceBasedAll_(
         # RHS[own+numCells] += valueRHSy
         # RHS[own+numCells+numCells] += valueRHSz
 
-        bRhs[bcfacei*3-2:bcfacei*3] += [valueRHSx, valueRHSy, valueRHSz]
+        bRhs[bcfacei*3-2:bcfacei*3] -= [valueRHSx, valueRHSy, valueRHSz]
         # bRhs[own] += valueRHSx
         # bRhs[own+numCells] += valueRHSy
         # bRhs[own+numCells+numCells] += valueRHSz
+    end
+    println("JUvalues: ")
+    for i in 1:5
+        println("$(vals[i*3-2:i*3])")
     end
 end
 
@@ -484,6 +528,7 @@ function faceBasedAll_threaded(
     faceFlux::Vector{Float64},
     gamma::Vector{Float64},
     deltaCoeffs::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
     magFaceArea::Vector{Float64},
     valueFractions::Vector{Float64},
     refValue::Vector{Float64},
@@ -501,7 +546,14 @@ function faceBasedAll_threaded(
         rowNeiStart = rowOffs[iNeighbor]
         rowOwnStart = rowOffs[iOwner]
 
-        valueUpper, valueLower = fused_pde(faceFlux[iFace], gamma[iFace], deltaCoeffs[iFace], magFaceArea[iFace], 0.0, 0.0)
+        valueUpper, valueLower = fused_pde(
+            faceFlux[iFace], 
+            gamma[iFace], 
+            deltaCoeffs[iFace], 
+            magFaceArea[iFace],
+            0.0, 
+            0.0
+        )
         idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
         vals[idx:idx+2] .+= valueUpper
         idx = (rowOwnStart + diagOffs[iOwner]) * 3 + 1
@@ -520,8 +572,7 @@ function faceBasedAll_threaded(
             refGradient[start:end_],
             faceFlux[facei],
             valueFractions[bcfacei],
-            6.0,
-            3.0,
+            bdeltaCoeffs[bcfacei],
             gamma[facei],
             magFaceArea[facei],
             0.0, 0.0, 0.0, 0.0
@@ -529,9 +580,6 @@ function faceBasedAll_threaded(
         own = surfaceCells[bcfacei] + 1
 
         vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
-        if bcfacei == 1
-            println("writing in $vIdx : $(vIdx+2)")
-        end
         vals[vIdx:vIdx+2] .+= valueDiag
 
         bValues[bcfacei*3-2:bcfacei*3] .= valueDiag
@@ -574,7 +622,14 @@ function faceBased(
         rowNeiStart = rowOffs[iNeighbor] + 1
         rowOwnStart = rowOffs[iOwner] + 1
 
-        valueUpper, valueLower = fused_pde(faceFlux[iFace], gamma[iFace], deltaCoeffs[iFace], magFaceArea[iFace], 0.0, 0.0)
+        valueUpper, valueLower = fused_pde(
+            faceFlux[iFace], 
+            gamma[iFace], 
+            deltaCoeffs[iFace], 
+            magFaceArea[iFace],
+            0.0, 
+            0.0
+        )        
         vals[rowNeiStart+neiOffs[iFace]] += valueUpper
         vals[rowOwnStart+diagOffs[iOwner]] -= valueUpper
         vals[rowOwnStart+ownOffs[iFace]] += valueLower
@@ -591,40 +646,78 @@ function faceBasedBoundary(
     opString::String,
     faceFlux::Vector{Float64},
     gamma::Vector{Float64},
-    deltaCoeffs::Vector{Float64},  # FIXME
+    bdeltaCoeffs::Vector{Float64},
     magFaceArea::Vector{Float64},
     valueFractions::Vector{Float64},
-    refValue::Matrix{Float64},
-    refGradient_::Matrix{Float64},
+    refValue::Vector{Float64},
+    refGradient_::Vector{Float64},
     RHS::Vector{Float64}
 )
     fused_pde = eval(Meta.parse(opString))
-    numCells = length(rowOffs) - 1
+    faceBasedBoundary(
+        numInteriorFaces,
+        owner,
+        diagOffs,
+        rowOffs,
+        vals,
+        spatialOperators,
+        faceFlux,
+        gamma,
+        bdeltaCoeffs,
+        magFaceArea,
+        valueFractions,
+        refValue,
+        refGradient_,
+        RHS
+    )
+end
+
+function faceBasedBoundary(
+    numInteriorFaces::Int32,
+    owner::Vector{Int32},  # surfaceCells 
+    diagOffs::Vector{UInt8},
+    rowOffs::Vector{Int32},
+    vals::Vector{Float64},
+    spatialOperators::PTERM,
+    faceFlux::Vector{Float64},
+    gamma::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
+    magFaceArea::Vector{Float64},
+    valueFractions::Vector{Float64},
+    refValue::Vector{Float64},
+    refGradient_::Vector{Float64},
+    RHS::Vector{Float64}
+)
+    # numCells = length(rowOffs) - 1
     for facei in numInteriorFaces+1:length(faceFlux)
         bcfacei = facei - numInteriorFaces
-        valueDiag, valueRHSx, valueRHSy, valueRHSz = fused_pde(
-            refValue[:, bcfacei],
-            refGradient_[:, bcfacei],
+        start = bcfacei * 3 - 2
+        end_ = start + 2
+        valueDiag, valueRHSx, valueRHSy, valueRHSz = spatialOperators(
+            refValue[start:end_],
+            refGradient[start:end_],
             faceFlux[facei],
             valueFractions[bcfacei],
-            6.0,
-            3.0,
-            gamma[facei],
+            bdeltaCoeffs[bcfacei],
+            gamma[bcfacei],
             magFaceArea[facei],
             0.0, 0.0, 0.0, 0.0
         )
-        @inbounds own = owner[bcfacei] + 1
-        @inbounds rowOwnStart = rowOffs[own] + 1
-        # operatorScalingOwn = operatorScaling[own]
+        own = surfaceCells[bcfacei] + 1
 
-        # valueMat = flux * operatorScalingOwn * valFrac2
+        vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
+        vals[vIdx:vIdx+2] .+= valueDiag
 
-        @inbounds vals[rowOwnStart+diagOffs[own]] += valueDiag
-        # bValues[bcfacei] = valueDiag
+        bValues[bcfacei*3-2:bcfacei*3] .= valueDiag
+
         # rhs[own] -= valueRhs
-        @inbounds RHS[own] += valueRHSx
-        @inbounds RHS[own+numCells] += valueRHSy
-        @inbounds RHS[own+numCells+numCells] += valueRHSz
+        # FIXME dont forget, changed this back to [vec3, vec3] instead of [xxxyyyzzz] for now
+        RHS[own*3-2:own*3] += [valueRHSx, valueRHSy, valueRHSz]
+        # RHS[own] += valueRHSx
+        # RHS[own+numCells] += valueRHSy
+        # RHS[own+numCells+numCells] += valueRHSz
+
+        bRhs[bcfacei*3-2:bcfacei*3] += [valueRHSx, valueRHSy, valueRHSz]
         # bRhs[own] += valueRHSx
         # bRhs[own+numCells] += valueRHSy
         # bRhs[own+numCells+numCells] += valueRHSz
@@ -649,6 +742,7 @@ function warmup(op::String)
         ones(Float64, 2),
         ones(Float64, 2),
         ones(Float64, 2),
+        ones(Float64, 2),
         ones(Float64, 3),
         ones(Float64, 3),
         zeros(Float64, 12),
@@ -662,12 +756,12 @@ function warmup(op::String)
 end
 
 
-@compile_workload begin
-    warmup("Div{Float64, linear{Float64}}(linear{Float64}(), 1)")
-    warmup("Laplace{Float64}(1)")
-    warmup("Div{Float64, upwind{Float64}}(upwind{Float64}(), 1) + Laplace{Float64}(-5)")
-    warmup("Div{Float64, upwind{Float64}}(upwind{Float64}(), 1) + Laplace{Float64}(1)")
-end
+# @compile_workload begin
+#     warmup("Div{Float64, linear{Float64}}(linear{Float64}(), 1)")
+#     warmup("Laplace{Float64}(1)")
+#     warmup("Div{Float64, upwind{Float64}}(upwind{Float64}(), 1) + Laplace{Float64}(-5)")
+#     warmup("Div{Float64, upwind{Float64}}(upwind{Float64}(), 1) + Laplace{Float64}(1)")
+# end
 export faceBased, Div, Noop, linear, upwind, BDF1, Laplace, test, faceBasedBoundary, faceBasedAll, Ddt, hasTransient, splitTempSpat, BDF2, DELTAT, assemble_gpu
 
 end # module MinimalFVM
