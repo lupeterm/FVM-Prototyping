@@ -66,9 +66,11 @@ function (d::Div{P,S})(
     valueUpper::P,
     valueLower::P
 ) where {P<:AbstractFloat,S}
-    # ϕf = dot(0.5(U_c + U_n), Sf)     #### von NeoFoam/NeoN schon vorberechnet
     weights_f = d.scheme(faceFlux)
-    return valueUpper - faceFlux * weights_f * d.scale, valueLower + faceFlux * (1 - weights_f) * d.scale
+    ownFluxContrib = -faceFlux * weights_f
+    neiFluxContrib = +faceFlux * (1.0 - weights_f) 
+    # ϕf = dot(0.5(U_c + U_n), Sf)     #### von NeoFoam/NeoN schon vorberechnet
+    return valueUpper + ownFluxContrib, valueLower + neiFluxContrib
 end
 
 
@@ -78,7 +80,7 @@ function (d::Div{P,S})(
     refGradient::Vector{P},
     flux::P,
     valueFraction::P,
-    deltaCoeff::P,
+    bdeltaCoeff::P,
     _::P,
     _::P,
     valueDiag::P,
@@ -87,10 +89,9 @@ function (d::Div{P,S})(
     valueRHSz::P
 ) where {P<:AbstractFloat,S}
     valFrac2 = 1.0 - valueFraction
-	valueRHSx -= flux * valueFraction * refValue[1] + valFrac2 * refGradient[1] / deltaCoeff
-	valueRHSy -= flux * valueFraction * refValue[2] + valFrac2 * refGradient[2] / deltaCoeff
-	valueRHSz -= flux * valueFraction * refValue[3] + valFrac2 * refGradient[3] / deltaCoeff
-    #valueRHSx, valueRHSy, valueRHSz = (valueRHSx, valueRHSy, valueRHSz) .- flux * valueFraction .* refValue + valFrac2 .* refGradient / deltaCoeff
+	valueRHSx -= flux * valueFraction * refValue[1] + valFrac2 * refGradient[1] / bdeltaCoeff
+	valueRHSy -= flux * valueFraction * refValue[2] + valFrac2 * refGradient[2] / bdeltaCoeff
+	valueRHSz -= flux * valueFraction * refValue[3] + valFrac2 * refGradient[3] / bdeltaCoeff
     return valueDiag + flux * valFrac2 * d.scale, valueRHSx, valueRHSy, valueRHSz 
 end
 
@@ -102,9 +103,9 @@ function (d::Div{P,S})(
     refGradientx::P,
     refGradienty::P,
     refGradientz::P,
-    flux::P,
+    bFaceFlux::P,
     valueFraction::P,
-    deltaCoeff::P,
+    bdeltaCoeff::P,
     _::P,
     _::P,
     valueDiag::P,
@@ -112,11 +113,12 @@ function (d::Div{P,S})(
     valueRHSy::P,
     valueRHSz::P
 ) where {P<:AbstractFloat,S}
-    valFrac2 = 1.0 - valueFraction
-	valueRHSx -= flux * valueFraction * refValuex + valFrac2 * refGradientx / deltaCoeff
-	valueRHSx -= flux * valueFraction * refValuey + valFrac2 * refGradienty / deltaCoeff
-	valueRHSx -= flux * valueFraction * refValuez + valFrac2 * refGradientz / deltaCoeff
-    return valueDiag + flux * valFrac2 * d.scale, valueRHSx* d.scale, valueRHSy* d.scale, valueRHSz * d.scale
+    refGradFrac = 1.0 - valueFraction
+    flux = bFaceFlux * refGradFrac * d.scale * -1.0
+	valueRHSx -= bFaceFlux * valueFraction * refValuex + refGradFrac * refGradientx / bdeltaCoeff
+	valueRHSx -= bFaceFlux * valueFraction * refValuey + refGradFrac * refGradienty / bdeltaCoeff
+	valueRHSx -= bFaceFlux * valueFraction * refValuez + refGradFrac * refGradientz / bdeltaCoeff
+    return valueDiag + flux, valueRHSx* d.scale, valueRHSy* d.scale, valueRHSz * d.scale
 end
 
 #### Diffusion
@@ -158,7 +160,7 @@ function (d::Laplace{P})(
     x = flux * d.scale * (refValFrac * deltaCoeff * refValue[1] + refGradFrac * refGradient[1]);
     y = flux * d.scale * (refValFrac * deltaCoeff * refValue[2] + refGradFrac * refGradient[2]);
     z = flux * d.scale * (refValFrac * deltaCoeff * refValue[3] + refGradFrac * refGradient[3]);
-    return valueDiag - fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
+    return valueDiag + fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
 end
 
 # GPU facebased boundary 
@@ -185,7 +187,7 @@ function (d::Laplace{P})(
     x = flux * d.scale * (refValFrac * deltaCoeff * refValuex + refGradFrac * refGradientx);
     y = flux * d.scale * (refValFrac * deltaCoeff * refValuey + refGradFrac * refGradienty);
     z = flux * d.scale * (refValFrac * deltaCoeff * refValuez + refGradFrac * refGradientz);
-    return valueDiag - fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
+    return valueDiag + fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
 end
 
 #### Operator Fusing

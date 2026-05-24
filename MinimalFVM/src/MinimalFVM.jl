@@ -453,28 +453,28 @@ function faceBasedAll_(
 )
     numCells = length(rowOffs) - 1
     for iFace in 1:numInteriorFaces
-        iOwner = owner[iFace] + 1
-        iNeighbor = neighbour[iFace] + 1
+        # iOwner = owner[iFace] + 1
+        # iNeighbor = neighbour[iFace] + 1
 
-        rowNeiStart = rowOffs[iNeighbor]
-        rowOwnStart = rowOffs[iOwner]
+        # rowNeiStart = rowOffs[iNeighbor]
+        # rowOwnStart = rowOffs[iOwner]
 
-        valueUpper, valueLower = fused_pde(
-            faceFlux[iFace], 
-            gamma[iFace], 
-            deltaCoeffs[iFace], 
-            magFaceArea[iFace], 
-            0.0, 
-            0.0
-        )
-        idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
-        vals[idx:idx+2] .+= valueUpper
-        idx = (rowOwnStart + diagOffs[iOwner]) * 3 + 1
-        vals[idx:idx+2] .-= valueUpper
-        idx = (rowOwnStart + ownOffs[iFace]) * 3 + 1
-        vals[idx:idx+2] .+= valueLower
-        idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
-        vals[idx:idx+2] .-= valueLower
+        # valueUpper, valueLower = fused_pde(
+        #     faceFlux[iFace], 
+        #     gamma[iFace], 
+        #     deltaCoeffs[iFace], 
+        #     magFaceArea[iFace], 
+        #     0.0, 
+        #     0.0
+        # )
+        # idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
+        # vals[idx:idx+2] .+= valueUpper
+        # idx = (rowOwnStart + diagOffs[iOwner]) * 3 + 1
+        # vals[idx:idx+2] .-= valueUpper
+        # idx = (rowOwnStart + ownOffs[iFace]) * 3 + 1
+        # vals[idx:idx+2] .+= valueLower
+        # idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
+        # vals[idx:idx+2] .-= valueLower
     end
     for facei in numInteriorFaces+1:numInteriorFaces+length(faceFlux)
         bcfacei = facei - numInteriorFaces
@@ -493,7 +493,7 @@ function faceBasedAll_(
         own = surfaceCells[bcfacei] + 1
 
         vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
-        vals[vIdx:vIdx+2] .+= valueDiag
+        vals[vIdx:vIdx+2] .-= valueDiag
 
         bValues[bcfacei*3-2:bcfacei*3] .-= valueDiag
 

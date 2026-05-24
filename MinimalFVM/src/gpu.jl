@@ -47,7 +47,6 @@ function assemble_gpu(
 	numCells::Int32,
 	numTotalFaces::Int32
 )
-	println("totalFace: $numTotalFaces")
 	boundaryFaces = numTotalFaces - numInteriorFaces
 	owner = ptrToGpu(_owner, numInteriorFaces, Int32)	
 	neighbour = ptrToGpu(_neighbour, numInteriorFaces, Int32)
@@ -57,7 +56,7 @@ function assemble_gpu(
 	rowOffs = ptrToGpu(_rowOffs, numCells, Int32)
 	vals = ptrToGpu(_vals, (numCells + 2*numInteriorFaces)*3, Float64)
 	faceFlux = ptrToGpu(_faceFlux, numInteriorFaces, Float64)
-	bfaceFlux = ptrToGpu(_faceFlux, boundaryFaces, Float64)
+	bfaceFlux = ptrToGpu(_bfaceFlux, boundaryFaces, Float64)
 	gamma = ptrToGpu(_gamma, numInteriorFaces, Float64)
 	bgamma = ptrToGpu(_bgamma, boundaryFaces, Float64)
 	deltaCoeffs = ptrToGpu(_deltaCoeffs, numInteriorFaces, Float64)
@@ -145,11 +144,13 @@ end
 		0.0,
 		0.0
 	)
-	idx = rowOffs[celli] + 1 + diagOffs[celli]
-	vals[idx] = valueDiag
-	RHS[idx2D] = rx
-	RHS[idx2D+1] = rz
-	RHS[idx2D+2] = rz
+	idx = (rowOffs[celli] + diagOffs[celli]) * 3 + 1
+	vals[idx] += valueDiag
+	vals[idx+1] += valueDiag
+	vals[idx+2] += valueDiag
+	RHS[idx2D] += rx
+	RHS[idx2D+1] += rz
+	RHS[idx2D+2] += rz
 end
 
 @kernel function face_kernel(
@@ -181,7 +182,6 @@ end
 	iFace = @index(Global)
 
 	if iFace <= numInteriorFaces        
-		
 		iOwner = owner[iFace] + 1
 		iNeighbor = neighbour[iFace] + 1
 
@@ -247,9 +247,9 @@ end
         bValues[bcfacei*3-1] -= fluxContrib
         bValues[bcfacei*3] 	 -= fluxContrib
 
-		Atomix.@atomic vals[vIdx]   += fluxContrib
-        Atomix.@atomic vals[vIdx+1] += fluxContrib
-        Atomix.@atomic vals[vIdx+2] += fluxContrib
+		Atomix.@atomic vals[vIdx]   -= fluxContrib
+        Atomix.@atomic vals[vIdx+1] -= fluxContrib
+        Atomix.@atomic vals[vIdx+2] -= fluxContrib
 		
         # # FIXME dont forget, changed this back to [xyzxyzxyz] instead of [xxxyyyzzz] for now
         Atomix.@atomic RHS[own*3-2] += valueRHSx
