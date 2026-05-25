@@ -78,7 +78,7 @@ end
 function (d::Div{P,S})(
     refValue::Vector{P},
     refGradient::Vector{P},
-    flux::P,
+    bFaceFlux::P,
     valueFraction::P,
     bdeltaCoeff::P,
     _::P,
@@ -88,11 +88,12 @@ function (d::Div{P,S})(
     valueRHSy::P,
     valueRHSz::P
 ) where {P<:AbstractFloat,S}
-    valFrac2 = 1.0 - valueFraction
-	valueRHSx -= flux * valueFraction * refValue[1] + valFrac2 * refGradient[1] / bdeltaCoeff
-	valueRHSy -= flux * valueFraction * refValue[2] + valFrac2 * refGradient[2] / bdeltaCoeff
-	valueRHSz -= flux * valueFraction * refValue[3] + valFrac2 * refGradient[3] / bdeltaCoeff
-    return valueDiag + flux * valFrac2 * d.scale, valueRHSx, valueRHSy, valueRHSz 
+    refGradFrac = 1.0 - valueFraction
+    flux = bFaceFlux * refGradFrac * d.scale * -1.0
+	valueRHSx -= bFaceFlux * valueFraction * refValue[1] + refGradFrac * refGradient[1] / bdeltaCoeff
+	valueRHSy -= bFaceFlux * valueFraction * refValue[2] + refGradFrac * refGradient[2] / bdeltaCoeff
+	valueRHSz -= bFaceFlux * valueFraction * refValue[3] + refGradFrac * refGradient[3] / bdeltaCoeff
+    return valueDiag + flux, valueRHSx, valueRHSy, valueRHSz 
 end
 
 # facebased boundary 

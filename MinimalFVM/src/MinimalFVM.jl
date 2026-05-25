@@ -54,9 +54,13 @@ function cellBased_(
             0.0,
             0.0
         )
-        idx = rowOffs[celli] + 1 + diagOffs[celli]
-        vals[idx] = valueDiag
-        RHS[idx2D:idx2D+2] = [rx, ry, rz]
+        idx = (rowOffs[celli] + diagOffs[celli]) * 3 + 1
+        vals[idx] += valueDiag
+        vals[idx+1] += valueDiag
+        vals[idx+2] += valueDiag
+        RHS[idx2D] += rx
+        RHS[idx2D+1] += rz
+        RHS[idx2D+2] += rz
     end
 end
 
@@ -388,6 +392,7 @@ function faceBasedAll(
     vals::Vector{Float64},
     opString::String,
     faceFlux::Vector{Float64},
+    bfaceFlux::Vector{Float64},
     gamma::Vector{Float64},
     deltaCoeffs::Vector{Float64},
     bdeltaCoeffs::Vector{Float64},
@@ -412,6 +417,7 @@ function faceBasedAll(
         vals,
         fused_pde,
         faceFlux,
+        bfaceFlux,
         gamma,
         deltaCoeffs,
         bdeltaCoeffs,
@@ -453,28 +459,31 @@ function faceBasedAll_(
 )
     numCells = length(rowOffs) - 1
     for iFace in 1:numInteriorFaces
-        # iOwner = owner[iFace] + 1
-        # iNeighbor = neighbour[iFace] + 1
+        iOwner = owner[iFace] + 1
+        iNeighbor = neighbour[iFace] + 1
 
-        # rowNeiStart = rowOffs[iNeighbor]
-        # rowOwnStart = rowOffs[iOwner]
+        rowNeiStart = rowOffs[iNeighbor]
+        rowOwnStart = rowOffs[iOwner]
 
-        # valueUpper, valueLower = fused_pde(
-        #     faceFlux[iFace], 
-        #     gamma[iFace], 
-        #     deltaCoeffs[iFace], 
-        #     magFaceArea[iFace], 
-        #     0.0, 
-        #     0.0
-        # )
-        # idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
-        # vals[idx:idx+2] .+= valueUpper
-        # idx = (rowOwnStart + diagOffs[iOwner]) * 3 + 1
-        # vals[idx:idx+2] .-= valueUpper
-        # idx = (rowOwnStart + ownOffs[iFace]) * 3 + 1
-        # vals[idx:idx+2] .+= valueLower
-        # idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
-        # vals[idx:idx+2] .-= valueLower
+        valueUpper, valueLower = fused_pde(
+            faceFlux[iFace], 
+            gamma[iFace], 
+            deltaCoeffs[iFace], 
+            magFaceArea[iFace], 
+            0.0, 
+            0.0
+        )
+        idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
+        vals[idx:idx+2] .+= valueUpper
+
+        idx = (rowOwnStart + diagOffs[iOwner]) * 3 + 1
+        vals[idx:idx+2] .-= valueUpper
+        
+        idx = (rowOwnStart + ownOffs[iFace]) * 3 + 1
+        vals[idx:idx+2] .+= valueLower
+        
+        idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
+        vals[idx:idx+2] .-= valueLower
     end
     for facei in numInteriorFaces+1:numInteriorFaces+length(faceFlux)
         bcfacei = facei - numInteriorFaces
@@ -526,6 +535,7 @@ function faceBasedAll_threaded(
     vals::Vector{Float64},
     fused_pde::PTERM,
     faceFlux::Vector{Float64},
+    bfaceFlux::Vector{Float64},
     gamma::Vector{Float64},
     deltaCoeffs::Vector{Float64},
     bdeltaCoeffs::Vector{Float64},
@@ -570,10 +580,10 @@ function faceBasedAll_threaded(
         valueDiag, valueRHSx, valueRHSy, valueRHSz = fused_pde(
             refValue[start:end_],
             refGradient[start:end_],
-            faceFlux[facei],
+            bfaceFlux[bcfacei],
             valueFractions[bcfacei],
             bdeltaCoeffs[bcfacei],
-            gamma[facei],
+            bgamma[bcfacei],
             magFaceArea[facei],
             0.0, 0.0, 0.0, 0.0
         )
