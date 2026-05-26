@@ -9,6 +9,14 @@ function ptrToGpu(ptr::Ptr{Cvoid}, size, dType)
 	return arr
 end
 
+function updateIDelta(value, size)
+    Core.eval(@__MODULE__, Expr(:(=), :IDELTACOEFFS, ptrToGpu(value, size, Float64)))
+end
+
+function updateBDelta(value, size)
+    Core.eval(@__MODULE__, Expr(:(=), :BDELTACOEFFS, ptrToGpu(value, size, Float64)))
+end
+
 function assemble_gpu(
     numInteriorFaces::Int32,
 	_owner::Ptr{Cvoid},
@@ -20,8 +28,11 @@ function assemble_gpu(
 	_vals::Ptr{Cvoid},
 	opString::String,
 	_faceFlux::Ptr{Cvoid},
+	_bfaceFlux::Ptr{Cvoid},
 	_gamma::Ptr{Cvoid},
+	_bgamma::Ptr{Cvoid},
 	_deltaCoeffs::Ptr{Cvoid},
+	_bdeltaCoeffs::Ptr{Cvoid},
 	_magFaceArea::Ptr{Cvoid},
 	_valueFractions::Ptr{Cvoid},
 	_refValue::Ptr{Cvoid},
@@ -44,9 +55,12 @@ function assemble_gpu(
 	neiOffs = ptrToGpu(_neiOffs, numInteriorFaces, UInt8)
 	rowOffs = ptrToGpu(_rowOffs, numCells, Int32)
 	vals = ptrToGpu(_vals, (numCells + 2*numInteriorFaces)*3, Float64)
-	faceFlux = ptrToGpu(_faceFlux, numTotalFaces, Float64)
-	gamma = ptrToGpu(_gamma, numTotalFaces, Float64)
+	faceFlux = ptrToGpu(_faceFlux, numInteriorFaces, Float64)
+	bfaceFlux = ptrToGpu(_bfaceFlux, boundaryFaces, Float64)
+	gamma = ptrToGpu(_gamma, numInteriorFaces, Float64)
+	bgamma = ptrToGpu(_bgamma, boundaryFaces, Float64)
 	deltaCoeffs = ptrToGpu(_deltaCoeffs, numInteriorFaces, Float64)
+	bdeltaCoeffs = ptrToGpu(_bdeltaCoeffs, boundaryFaces, Float64)
 	magFaceArea = ptrToGpu(_magFaceArea, numTotalFaces, Float64)
 	valueFractions = ptrToGpu(_valueFractions, numTotalFaces, Float64)
 	refValue = ptrToGpu(_refValue, boundaryFaces*3, Float64)
@@ -58,35 +72,85 @@ function assemble_gpu(
 	volumes= ptrToGpu(_volumes, numCells, Float64)
 	oldVectors= ptrToGpu(_oldVectors, numCells*3, Float64)
 	
-	
-    fused_pde = eval(Meta.parse(opString))
-    ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
+	dt = "$_dt"
+    opstring2 = replace(opString, "DELTAT" => dt)
+    opstring3 = replace(opstring2, "BDF2" => "BDF1")
+    fused_pde = eval(Meta.parse(opstring3))
 
+    ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
 	backend = get_backend(vals)
-	println("total: $numTotalFaces, interior: $numInteriorFaces")
-	face_kernel(backend, 64)(
-	    numInteriorFaces,
-   		owner,
-   		neighbour,
-  		diagOffs,
- 		ownOffs,
-   		neiOffs,
-   		rowOffs,
-   		vals,
-   		faceFlux,
-   		gamma,
-   		deltaCoeffs,
-   		magFaceArea,
-   		valueFractions,
-   		refValue,
-   		refGradient,
-   		RHS,
-   		surfaceCells,
-   		bValues,
-   		bRhs,
-   		spatials;
-		ndrange=numTotalFaces
+	if !isnothing(ddt)
+		ddt_kernel(backend, 64)(
+			ddt,
+			volumes,
+			oldVectors,
+			diagOffs,
+			rowOffs,
+			vals,
+			RHS;
+			ndrange=numCells
+		)		
+		KernelAbstractions.synchronize(backend)
+	end
+	if !isnothing(spatials)
+		face_kernel(backend, 64)(
+			numInteriorFaces,
+			owner,
+			neighbour,
+			diagOffs,
+			ownOffs,
+			neiOffs,
+			rowOffs,
+			vals,
+			faceFlux,
+			bfaceFlux,
+			gamma,
+			bgamma,
+			deltaCoeffs,
+			bdeltaCoeffs,
+			magFaceArea,
+			valueFractions,
+			refValue,
+			refGradient,
+			RHS,
+			surfaceCells,
+			bValues,
+			bRhs,
+			spatials;
+			ndrange=numTotalFaces
+		)
+		KernelAbstractions.synchronize(backend)
+	end
+end
+
+@kernel function ddt_kernel(
+	@Const(temporals),
+    @Const(volumes),
+    @Const(oldVectors),
+    @Const(diagOffs),
+    @Const(rowOffs),
+    vals,
+    RHS
+)
+	celli = @index(Global)
+	idx2D = (celli - 1) * 3 + 1
+	valueDiag, rx, ry, rz = temporals(
+		oldVectors[idx2D],
+		oldVectors[idx2D+1],
+		oldVectors[idx2D+2],
+		volumes[celli],
+		0.0,
+		0.0,
+		0.0,
+		0.0
 	)
+	idx = (rowOffs[celli] + diagOffs[celli]) * 3 + 1
+	vals[idx] += valueDiag
+	vals[idx+1] += valueDiag
+	vals[idx+2] += valueDiag
+	RHS[idx2D] += rx
+	RHS[idx2D+1] += rz
+	RHS[idx2D+2] += rz
 end
 
 @kernel function face_kernel(
@@ -99,8 +163,11 @@ end
     @Const(rowOffs),
     vals,
     @Const(faceFlux),  
+    @Const(bfaceFlux),  
     @Const(gamma),   
+    @Const(bgamma),   
     @Const(deltaCoeffs),
+    @Const(bdeltaCoeffs),
     @Const(magFaceArea),
     @Const(valueFractions),
     @Const(refValue),
@@ -115,7 +182,6 @@ end
 	iFace = @index(Global)
 
 	if iFace <= numInteriorFaces        
-		
 		iOwner = owner[iFace] + 1
 		iNeighbor = neighbour[iFace] + 1
 
@@ -131,7 +197,7 @@ end
             0.0, 
             0.0
         )
-       
+
 		idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
         vals[idx]   += valueUpper
         vals[idx+1] += valueUpper
@@ -151,57 +217,49 @@ end
 		idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
         # FIXME when going back to scalar values
         # vals[idx:idx+2] -= valueLower
+
         Atomix.@atomic vals[idx]   -= valueLower
         Atomix.@atomic vals[idx+1] -= valueLower
         Atomix.@atomic vals[idx+2] -= valueLower
 	else
 		bcfacei = iFace - numInteriorFaces
         start = bcfacei * 3 - 2
-        end_ = start + 2
-        # helperSVector1 = SVector{3,Float64}(refValue[start:end_])
-        # helperSVector2 = SVector{3,Float64}(refGradient[start:end_])
-        valueDiag, valueRHSx, valueRHSy, valueRHSz = fused_pde(
+        fluxContrib, valueRHSx, valueRHSy, valueRHSz = fused_pde(
 			refValue[start],
 			refValue[start+1],
 			refValue[start+2],
 			refGradient[start],
 			refGradient[start+1],
 			refGradient[start+2],
-			faceFlux[iFace],
+			bfaceFlux[bcfacei],
 			valueFractions[bcfacei],
-			6.0,
-			3.0,
-			gamma[iFace],
+			bdeltaCoeffs[bcfacei],
+			bgamma[bcfacei],
 			magFaceArea[iFace],
 			0.0, 0.0, 0.0, 0.0
         )
 
+
 		own = surfaceCells[bcfacei] + 1
+		vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
 
-        vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
+        bValues[bcfacei*3-2] -= fluxContrib
+        bValues[bcfacei*3-1] -= fluxContrib
+        bValues[bcfacei*3] 	 -= fluxContrib
 
-		Atomix.@atomic vals[vIdx]   += valueDiag
-        Atomix.@atomic vals[vIdx+1] += valueDiag
-        Atomix.@atomic vals[vIdx+2] += valueDiag
+		Atomix.@atomic vals[vIdx]   -= fluxContrib
+        Atomix.@atomic vals[vIdx+1] -= fluxContrib
+        Atomix.@atomic vals[vIdx+2] -= fluxContrib
 		
-        bValues[bcfacei*3-2] = valueDiag
-        bValues[bcfacei*3-1] = valueDiag
-        bValues[bcfacei*3] 	 = valueDiag
-
-
-        # FIXME dont forget, changed this back to [xyzxyzxyz] instead of [xxxyyyzzz] for now
+        # # FIXME dont forget, changed this back to [xyzxyzxyz] instead of [xxxyyyzzz] for now
         Atomix.@atomic RHS[own*3-2] += valueRHSx
         Atomix.@atomic RHS[own*3-1] += valueRHSy
         Atomix.@atomic RHS[own*3] += valueRHSz
         
-		RHS[own*3-2] += valueRHSx
-        RHS[own*3-1] += valueRHSy
-        RHS[own*3] += valueRHSz
-
         # bRhs[bcfacei*3-2:bcfacei*3] += [valueRHSx, valueRHSy, valueRHSz]
-		Atomix.@atomic bRhs[bcfacei*3-2] += valueRHSx
-        Atomix.@atomic bRhs[bcfacei*3-1] += valueRHSy
-        Atomix.@atomic bRhs[bcfacei*3] += valueRHSz
+		bRhs[bcfacei*3-2] -= valueRHSx
+        bRhs[bcfacei*3-1] -= valueRHSy
+        bRhs[bcfacei*3] -= valueRHSz
     end
 end
 

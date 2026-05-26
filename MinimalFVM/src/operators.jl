@@ -34,6 +34,21 @@ function (d::Ddt{P,BDF1{P}})(
     return valueDiag + ret[1], valueRHSx, +ret[2][1], valueRHSy, +ret[2][2], valueRHSz + ret[2][3]
 end
 
+# gpu version 
+function (d::Ddt{P,BDF1{P}})(
+    oldVectorx::P,
+    oldVectory::P,
+    oldVectorz::P,
+    volume::P,
+    valueDiag::P,
+    valueRHSx::P,
+    valueRHSy::P,
+    valueRHSz::P
+) where {P<:AbstractFloat}
+    r1,r2,r3,r4 = d.scale * d.scheme(volume, oldVectorx, oldVectory, oldVectorz)
+    return valueDiag + r1, valueRHSx, +r2, valueRHSy, +r3, valueRHSz + r4
+end
+
 #### Convection
 # ∇(ϕ,U) (in momentum equation)
 
@@ -51,9 +66,11 @@ function (d::Div{P,S})(
     valueUpper::P,
     valueLower::P
 ) where {P<:AbstractFloat,S}
-    # ϕf = dot(0.5(U_c + U_n), Sf)     #### von NeoFoam/NeoN schon vorberechnet
     weights_f = d.scheme(faceFlux)
-    return valueUpper - faceFlux * weights_f * d.scale, valueLower + faceFlux * (1 - weights_f) * d.scale
+    ownFluxContrib = -faceFlux * weights_f
+    neiFluxContrib = +faceFlux * (1.0 - weights_f) 
+    # ϕf = dot(0.5(U_c + U_n), Sf)     #### von NeoFoam/NeoN schon vorberechnet
+    return valueUpper + ownFluxContrib, valueLower + neiFluxContrib
 end
 
 
@@ -61,10 +78,9 @@ end
 function (d::Div{P,S})(
     refValue::Vector{P},
     refGradient::Vector{P},
-    flux::P,
+    bFaceFlux::P,
     valueFraction::P,
-    deltaCoeffGlobal::P,
-    _::P,
+    bdeltaCoeff::P,
     _::P,
     _::P,
     valueDiag::P,
@@ -72,10 +88,12 @@ function (d::Div{P,S})(
     valueRHSy::P,
     valueRHSz::P
 ) where {P<:AbstractFloat,S}
-    valFrac2 = 1.0 - valueFraction
-	valueRHSx -= flux * valueFraction * refValue[1] + valFrac2 * refGradient[1] / deltaCoeffGlobal
-    #valueRHSx, valueRHSy, valueRHSz = (valueRHSx, valueRHSy, valueRHSz) .- flux * valueFraction .* refValue + valFrac2 .* refGradient / deltaCoeffGlobal
-    return valueDiag + flux * valFrac2 * d.scale, valueRHSx, valueRHSy, valueRHSz 
+    refGradFrac = 1.0 - valueFraction
+    flux = bFaceFlux * refGradFrac * d.scale * -1.0
+	valueRHSx -= bFaceFlux * valueFraction * refValue[1] + refGradFrac * refGradient[1] / bdeltaCoeff
+	valueRHSy -= bFaceFlux * valueFraction * refValue[2] + refGradFrac * refGradient[2] / bdeltaCoeff
+	valueRHSz -= bFaceFlux * valueFraction * refValue[3] + refGradFrac * refGradient[3] / bdeltaCoeff
+    return valueDiag + flux, valueRHSx, valueRHSy, valueRHSz 
 end
 
 # facebased boundary 
@@ -86,10 +104,9 @@ function (d::Div{P,S})(
     refGradientx::P,
     refGradienty::P,
     refGradientz::P,
-    flux::P,
+    bFaceFlux::P,
     valueFraction::P,
-    deltaCoeffGlobal::P,
-    _::P,
+    bdeltaCoeff::P,
     _::P,
     _::P,
     valueDiag::P,
@@ -97,11 +114,12 @@ function (d::Div{P,S})(
     valueRHSy::P,
     valueRHSz::P
 ) where {P<:AbstractFloat,S}
-    valFrac2 = 1.0 - valueFraction
-	valueRHSx -= flux * valueFraction * refValuex + valFrac2 * refGradientx / deltaCoeffGlobal
-	valueRHSx -= flux * valueFraction * refValuey + valFrac2 * refGradienty / deltaCoeffGlobal
-	valueRHSx -= flux * valueFraction * refValuez + valFrac2 * refGradientz / deltaCoeffGlobal
-    return valueDiag + flux * valFrac2 * d.scale, valueRHSx* d.scale, valueRHSy* d.scale, valueRHSz * d.scale
+    refGradFrac = 1.0 - valueFraction
+    flux = bFaceFlux * refGradFrac * d.scale * -1.0
+	valueRHSx -= bFaceFlux * valueFraction * refValuex + refGradFrac * refGradientx / bdeltaCoeff
+	valueRHSx -= bFaceFlux * valueFraction * refValuey + refGradFrac * refGradienty / bdeltaCoeff
+	valueRHSx -= bFaceFlux * valueFraction * refValuez + refGradFrac * refGradientz / bdeltaCoeff
+    return valueDiag + flux, valueRHSx* d.scale, valueRHSy* d.scale, valueRHSz * d.scale
 end
 
 #### Diffusion
@@ -114,15 +132,13 @@ end
 function (t::Laplace{P})(
     _::P,
     gamma::P,
-    deltaCoeffs::P,
+    deltaCoeff::P,
     magFaceArea::P,
     valueUpper::P,
     valueLower::P
 ) where {P<:AbstractFloat}
-    diffusion = gamma * deltaCoeffs * magFaceArea
-    # valueUpper += -diffusion
-    # valueLower += diffusion
-    return valueUpper + diffusion * t.scale, valueLower + diffusion * t.scale
+    flux = gamma * deltaCoeff * magFaceArea * t.scale
+    return valueUpper + flux, valueLower + flux
 end
 
 # facebased boundary 
@@ -130,9 +146,8 @@ function (d::Laplace{P})(
     refValue::Vector{P},
     refGradient::Vector{P},
     _::P,
-    valueFraction::P,
-    deltaCoeffGlobal::P,
-    deltaCoeffBoundary::P,
+    refValFrac::P,
+    deltaCoeff::P,
     gamma::P,
     magFaceArea::P,
     valueDiag::P,
@@ -141,12 +156,15 @@ function (d::Laplace{P})(
     valueRHSz::P
 ) where {P<:AbstractFloat}
     flux = gamma * magFaceArea
-    valueMat = flux * valueFraction * deltaCoeffGlobal
-	valueRHSx, valueRHSy, valueRHSz = (valueRHSx, valueRHSy, valueRHSz) .-  (flux * (valueFraction * deltaCoeffGlobal .* refValue  +  (1.0 - valueFraction) .* refGradient)) * d.scale
-    return valueDiag - valueMat * d.scale, valueRHSx, valueRHSy, valueRHSz
+    fluxContrib = flux * d.scale * refValFrac * deltaCoeff 
+    refGradFrac = 1-refValFrac
+    x = flux * d.scale * (refValFrac * deltaCoeff * refValue[1] + refGradFrac * refGradient[1]);
+    y = flux * d.scale * (refValFrac * deltaCoeff * refValue[2] + refGradFrac * refGradient[2]);
+    z = flux * d.scale * (refValFrac * deltaCoeff * refValue[3] + refGradFrac * refGradient[3]);
+    return valueDiag + fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
 end
 
-# facebased boundary 
+# GPU facebased boundary 
 function (d::Laplace{P})(
     refValuex::P,
     refValuey::P,
@@ -155,9 +173,8 @@ function (d::Laplace{P})(
     refGradienty::P,
     refGradientz::P,
     _::P,
-    valueFraction::P,
-    deltaCoeffGlobal::P,
-    deltaCoeffBoundary::P,
+    refValFrac::P,
+    deltaCoeff::P,
     gamma::P,
     magFaceArea::P,
     valueDiag::P,
@@ -166,13 +183,12 @@ function (d::Laplace{P})(
     valueRHSz::P
 ) where {P<:AbstractFloat}
     flux = gamma * magFaceArea
-    valueMat = flux * valueFraction * deltaCoeffGlobal
-    vd = valueFraction * deltaCoeffGlobal
-    relFraction = 1-valueFraction
-	tmpx = d.scale * flux * (refValuex * vd + refGradientx * relFraction)
-    tmpy = d.scale * flux * (refValuey * vd + refGradienty * relFraction)
-    tmpz = d.scale * flux * (refValuez * vd + refGradientz * relFraction)
-    return valueDiag - valueMat * d.scale, valueRHSx -tmpx, valueRHSy-tmpy, valueRHSz-tmpz
+    fluxContrib = flux * d.scale * refValFrac * deltaCoeff 
+    refGradFrac = 1-refValFrac
+    x = flux * d.scale * (refValFrac * deltaCoeff * refValuex + refGradFrac * refGradientx);
+    y = flux * d.scale * (refValFrac * deltaCoeff * refValuey + refGradFrac * refGradienty);
+    z = flux * d.scale * (refValFrac * deltaCoeff * refValuez + refGradFrac * refGradientz);
+    return valueDiag + fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
 end
 
 #### Operator Fusing
@@ -194,8 +210,7 @@ end
     refGradient,
     flux,
     valueFraction,
-    deltaCoeffGlobal,
-    deltaCoeffBoundary,
+    deltaCoeff,
     gamma,
     magFaceArea,
     valueDiag,
@@ -203,8 +218,8 @@ end
     valueRHSy,
     valueRHSz
 )
-    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.a(refValue, refGradient, flux, valueFraction, deltaCoeffGlobal, deltaCoeffBoundary, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
-    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.b(refValue, refGradient, flux, valueFraction, deltaCoeffGlobal, deltaCoeffBoundary, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
+    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.a(refValue, refGradient, flux, valueFraction, deltaCoeff, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
+    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.b(refValue, refGradient, flux, valueFraction, deltaCoeff, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
     return valueDiag, valueRHSx, valueRHSy, valueRHSz
 end
 @inline function (o::DiffEq)(
@@ -212,17 +227,14 @@ end
     refGradientx,refGradienty,refGradientz,
     flux,
     valueFraction,
-    deltaCoeffGlobal,
-    deltaCoeffBoundary,
+    deltaCoeff,
     gamma,
     magFaceArea,
     valueDiag,
-    valueRHSx,
-    valueRHSy,
-    valueRHSz
+    valueRHSx, valueRHSy, valueRHSz
 )
-    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.a(refValuex,refValuey,refValuez, refGradientx,refGradienty,refGradientz, flux, valueFraction, deltaCoeffGlobal, deltaCoeffBoundary, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
-    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.b(refValuex,refValuey,refValuez, refGradientx,refGradienty,refGradientz, flux, valueFraction, deltaCoeffGlobal, deltaCoeffBoundary, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
+    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.a(refValuex,refValuey,refValuez, refGradientx, refGradienty, refGradientz, flux, valueFraction, deltaCoeff, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
+    valueDiag, valueRHSx, valueRHSy, valueRHSz = o.b(refValuex,refValuey,refValuez, refGradientx, refGradienty, refGradientz, flux, valueFraction, deltaCoeff, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
     return valueDiag, valueRHSx, valueRHSy, valueRHSz
 end
 # cellbased inner 
@@ -240,6 +252,7 @@ Base.:+(_::Nothing, a::PTERM) = a
 Base.:+(_::Nothing, _::Nothing) = nothing
 Base.:+(a::Tuple, b::Tuple) = a[1] + b[1], a[2] + b[2]
 Base.:*(a::P, b::Tuple{P}) where {P<:AbstractFloat} = a * b[1], a * b[2]
+Base.:*(a::P, b::Tuple{P, P, P, P}) where {P<:AbstractFloat} = a * b[1], a * b[2], a*b[3], a*b[4]
 Base.:*(a::P, b::Tuple{P, Vector{P}}) where {P<:AbstractFloat} = a * b[1], a .* b[2]
 
 hasTransient(t::DiffEq) = hasTransient(t.a) || hasTransient(t.b)
