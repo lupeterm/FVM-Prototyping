@@ -62,39 +62,34 @@ end
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-            ϕf = dot(Uf, Sf[iFace])                    # flux through the face
-            weights_f = weights[iFace]                          # get weight of transport variable interpolation 
-            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-            upper = ϕf * weights_f
-            lower = -ϕf * (1 - weights_f)
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = weights[iFace]                          # get weight of transport variable interpolation 
+        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        upper = ϕf * weights_f
+        lower = -ϕf * (1 - weights_f)
 
 
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
 
-                # RHS/Source
-                Atomix.@atomic RHS[iOwner] -= convection[1]
-                Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
-                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= convection[1]
+            Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
         end
-        iFace += stride
     end
 end
 
@@ -154,39 +149,34 @@ end
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-            ϕf = dot(Uf, Sf[iFace])                    # flux through the face
-            weights_f = upwind(ϕf)                          # get weight of transport variable interpolation 
-            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-            upper = ϕf * weights_f
-            lower = -ϕf * (1 - weights_f)
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = upwind(ϕf)                          # get weight of transport variable interpolation 
+        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        upper = ϕf * weights_f
+        lower = -ϕf * (1 - weights_f)
 
 
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
 
-                # RHS/Source
-                Atomix.@atomic RHS[iOwner] -= convection[1]
-                Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
-                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= convection[1]
+            Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
         end
-        iFace += stride
     end
 end
 
@@ -212,39 +202,34 @@ end
     nCells = length(nus)
     numFaces = length(iOwners)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-            ϕf = dot(Uf, Sf[iFace])                    # flux through the face
-            weights_f = centralDifferencing(ϕf)                          # get weight of transport variable interpolation 
-            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-            upper = ϕf * weights_f
-            lower = -ϕf * (1 - weights_f)
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = centralDifferencing(ϕf)                          # get weight of transport variable interpolation 
+        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        upper = ϕf * weights_f
+        lower = -ϕf * (1 - weights_f)
 
 
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
 
-                # RHS/Source
-                Atomix.@atomic RHS[iOwner] -= convection[1]
-                Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
-                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= convection[1]
+            Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
         end
-        iFace += stride
     end
 end
 
@@ -303,39 +288,34 @@ end
     nCells = length(nus)
     numFaces = length(iOwners)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-            ϕf = dot(Uf, Sf[iFace])                    # flux through the face
-            weights_f = div(ϕf)                          # get weight of transport variable interpolation 
-            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-            upper = ϕf * weights_f
-            lower = -ϕf * (1 - weights_f)
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = div(ϕf)                          # get weight of transport variable interpolation 
+        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        upper = ϕf * weights_f
+        lower = -ϕf * (1 - weights_f)
 
 
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
 
-                # RHS/Source
-                Atomix.@atomic RHS[iOwner] -= convection[1]
-                Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
-                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= convection[1]
+            Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
         end
-        iFace += stride
     end
 end
 
@@ -393,45 +373,40 @@ end
     nCells = length(nus)
     numFaces = length(iOwners)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            # Diffusion
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        # Convection
+        # Diffusion
+        diffusion = nus[iOwner] * gDiffs[iFace]
+
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = weights[iFace]                              # get weight of transport variable interpolation 
+        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        upper = ϕf * weights_f + diffusion
+        lower = -ϕf * (1 - weights_f) - diffusion
+
+
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
             diffusion = nus[iOwner] * gDiffs[iFace]
+            Atomix.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
 
-            # Convection
-            Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-            ϕf = dot(Uf, Sf[iFace])                    # flux through the face
-            weights_f = weights[iFace]                              # get weight of transport variable interpolation 
-            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-            upper = ϕf * weights_f + diffusion
-            lower = -ϕf * (1 - weights_f) - diffusion
-
-
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-                diffusion = nus[iOwner] * gDiffs[iFace]
-                Atomix.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
-
-                # RHS/Source
-                Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
-                Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
-                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
         end
-        iFace += stride
     end
 end
 
@@ -568,7 +543,7 @@ end
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    iFace = @index(Global, Linear)
+    iFace = @index(Global)
     iOwner = iOwners[iFace]
     iNeighbor = iNeighbors[iFace]
     if iNeighbor > 0
@@ -625,7 +600,7 @@ end
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    iFace = @index(Global, Linear)
+    iFace = @index(Global)
     iOwner = iOwners[iFace]
     iNeighbor = iNeighbors[iFace]
     if iNeighbor > 0
@@ -715,7 +690,7 @@ end
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    iFace = @index(Global, Linear)
+    iFace = @index(Global)
     iOwner = iOwners[iFace]
     iNeighbor = iNeighbors[iFace]
     if iNeighbor > 0
@@ -804,7 +779,7 @@ end
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    iFace = @index(Global, Linear)
+    iFace = @index(Global)
     iOwner = iOwners[iFace]
     iNeighbor = iNeighbors[iFace]
     if iNeighbor > 0

@@ -18,8 +18,9 @@ function FusedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, 
             nus,
             U,
             fused_pde,
-            vals;
-            ndrange=length(batches[1].iOwner)
+            vals
+            ;
+            ndrange=length(batches[1].batchId)
             )
             KernelAbstractions.synchronize(backend)
         end
@@ -33,8 +34,9 @@ function FusedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals, 
         bFaceMapping,
         fused_pde,
         vals,
-        RHS;
-        ndrange=length(batches[2].iOwner)
+        RHS,
+        length(batches[1].batchId);
+        ndrange=length(bFaceValues)
     )
     return vals, RHS
 end
@@ -81,15 +83,15 @@ end
     @Const(bFaceMapping),
     @Const(fused_pde),
     vals,
-    RHS
+    RHS,
+    nInternalFaces
 )
     t = eltype(nus)
     iFace = @index(Global)
     bFaceIndex = bFaceMapping[iFace]
     if bFaceIndex != -1
         iOwner = iOwners[iFace]
-        diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
-        diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], diag, rhsx, rhsy, rhsz)
+        diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFace], nus[iOwner], gDiffs[iFace], zero(t), zero(t), zero(t), zero(t))
 
         # Diagonal Entry        
         Atomix.@atomic vals[ownerIdx[iFace]] += diag
@@ -124,7 +126,7 @@ function PrecalculatedWeightsBatchedAssembly(batches, U, nus, bFaceValues, bFace
             U,
             weights,
             vals;
-            ndrange=length(batches[1].iOwner)
+            ndrange=length(batches[1].batchId)
             )
             KernelAbstractions.synchronize(backend)
         end
@@ -137,8 +139,9 @@ function PrecalculatedWeightsBatchedAssembly(batches, U, nus, bFaceValues, bFace
         bFaceValues,
         bFaceMapping,
         vals,
-        RHS;
-        ndrange=length(batches[2].iOwner)
+                RHS,
+        length(batches[1].batchId);
+        ndrange=length(bFaceValues)
     )
     return vals, RHS
 end
@@ -191,11 +194,11 @@ end
     @Const(bFaceValues),
     @Const(bFaceMapping),
     vals,
-    RHS
+    RHS,
+    nInternalFaces
 )
     t = eltype(nus)
     nCells = length(nus)
-
     iFace = @index(Global)
     bFaceIndex = bFaceMapping[iFace]
     if bFaceIndex != -1
@@ -232,7 +235,7 @@ function DynamicBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals
             U,
             func,
             vals;
-            ndrange=length(batches[1].iOwner)
+            ndrange=length(batches[1].batchId)
             )
             KernelAbstractions.synchronize(backend)
         end
@@ -245,8 +248,9 @@ function DynamicBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, vals
         bFaceValues,
         bFaceMapping,
         vals,
-        RHS;
-        ndrange=length(batches[2].iOwner)
+                RHS,
+        length(batches[1].batchId);
+        ndrange=length(bFaceValues)
     )
     return vals, RHS
 end
@@ -308,7 +312,7 @@ function HardcodedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, va
             nus,
             U,
             vals;
-            ndrange=length(batches[1].iOwner)
+            ndrange=length(batches[1].batchId)
             )
             KernelAbstractions.synchronize(backend)
         end
@@ -321,8 +325,9 @@ function HardcodedBatchedAssembly(batches, U, nus, bFaceValues, bFaceMapping, va
         bFaceValues,
         bFaceMapping,
         vals,
-        RHS;
-        ndrange=length(batches[2].iOwner)
+        RHS,
+        length(batches[1].batchId);
+        ndrange=length(bFaceValues)
     )
     return vals, RHS
 end
@@ -341,12 +346,12 @@ end
     @Const(currentColor),
     @Const(nus),
     @Const(U),
-    vals,
+    vals
 )
     iFace = @index(Global)
-    @inbounds if currentColor == colors[iFace]
-        @inbounds iOwner = iOwners[iFace]
-        @inbounds iNeighbor = iNeighbors[iFace]
+    if currentColor == colors[iFace]
+        iOwner = iOwners[iFace]
+        iNeighbor = iNeighbors[iFace]
         
         diffusion = nus[iOwner] * gDiffs[iFace]
 
@@ -357,10 +362,10 @@ end
         upper = ϕf * weights_f + diffusion
         lower = -ϕf * (1 - weights_f) - diffusion
 
-        @inbounds vals[ownerIdx[iFace]] += upper
-        @inbounds vals[ownerRelOwnerIdx[iFace]] += lower
-        @inbounds vals[neighborIdx[iFace]] += lower
-        @inbounds vals[neighborRelNeighborIdx[iFace]] += upper
+        vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
     end
 end
 
