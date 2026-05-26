@@ -10,7 +10,8 @@ function getCellBasedGpuInput(input::MatrixAssemblyInput{P}) where {P<:AbstractF
     RHS = CUDA.zeros(P, nCells * 3)
     entriesNeeded::Int32 = length(input.mesh.cells) + 2 * input.mesh.numInteriorFaces
     vals = CUDA.zeros(P, entriesNeeded)
-    return iFaces, iNeighbors, numInts, iFaceOffsets, numFaces, nus, gpuFaces.Sf, gpuFaces.gDiff, U, gpuFaces.ownerRelOwnerIdx, gpuFaces.neighborRelNeighborIdx, bFaceValues, bFaceMapping, input.mesh.numInteriorFaces, gpuFaces.iOwner, vals, RHS
+    rowoffsets = input.offsets |> cu 
+    return iFaces, iNeighbors, numInts, iFaceOffsets, numFaces, nus, gpuFaces.Sf, gpuFaces.gDiff, U, rowoffsets, gpuFaces.ownerRelOwnerIdx, gpuFaces.neighborRelNeighborIdx, bFaceValues, bFaceMapping, gpuFaces.iOwner, vals, RHS
 end
 
 function faceInput(input::MatrixAssemblyInput{P}) where {P<:AbstractFloat}

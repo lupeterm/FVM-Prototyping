@@ -2,6 +2,9 @@ include("common.jl")
 using StaticArrays
 using LinearAlgebra
 using Atomix
+using CUDA
+using KernelAbstractions
+
 function FusedCell(args, pde)
     backend = CUDABackend()
     FusedCellBasedKernel(backend, 64)(args..., pde; ndrange=length(args[6]))
@@ -27,9 +30,8 @@ end
     @Const(iOwners),
     vals,
     RHS,
-    @Const(fused_pde)
+    fused_pde
 )
-    nItems = @ndrange()
     iElement = @index(Global)
     t = eltype(nus)
     nCells = length(nus)
@@ -38,44 +40,35 @@ end
         diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
         @inbounds startIndex = iFaceOffsets[iElement] - Int32(1)
         @inbounds for iFace in one(Int32):numInteriors[iElement]
-            @inbounds iFaceIndex = iFaces[startIndex+iFace]
-            @inbounds valueUpper, valueLower = fused_pde(U[iElement], U[iNeighbors[iFaceIndex]], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], 0.0, 0.0)
-            if iElement == 1
-                    @print("valueUpper, valueLower =  $valueUpper, $valueLower\n")
-                end
+            iFaceIndex = iFaces[startIndex+iFace]
+            valueUpper, valueLower = fused_pde(U[iElement], U[iNeighbors[iFaceIndex]], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], 0.0, 0.0)
             if iElement == iOwners[iFaceIndex]
                 idx = ownerRelOwnerIdx[iFaceIndex]
-                if iElement == 1
-                    @print("idx: $idx\n")
-                end
                 Atomix.@atomic vals[idx] += valueLower
                 diag += valueLower
             else
                 idx = neighborRelNeighborIdx[iFaceIndex]
-                if iElement == 1
-                    @print("idx: $idx\n")
-                end
                 Atomix.@atomic vals[idx] += valueUpper
                 diag += valueUpper
             end
         end
-        # @inbounds for iFace in numInteriors[iElement]+1:facesPerCell[iElement]
-        #     @inbounds iFaceIndex = iFaces[startIndex+iFace]
-        #     @inbounds bFaceIndex = bFaceMapping[iFaceIndex-numInternalFaces]
-        #     if bFaceIndex != -1
-        #         @inbounds diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], diag, rhsx, rhsy, rhsz)
-        #     end
-        # end
-        # @inbounds RHS[iElement] += rhsx
-        # @inbounds RHS[iElement+nCells] += rhsy
-        # @inbounds RHS[iElement+nCells+nCells] += rhsz
-        # @inbounds vals[rowOffsets[iElement]] += diag
+        @inbounds for iFace in numInteriors[iElement]+1:facesPerCell[iElement]
+            @inbounds iFaceIndex = iFaces[startIndex+iFace]
+            @inbounds bFaceIndex = bFaceMapping[iFaceIndex-numInternalFaces]
+            if bFaceIndex != -1
+                @inbounds diag, rhsx, rhsy, rhsz = fused_pde(bFaceValues[bFaceIndex], Sf[iFaceIndex], nus[iElement], gDiffs[iFaceIndex], diag, rhsx, rhsy, rhsz)
+            end
+        end
+        @inbounds RHS[iElement] += rhsx
+        @inbounds RHS[iElement+nCells] += rhsy
+        @inbounds RHS[iElement+nCells+nCells] += rhsz
+        @inbounds vals[rowOffsets[iElement]] += diag
     end
 end
 
-function PrecalculatedWeightsCell(args)
+function PrecalculatedWeightsCell(args, weights)
     backend = CUDABackend()
-    PrecalculatedWeightsCellBasedKernel(backend, 64)(args...; ndrange=length(args[6]))
+    PrecalculatedWeightsCellBasedKernel(backend, 64)(args..., weights; ndrange=length(args[6]))
     KernelAbstractions.synchronize(backend)
     return args[end-1:end]
 end
@@ -129,9 +122,9 @@ end
                 convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
                 diffusion = nus[iElement] * gDiffs[iFace]
                 diag -= diffusion
-                rhsx -= convection - diffusion
-                rhsy -= convection - diffusion
-                rhsz -= convection - diffusion    
+                rhsx -= convection[1] - diffusion
+                rhsy -= convection[2] - diffusion
+                rhsz -= convection[3] - diffusion    
             end          
         end
         @inbounds RHS[iElement] += rhsx
@@ -167,47 +160,44 @@ end
     divScheme
 )
     iElement = @index(Global)
-    if iElement == 1 
-        @print("type: $eltype(vals)")
+    t = eltype(nus)
+    nCells = length(nus)
+    numInternalFaces = length(Sf) - length(bFaceMapping)
+    if iElement <= nCells
+        diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
+        @inbounds startIndex = iFaceOffsets[iElement] - Int32(1)
+        @inbounds for iFace in one(Int32):numInteriors[iElement]
+            @inbounds iFaceIndex = iFaces[startIndex+iFace]
+            @inbounds isOwner = iOwners[iFaceIndex] == iElement
+
+            flux = 0.5(U[iElement] + U[iNeighbors[iFace]]) ⋅ Sf[iFaceIndex]
+            weights_f = divScheme(flux)                      # get precalculated weight
+            diffusion = nus[iElement] * gDiffs[iFaceIndex]          # laplacian(Γ, U)  ⟹ Diffusion
+            valueUpper = flux * weights_f -diffusion
+            valueLower = -flux * (1 - weights_f) + diffusion
+
+            @inbounds idx = ifelse(isOwner, ownerRelOwnerIdx[iFaceIndex], neighborRelNeighborIdx[iFaceIndex])
+            v = ifelse(isOwner, valueLower, valueUpper)
+            Atomix.@atomic vals[idx] += v
+            @inbounds diag += ifelse(!isOwner, valueLower, valueUpper)
+        end
+        @inbounds for iFace in numInteriors[iElement]+1:facesPerCell[iElement]
+            @inbounds iFaceIndex = iFaces[startIndex+iFace]
+            @inbounds bFaceIndex = bFaceMapping[iFaceIndex-numInternalFaces]
+            if bFaceIndex != -1
+                convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
+                diffusion = nus[iElement] * gDiffs[iFace]
+                diag -= diffusion
+                rhsx -= convection[1] - diffusion
+                rhsy -= convection[2] - diffusion
+                rhsz -= convection[3] - diffusion   
+            end          
+        end
+        @inbounds RHS[iElement] += rhsx
+        @inbounds RHS[iElement+nCells] += rhsy
+        @inbounds RHS[iElement+nCells+nCells] += rhsz
+        Atomix.@atomic  vals[rowOffsets[iElement]] += diag
     end
-    # t = eltype(nus)
-    # nCells = length(nus)
-    # numInternalFaces = length(Sf) - length(bFaceMapping)
-    # if iElement <= nCells
-    #     diag, rhsx, rhsy, rhsz = zero(t), zero(t), zero(t), zero(t)
-    #     @inbounds startIndex = iFaceOffsets[iElement] - Int32(1)
-    #     @inbounds for iFace in one(Int32):numInteriors[iElement]
-    #         @inbounds iFaceIndex = iFaces[startIndex+iFace]
-    #         @inbounds isOwner = iOwners[iFaceIndex] == iElement
-
-    #         flux = 0.5(U[iElement] + U[iNeighbors[iFace]]) ⋅ Sf[iFaceIndex]
-    #         weights_f = divScheme(flux)                      # get precalculated weight
-    #         diffusion = nus[iElement] * gDiffs[iFaceIndex]          # laplacian(Γ, U)  ⟹ Diffusion
-    #         valueUpper = flux * weights_f -diffusion
-    #         valueLower = -flux * (1 - weights_f) + diffusion
-
-    #         @inbounds idx = ifelse(isOwner, ownerRelOwnerIdx[iFaceIndex], neighborRelNeighborIdx[iFaceIndex])
-    #         v = ifelse(isOwner, valueLower, valueUpper)
-    #         Atomix.@atomic vals[idx] = 0.0
-    #         @inbounds diag += ifelse(!isOwner, valueLower, valueUpper)
-    #     end
-    #     @inbounds for iFace in numInteriors[iElement]+1:facesPerCell[iElement]
-    #         @inbounds iFaceIndex = iFaces[startIndex+iFace]
-    #         @inbounds bFaceIndex = bFaceMapping[iFaceIndex-numInternalFaces]
-    #         if bFaceIndex != -1
-    #             convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
-    #             diffusion = nus[iElement] * gDiffs[iFace]
-    #             diag -= diffusion
-    #             rhsx -= convection - diffusion
-    #             rhsy -= convection - diffusion
-    #             rhsz -= convection - diffusion    
-    #         end          
-    #     end
-    #     @inbounds RHS[iElement] += rhsx
-    #     @inbounds RHS[iElement+nCells] += rhsy
-    #     @inbounds RHS[iElement+nCells+nCells] += rhsz
-    #     Atomix.@atomic  vals[rowOffsets[iElement]] += diag
-    # end
 end
 
 function HardcodedCell(args, whichone)
@@ -269,9 +259,9 @@ end
                 convection = bFaceValues[bFaceIndex] .* Sf[iFace] ⋅ bFaceValues[bFaceIndex]
                 diffusion = nus[iElement] * gDiffs[iFace]
                 diag -= diffusion
-                rhsx -= convection - diffusion
-                rhsy -= convection - diffusion
-                rhsz -= convection - diffusion    
+                rhsx -= convection[1] - diffusion
+                rhsy -= convection[2] - diffusion
+                rhsz -= convection[3] - diffusion    
             end          
         end
         @inbounds RHS[iElement] += rhsx
@@ -311,21 +301,20 @@ end
             @inbounds iFaceIndex = iFaces[startIndex+iFace]
             @inbounds isOwner = iOwners[iFaceIndex] == iElement
 
-            flux = 0.5(U[iElement][1] + U[iNeighbors[iFaceIndex]][1]) *Sf[iFaceIndex][1] + 
-                    0.5(U[iElement][2] + U[iNeighbors[iFaceIndex]][2]) *Sf[iFaceIndex][2] +
-                    0.5(U[iElement][3] + U[iNeighbors[iFaceIndex]][3]) *Sf[iFaceIndex][3] 
+            flux = 0.5(U[iElement] + U[iNeighbors[iFace]]) ⋅ Sf[iFaceIndex]
             weights_f = cdf_f(flux)                      # get precalculated weight
             diffusion = nus[iElement] * gDiffs[iFaceIndex]          # laplacian(Γ, U)  ⟹ Diffusion
             valueUpper = flux * weights_f -diffusion
             valueLower = -flux * (1 - weights_f) + diffusion
-
-            # # idx = ifelse(isOwner, ownerRelOwnerIdx[iFaceIndex], neighborRelNeighborIdx[iFaceIndex])
-            # idx = isOwner ? ownerRelOwnerIdx[iFaceIndex] : neighborRelNeighborIdx[iFaceIndex]
-            # # v = ifelse(isOwner, valueLower, valueUpper)
-            # v = isOwner ? valueLower : valueUpper
-            # # Atomix.@atomic 
-            # vals[idx] += 0.0
-            # # @inbounds diag += ifelse(!isOwner, valueLower, valueUpper)
+            if iElement == iOwners[iFaceIndex]
+                idx = ownerRelOwnerIdx[iFaceIndex]
+                Atomix.@atomic vals[idx] += valueLower
+                diag += valueLower
+            else
+                idx = neighborRelNeighborIdx[iFaceIndex]
+                Atomix.@atomic vals[idx] += valueUpper
+                diag += valueUpper
+            end
         end
         @inbounds for iFace in numInteriors[iElement]+1:facesPerCell[iElement]
             @inbounds iFaceIndex = iFaces[startIndex+iFace]
@@ -337,9 +326,9 @@ end
                 convection = bFaceValues[bFaceIndex] .* flux
                 diffusion = nus[iElement] * gDiffs[iFace]
                 diag -= diffusion
-                rhsx -= convection - diffusion
-                rhsy -= convection - diffusion
-                rhsz -= convection - diffusion    
+                rhsx -= convection[1] - diffusion
+                rhsy -= convection[2] - diffusion
+                rhsz -= convection[3] - diffusion    
             end          
         end
         @inbounds RHS[iElement] += rhsx
