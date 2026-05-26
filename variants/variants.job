@@ -1,0 +1,25 @@
+#!/bin/bash
+# Job name:
+#SBATCH --job-name=julia-cpu
+#
+# Account:
+#
+# Partition:
+#
+# Request one node:
+#SBATCH --nodes=1
+#
+# Specify one task:
+#SBATCH --ntasks-per-node=1
+#
+# Number of processors for single task needed for use case (example):
+#SBATCH --cpus-per-task=128
+#
+# Wall clock limit:
+#SBATCH --time=3:00:00
+#
+## Command(s) to run (example):
+./benchmark.sh 
+source venv/bin/activate
+python3 generate_figures.py
+echo "FINISHED RUNNING ALL JOBS"
