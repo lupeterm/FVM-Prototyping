@@ -35,7 +35,7 @@ function gpu_DivOnlyPrecalculatedWeightsFaceBasedAssemblyRunner(
         vals,
         RHS,
         weights;
-        ndrange=16384
+        ndrange=length(batches.iOwner)
     )
     KernelAbstractions.synchronize(backend)
     return vals, RHS
@@ -89,9 +89,9 @@ end
                 convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
 
                 # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= convection[1]
-                CUDA.@atomic RHS[iOwner+nCells] -= convection[2]
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
+                Atomix.@atomic RHS[iOwner] -= convection[1]
+                Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
+                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
             end
         end
         iFace += stride
@@ -127,7 +127,7 @@ function gpu_DivOnlyHardcodedDivFaceBasedAssemblyRunner(
         bFaceMapping,
         vals,
         RHS,
-        ndrange=16384
+        ndrange=length(batches.iOwner)
     )
     KernelAbstractions.synchronize(backend)
     return vals, RHS
@@ -181,9 +181,9 @@ end
                 convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
 
                 # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= convection[1]
-                CUDA.@atomic RHS[iOwner+nCells] -= convection[2]
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
+                Atomix.@atomic RHS[iOwner] -= convection[1]
+                Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
+                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
             end
         end
         iFace += stride
@@ -239,9 +239,9 @@ end
                 convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
 
                 # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= convection[1]
-                CUDA.@atomic RHS[iOwner+nCells] -= convection[2]
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
+                Atomix.@atomic RHS[iOwner] -= convection[1]
+                Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
+                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
             end
         end
         iFace += stride
@@ -276,7 +276,7 @@ function gpu_DivOnlyDynamicFaceBasedAssemblyRunner(
         vals,
         RHS,
         divFunc;
-        ndrange=16384
+        ndrange=length(batches.iOwner)
     )
     KernelAbstractions.synchronize(backend)
     return vals, RHS
@@ -330,9 +330,9 @@ end
                 convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
 
                 # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= convection[1]
-                CUDA.@atomic RHS[iOwner+nCells] -= convection[2]
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
+                Atomix.@atomic RHS[iOwner] -= convection[1]
+                Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
+                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
             end
         end
         iFace += stride
@@ -366,7 +366,7 @@ function gpu_PrecalculatedWeightsFaceBasedAssemblyRunner(
         vals,
         RHS,
         weights;
-        ndrange=16384
+        ndrange=length(batches.iOwner)
     )
     KernelAbstractions.synchronize(backend)
     return vals, RHS
@@ -423,12 +423,12 @@ end
             if bFaceIndex != -1
                 convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
                 diffusion = nus[iOwner] * gDiffs[iFace]
-                CUDA.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
+                Atomix.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
 
                 # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= convection[1] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
+                Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
+                Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
+                Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
             end
         end
         iFace += stride
@@ -484,51 +484,35 @@ end
     @Const(bFaceMapping),
     vals,
     RHS,
-    @Const(weights)
+    @Const(fused_pde)
 )
     t = eltype(nus)
     nCells = length(nus)
     numFaces = length(iOwners)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            # Diffusion
+    iFace = @index(Global)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        valueUpper, valueLower = fused_pde(U[iOwner], U[iNeighbors[iFace]], Sf[iFace], nus[iOwner], gDiffs[iFace], 0.0, 0.0)
+
+        Atomix.@atomic vals[ownerIdx[iFace]] += valueUpper
+        vals[ownerRelOwnerIdx[iFace]] += valueLower
+        Atomix.@atomic vals[neighborIdx[iFace]] += valueLower
+        vals[neighborRelNeighborIdx[iFace]] += valueUpper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
             diffusion = nus[iOwner] * gDiffs[iFace]
+            Atomix.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
 
-            # Convection
-            Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-            ϕf = dot(Uf, Sf[iFace])                    # flux through the face
-            weights_f = weights[iFace]                              # get weight of transport variable interpolation 
-            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-            upper = ϕf * weights_f + diffusion
-            lower = -ϕf * (1 - weights_f) - diffusion
-
-
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-                diffusion = nus[iOwner] * gDiffs[iFace]
-                CUDA.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
-
-                # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= convection[1] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
         end
-        iFace += stride
     end
 end
 
@@ -559,7 +543,7 @@ function gpu_HardcodedFaceBasedAssemblyRunner(
         bFaceMapping,
         vals,
         RHS,
-        ndrange=16384
+        ndrange=length(batches.iOwner)
     )
     KernelAbstractions.synchronize(backend)
     return vals, RHS
@@ -581,49 +565,43 @@ end
     vals,
     RHS,
 )
-    t = eltype(nus)
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            # Diffusion
+    iFace = @index(Global, Linear)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        # Convection
+        # Diffusion
+        diffusion = nus[iOwner] * gDiffs[iFace]
+
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = upwind(ϕf)                              # get weight of transport variable interpolation 
+        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        upper = ϕf * weights_f + diffusion
+        lower = -ϕf * (1 - weights_f) - diffusion
+
+
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
             diffusion = nus[iOwner] * gDiffs[iFace]
+            Atomix.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
 
-            # Convection
-            Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-            ϕf = dot(Uf, Sf[iFace])                    # flux through the face
-            weights_f = upwind(ϕf)                              # get weight of transport variable interpolation 
-            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-            upper = ϕf * weights_f + diffusion
-            lower = -ϕf * (1 - weights_f) - diffusion
-
-
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-                diffusion = nus[iOwner] * gDiffs[iFace]
-                CUDA.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
-
-                # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= convection[1] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
         end
-        iFace += stride
     end
 end
 
@@ -644,49 +622,43 @@ end
     vals,
     RHS,
 )
-    t = eltype(nus)
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            # Diffusion
+    iFace = @index(Global, Linear)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        # Convection
+        # Diffusion
+        diffusion = nus[iOwner] * gDiffs[iFace]
+
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = centralDifferencing(ϕf)                              # get weight of transport variable interpolation 
+        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        upper = ϕf * weights_f + diffusion
+        lower = -ϕf * (1 - weights_f) - diffusion
+
+
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
             diffusion = nus[iOwner] * gDiffs[iFace]
+            Atomix.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
 
-            # Convection
-            Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-            ϕf = dot(Uf, Sf[iFace])                    # flux through the face
-            weights_f = centralDifferencing(ϕf)                              # get weight of transport variable interpolation 
-            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-            upper = ϕf * weights_f + diffusion
-            lower = -ϕf * (1 - weights_f) - diffusion
-
-
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-                diffusion = nus[iOwner] * gDiffs[iFace]
-                CUDA.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
-
-                # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= convection[1] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
         end
-        iFace += stride
     end
 end
 
@@ -717,7 +689,7 @@ function gpu_DynamicFaceBasedAssemblyRunner(
         vals,
         RHS,
         divFunc;
-        ndrange=16384
+        ndrange=length(faces.iOwner)
     )
     KernelAbstractions.synchronize(backend)
     return vals, RHS
@@ -740,49 +712,43 @@ end
     RHS,
     @Const(div)
 )
-    t = eltype(nus)
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            # Diffusion
+    iFace = @index(Global, Linear)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        # Convection
+        # Diffusion
+        diffusion = nus[iOwner] * gDiffs[iFace]
+
+        # Convection
+        Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
+        ϕf = dot(Uf, Sf[iFace])                    # flux through the face
+        weights_f = div(ϕf)                              # get weight of transport variable interpolation 
+        # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
+        upper = ϕf * weights_f + diffusion
+        lower = -ϕf * (1 - weights_f) - diffusion
+
+
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
+            convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
             diffusion = nus[iOwner] * gDiffs[iFace]
+            Atomix.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
 
-            # Convection
-            Uf = 0.5(U[iOwner] + U[iNeighbor])                  # interpolate velocity to face 
-            ϕf = dot(Uf, Sf[iFace])                    # flux through the face
-            weights_f = div(ϕf)                              # get weight of transport variable interpolation 
-            # CDF -> 0.5, upwind -> ϕf >= 0 ? 1.0 : 0.0
-            upper = ϕf * weights_f + diffusion
-            lower = -ϕf * (1 - weights_f) - diffusion
-
-
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
-                diffusion = nus[iOwner] * gDiffs[iFace]
-                CUDA.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
-
-                # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= convection[1] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= convection[1] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells] -= convection[2] - diffusion
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3] - diffusion
         end
-        iFace += stride
     end
 end
 
@@ -813,7 +779,7 @@ function gpu_LaplaceOnlyFaceBasedAssemblyRunner(
         bFaceMapping,
         vals,
         RHS;
-        ndrange=16384
+        ndrange=length(batches.iOwner)
     )
     KernelAbstractions.synchronize(backend)
     return vals, RHS
@@ -835,42 +801,36 @@ end
     vals,
     RHS,
 )
-    t = eltype(nus)
     numFaces = length(iOwners)
     nCells = length(nus)
     numInternalFaces = numFaces - length(bFaceMapping)
-    tid = @index(Global, Linear)
-    stride = @ndrange()[1]
-    iFace = tid
-    while iFace < numFaces
-        iOwner = iOwners[iFace]
-        iNeighbor = iNeighbors[iFace]
-        if iNeighbor > 0
-            # Convection
-            # Diffusion
+    iFace = @index(Global, Linear)
+    iOwner = iOwners[iFace]
+    iNeighbor = iNeighbors[iFace]
+    if iNeighbor > 0
+        # Convection
+        # Diffusion
+        diffusion = nus[iOwner] * gDiffs[iFace]
+
+        upper = diffusion
+        lower = -diffusion
+
+        Atomix.@atomic vals[ownerIdx[iFace]] += upper
+        vals[ownerRelOwnerIdx[iFace]] += lower
+        Atomix.@atomic vals[neighborIdx[iFace]] += lower
+        vals[neighborRelNeighborIdx[iFace]] += upper
+    else
+        relativeFaceIndex = iFace - numInternalFaces
+        bFaceIndex = bFaceMapping[relativeFaceIndex]
+        if bFaceIndex != -1
             diffusion = nus[iOwner] * gDiffs[iFace]
+            Atomix.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
 
-            upper = diffusion
-            lower = -diffusion
-
-            Atomix.@atomic vals[ownerIdx[iFace]] += upper
-            vals[ownerRelOwnerIdx[iFace]] += lower
-            Atomix.@atomic vals[neighborIdx[iFace]] += lower
-            vals[neighborRelNeighborIdx[iFace]] += upper
-        else
-            relativeFaceIndex = iFace - numInternalFaces
-            bFaceIndex = bFaceMapping[relativeFaceIndex]
-            if bFaceIndex != -1
-                diffusion = nus[iOwner] * gDiffs[iFace]
-                CUDA.@atomic vals[ownerIdx[iFace]] -= diffusion    # x
-
-                # RHS/Source
-                CUDA.@atomic RHS[iOwner] -= diffusion
-                CUDA.@atomic RHS[iOwner+nCells] -= diffusion
-                CUDA.@atomic RHS[iOwner+nCells+nCells] -= diffusion
-            end
+            # RHS/Source
+            Atomix.@atomic RHS[iOwner] -= diffusion
+            Atomix.@atomic RHS[iOwner+nCells] -= diffusion
+            Atomix.@atomic RHS[iOwner+nCells+nCells] -= diffusion
         end
-        iFace += stride
     end
 end
 
@@ -963,7 +923,7 @@ function kernel_all(
         idx = offsets[iOwner]
         cols[idx] = iOwner
         rows[idx] = iOwner
-        CUDA.@atomic vals[idx] += upper    # x
+        Atomix.@atomic vals[idx] += upper    # x
 
         idx = offsets[iOwner] + relativeToOwner[iFace]
         cols[idx] = iOwner
@@ -973,7 +933,7 @@ function kernel_all(
         idx = offsets[iNeighbor]
         cols[idx] = iNeighbor
         rows[idx] = iNeighbor
-        CUDA.@atomic vals[idx] += lower    # x
+        Atomix.@atomic vals[idx] += lower    # x
 
         idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
         cols[idx] = iNeighbor
@@ -988,13 +948,13 @@ function kernel_all(
         convection = bFaceValues[bFaceIndex] .* dot(Sf[iFace], bFaceValues[bFaceIndex])
         diffusion = nus[iOwner] * gDiffs[iFace]
         idx = offsets[iOwner]
-        CUDA.@atomic vals[idx] -= diffusion    # x
+        Atomix.@atomic vals[idx] -= diffusion    # x
 
         # RHS/Source
         value = convection .+ diffusion
-        CUDA.@atomic RHS[iOwner] -= value[1]
-        CUDA.@atomic RHS[iOwner+nCells] -= value[2]
-        CUDA.@atomic RHS[iOwner+nCells+nCells] -= value[3]
+        Atomix.@atomic RHS[iOwner] -= value[1]
+        Atomix.@atomic RHS[iOwner+nCells] -= value[2]
+        Atomix.@atomic RHS[iOwner+nCells+nCells] -= value[3]
     end
     return nothing
 end
@@ -1067,7 +1027,7 @@ function kernel_internalFace(
     idx = offsets[iOwner]
     cols[idx] = iOwner
     rows[idx] = iOwner
-    CUDA.@atomic vals[idx] += upper    # x
+    Atomix.@atomic vals[idx] += upper    # x
 
     idx = offsets[iOwner] + relativeToOwner[iFace]
     cols[idx] = iOwner
@@ -1077,7 +1037,7 @@ function kernel_internalFace(
     idx = offsets[iNeighbor]
     cols[idx] = iNeighbor
     rows[idx] = iNeighbor
-    CUDA.@atomic vals[idx] += lower    # x
+    Atomix.@atomic vals[idx] += lower    # x
 
     idx = offsets[iNeighbor] + relativeToNeighbor[iFace]
     cols[idx] = iNeighbor
@@ -1117,13 +1077,13 @@ function kernel_boundaryFace(
     convection = bFaceValues[bFaceIndex] .* dot(Sf[globalFaceIndex], bFaceValues[bFaceIndex])
     diffusion = nus[iOwner] * gDiffs[globalFaceIndex]
     idx = offsets[iOwner]
-    CUDA.@atomic vals[idx] -= diffusion    # x
+    Atomix.@atomic vals[idx] -= diffusion    # x
 
     # RHS/Source
     value = convection .+ diffusion
-    CUDA.@atomic RHS[iOwner] -= value[1]
-    CUDA.@atomic RHS[iOwner+nCells] -= value[2]
-    CUDA.@atomic RHS[iOwner+nCells+nCells] -= value[3]
+    Atomix.@atomic RHS[iOwner] -= value[1]
+    Atomix.@atomic RHS[iOwner+nCells] -= value[2]
+    Atomix.@atomic RHS[iOwner+nCells+nCells] -= value[3]
     return nothing
 end
 
@@ -1157,12 +1117,12 @@ function kernel_boundaryFace_LaplaceOnly(
     iOwner = iOwners[globalFaceIndex]
     diffusion = nus[iOwner] * gDiffs[globalFaceIndex]
     idx = offsets[iOwner]
-    CUDA.@atomic vals[idx] -= diffusion
+    Atomix.@atomic vals[idx] -= diffusion
 
     # RHS/Source
-    CUDA.@atomic RHS[iOwner] -= diffusion
-    CUDA.@atomic RHS[iOwner+nCells] -= diffusion
-    CUDA.@atomic RHS[iOwner+nCells+nCells] -= diffusion
+    Atomix.@atomic RHS[iOwner] -= diffusion
+    Atomix.@atomic RHS[iOwner+nCells] -= diffusion
+    Atomix.@atomic RHS[iOwner+nCells+nCells] -= diffusion
     return nothing
 end
 
@@ -1193,8 +1153,8 @@ function kernel_boundaryFace_DivOnly(
     convection = bFaceValues[bFaceIndex] .* dot(Sf[globalFaceIndex], bFaceValues[bFaceIndex])
 
     # RHS/Source
-    CUDA.@atomic RHS[iOwner] -= convection[1]
-    CUDA.@atomic RHS[iOwner+nCells] -= convection[2]
-    CUDA.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
+    Atomix.@atomic RHS[iOwner] -= convection[1]
+    Atomix.@atomic RHS[iOwner+nCells] -= convection[2]
+    Atomix.@atomic RHS[iOwner+nCells+nCells] -= convection[3]
     return nothing
 end
