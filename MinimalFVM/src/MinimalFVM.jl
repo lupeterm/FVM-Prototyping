@@ -1,7 +1,7 @@
 module MinimalFVM
 
 include("operators.jl")
-include("gpu.jl")
+# include("gpu.jl")
 using PrecompileTools
 using Atomix 
 
@@ -334,10 +334,10 @@ function assemble(
     oldOldVectors::Vector{Float64},
     dt::Float64
 )
-    println("THIS IS WRONG")
+    # println("THIS IS WRONG")
     dts = "$dt"
     opstring = replace(opString, "DELTAT" => dts)
-    println("after first replace: '$opstring'")
+    # println("after first replace: '$opstring'")
     fused_pde = eval(Meta.parse(opString))
     ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
     if !isnothing(ddt)
@@ -485,7 +485,7 @@ function faceBasedAll_(
         idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
         vals[idx:idx+2] .-= valueLower
     end
-    for facei in numInteriorFaces+1:numInteriorFaces+length(faceFlux)
+    for facei in numInteriorFaces+1:numInteriorFaces+length(bfaceFlux)
         bcfacei = facei - numInteriorFaces
         start = bcfacei * 3 - 2
         end_ = start + 2
@@ -504,7 +504,7 @@ function faceBasedAll_(
         vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
         vals[vIdx:vIdx+2] .-= valueDiag
 
-        bValues[bcfacei*3-2:bcfacei*3] .-= valueDiag
+        bValues[start:end_] .-= valueDiag
 
         # rhs[own] -= valueRhs
         # FIXME dont forget, changed this back to [vec3, vec3] instead of [xxxyyyzzz] for now
@@ -513,14 +513,10 @@ function faceBasedAll_(
         # RHS[own+numCells] += valueRHSy
         # RHS[own+numCells+numCells] += valueRHSz
 
-        bRhs[bcfacei*3-2:bcfacei*3] -= [valueRHSx, valueRHSy, valueRHSz]
+        bRhs[start:end_] -= [valueRHSx, valueRHSy, valueRHSz]
         # bRhs[own] += valueRHSx
         # bRhs[own+numCells] += valueRHSy
         # bRhs[own+numCells+numCells] += valueRHSz
-    end
-    println("JUvalues: ")
-    for i in 1:5
-        println("$(vals[i*3-2:i*3])")
     end
 end
 
@@ -573,7 +569,7 @@ function faceBasedAll_threaded(
         idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
         vals[idx:idx+2] .-= valueLower
     end
-    Threads.@threads for facei in numInteriorFaces+1:length(faceFlux)
+    Threads.@threads for facei in numInteriorFaces+1:numInteriorFaces+length(bfaceFlux)
         bcfacei = facei - numInteriorFaces
         start = bcfacei * 3 - 2
         end_ = start + 2
