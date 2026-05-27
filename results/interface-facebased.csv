@@ -1,271 +1,455 @@
-case,cells,time_ns,strategy,executor,julia_or_neon
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,69249,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,857,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,534,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,307254,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,307231,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,307192,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,409403,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,410102,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,410048,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,528969,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,528746,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,529916,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,668691,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,664022,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,664717,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,826098,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,824711,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,825899,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,1019653,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,1019836,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,1020385,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,1221656,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,1224826,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,1221944,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,1484059,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,1481256,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,1484509,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,1783728,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,1784189,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,1785590,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,2063337,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,2061889,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,2062895,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,3388,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,3114,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,2838,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,2424952,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,2427216,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,2428280,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,3167361,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,3172849,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,3191758,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,4137363,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,4130843,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,4136531,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,5299956,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,5226864,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,5234786,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,6478741,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,6481643,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,6497157,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,13507,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,9419,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,9847,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,7980395,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,7980832,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,7988523,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,9726754,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,9610915,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,9721183,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,11654407,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,11656223,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,11639442,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,14012404,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,13950766,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,13876020,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,16524882,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,16290729,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,16519445,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,21503,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,20341,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,20400,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,18933919,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,18985677,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,18923301,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,41245,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,40724,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,40649,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,69360,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,70260,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,69490,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,107492,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,110383,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,107563,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,158413,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,159675,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,158587,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,224369,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,224048,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,223153,Face-Based,CPU-Serial,NeoN + Julia
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,1604,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,1274,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,1270,Face-Based,CPU-Serial,NeoN
+case,cells,time_ns,strategy,executor,julia_or_neon,threads
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,69249,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,857,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,534,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,307254,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,307231,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,307192,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,409403,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,410102,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,410048,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,528969,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,528746,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,529916,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,668691,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,664022,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,664717,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,826098,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,824711,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,825899,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,1019653,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,1019836,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,1020385,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,1221656,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,1224826,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,1221944,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,1484059,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,1481256,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,1484509,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,1783728,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,1784189,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,1785590,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,2063337,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,2061889,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,2062895,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,3388,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,3114,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,2838,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,2424952,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,2427216,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,2428280,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,3167361,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,3172849,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,3191758,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,4137363,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,4130843,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,4136531,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,5299956,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,5226864,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,5234786,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,6478741,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,6481643,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,6497157,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,13507,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,9419,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,9847,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,7980395,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,7980832,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,7988523,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,9726754,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,9610915,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,9721183,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,11654407,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,11656223,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,11639442,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,14012404,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,13950766,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,13876020,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,16524882,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,16290729,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,16519445,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,21503,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,20341,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,20400,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,18933919,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,18985677,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,18923301,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,41245,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,40724,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,40649,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,69360,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,70260,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,69490,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,107492,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,110383,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,107563,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,158413,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,159675,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,158587,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,224369,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,224048,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,223153,Face-Based,CPU-Serial,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,1604,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,1274,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,1270,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,1127607,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,1092969,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,1094335,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,1127607,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,1092969,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,1094335,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,1506674,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,1535973,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,1505284,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,1506674,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,1535973,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,1505284,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,1940615,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,1954649,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,1916986,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,1940615,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,1954649,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,1916986,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,2476416,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,2409645,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,2385266,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,2476416,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,2409645,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,2385266,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,3072103,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,3063263,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,3047907,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,3072103,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,3063263,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,3047907,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,3990145,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,3903149,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,3916099,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,3990145,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,3903149,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,3916099,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,4549349,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,4526647,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,4523332,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,4549349,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,4526647,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,4523332,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,5485303,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,5431876,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,5389058,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,5485303,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,5431876,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,5389058,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,6717838,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,6476036,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,6639885,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,6717838,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,6476036,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,6639885,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,7731368,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,7551369,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,7617363,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,7731368,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,7551369,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,7617363,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,11960,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,10064,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,9691,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,11960,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,10064,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,9691,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,8943703,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,8782008,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,8725747,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,8943703,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,8782008,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,8725747,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,31574,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,31045,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,30877,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,31574,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,31045,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,30877,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,74282,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,73043,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,72397,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,74282,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,73043,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,72397,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,143298,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,140809,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,140809,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,143298,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,140809,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,140809,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,254204,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,245566,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,258101,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,254204,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,245566,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,258101,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,393748,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,392947,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,398640,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,393748,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,392947,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,398640,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,609219,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,596119,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,597700,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,609219,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,596119,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,597700,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,851543,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,825398,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,850356,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,851543,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,825398,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,850356,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,12359653,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,12392351,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,12361753,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,12359653,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,12392351,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,12361753,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,16372637,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,16402679,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,17615068,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,16372637,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,16402679,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,17615068,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,20428095,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,20515308,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,20688294,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,20428095,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,20515308,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,20688294,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,27213470,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,28295041,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,27881933,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,27213470,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,28295041,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,27881933,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,34992521,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,35774065,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,33217941,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,34992521,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,35774065,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,33217941,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,43689557,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,43628595,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,43911366,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,43689557,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,43628595,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,43911366,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,52294191,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,52529454,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,52339101,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,52294191,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,52529454,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,52339101,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,62383225,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,62423995,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,62440354,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,62383225,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,62423995,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,62440354,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,73341483,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,73407693,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,73399023,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,73341483,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,73407693,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,73399023,Face-Based,CPU-Serial,NeoN,
 
 
 
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,85658358,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,85618701,Face-Based,CPU-Serial,NeoN
-/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,85614626,Face-Based,CPU-Serial,NeoN
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,85658358,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,85618701,Face-Based,CPU-Serial,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,85614626,Face-Based,CPU-Serial,NeoN,
 
-
-
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,31847,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,2244,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,2000,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,753,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,504,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N10,1000,475,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,20486,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,1909,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,1787,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,873,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,494,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N100,1000000,474,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,20798,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,1931,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,1787,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,761,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,507,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N110,1331000,476,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,20370,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,1920,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,1789,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,784,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,513,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N120,1728000,479,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,19998,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,1922,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,1788,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,747,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,498,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N130,2197000,480,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,21039,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,1908,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,1789,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,748,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,493,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N140,2744000,466,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,20881,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,1922,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,1787,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,755,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,534,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N150,3375000,479,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,20424,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,1928,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,1795,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,753,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,501,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N160,4096000,489,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,20374,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,1911,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,1796,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,759,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,503,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N170,4913000,467,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,20411,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,1922,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,1835,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,807,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,518,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N180,5832000,477,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,20446,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,1910,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,1788,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,749,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,498,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N190,6859000,468,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,19909,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,1923,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,1787,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,778,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,494,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N20,8000,468,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,20332,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,1922,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,1791,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,769,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,518,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N200,8000000,489,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,20384,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,1919,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,1791,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,892,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,494,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N220,10648000,484,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,20446,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,1908,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,1793,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,875,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,513,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N240,13824000,487,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,20357,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,1914,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,1787,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,775,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,505,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N260,17576000,475,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,20432,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,1915,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,1787,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,746,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,496,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N280,21952000,471,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,20850,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,1932,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,1789,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,756,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,497,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N30,27000,472,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,20296,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,1924,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,1788,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,771,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,511,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N300,27000000,488,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,20349,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,1907,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,1792,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,858,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,498,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N320,32768000,466,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,20760,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,1909,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,1788,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,755,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,501,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N340,39304000,474,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,20218,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,1915,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,1798,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,751,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,486,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N360,46656000,469,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,20012,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,1911,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,1790,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,748,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,498,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N380,54872000,470,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,19945,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,1910,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,1793,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,752,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,500,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N40,64000,478,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,20464,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,1915,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,1788,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,805,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,498,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N400,64000000,477,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,20275,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,1915,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,1789,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,762,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,489,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N50,125000,463,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,19941,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,1929,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,1792,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,776,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,494,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N60,216000,468,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,20350,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,1919,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,1787,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,788,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,523,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N70,343000,502,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,20815,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,1904,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,1788,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,776,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,505,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N80,512000,472,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,20356,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,1935,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,1812,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,898,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,518,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N90,729000,486,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N500,125000000,19958,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N500,125000000,1913,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N500,125000000,1800,Face-Based,GPU,NeoN,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N500,125000000,754,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N500,125000000,501,Face-Based,GPU,NeoN + julia,
+/storage/home/lupeterm/NeoFOAM/build/develop/benchmarkSuite/julia/Cases/LDC_N500,125000000,477,Face-Based,GPU,NeoN + julia,
