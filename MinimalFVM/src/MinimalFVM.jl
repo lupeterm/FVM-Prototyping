@@ -19,7 +19,7 @@ function ddtloop(
     nCells = Int32(length(oldVectors) / 3)
     for celli in 1:nCells
         idx2D = (celli - 1) * 3 + 1
-        valueDiag, rx, ry, rz = temporals(
+        diagValue, rx, ry, rz = temporals(
             oldVectors[idx2D:idx2D+2],
             oldOldVectors[idx2D:idx2D+2],
             volumes[celli],
@@ -28,9 +28,67 @@ function ddtloop(
             0.0,
             0.0
         )
-        idx = rowOffs[celli] + 1 + diagOffs[celli]
-        vals[idx] = valueDiag
-        RHS[idx2D:idx2D+2] = [rx, ry, rz]
+
+        diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
+        vals[diagIdx:diagIdx+2] .+= diagValue
+        RHS[idx2D:idx2D+2] += [rx, ry, rz]
+    end
+end
+
+function ddtloop_threaded(
+    temporals::Union{DiffEq,Ddt},
+    volumes::Vector{P},
+    oldVectors::Vector{P},
+    diagOffs::Vector{UInt8},
+    rowOffs::Vector{Int32},
+    vals::Vector{Float64},
+    RHS::Vector{Float64}
+) where {P<:AbstractFloat}
+    @batch for celli in eachindex(volumes)
+        diagValue = 0.0
+        idx2D = celli * 3 -2
+        dv, rx, ry, rz = temporals(
+            oldVectors[idx2D],
+            oldVectors[idx2D+1],
+            oldVectors[idx2D+2],
+            volumes[celli],
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        )
+        diagValue += dv
+
+        diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
+        vals[diagIdx:diagIdx+2] .+= diagValue
+        RHS[idx2D:idx2D+2] += [rx, ry, rz]
+    end
+end
+
+function ddtloop(
+    temporals::Union{DiffEq,Ddt},
+    volumes::Vector{P},
+    oldVectors::Vector{P},
+    diagOffs::Vector{UInt8},
+    rowOffs::Vector{Int32},
+    vals::Vector{Float64},
+    RHS::Vector{Float64}
+) where {P<:AbstractFloat}
+    nCells = Int32(length(oldVectors) / 3)
+    for celli in 1:nCells
+        idx2D = (celli - 1) * 3 + 1
+        diagValue, rx, ry, rz = temporals(
+            oldVectors[idx2D:idx2D+2],
+            volumes[celli],
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        )
+
+        diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
+        vals[diagIdx:diagIdx+2] .+= diagValue
+        RHS[idx2D:idx2D+2] += [rx, ry, rz]
     end
 end
 
@@ -97,6 +155,98 @@ function cellBased_(
     opstring2 = replace(opString, "DELTAT" => dts)
     opstring3 = replace(opstring2, "BDF2" => "BDF1")
     fused_pde = eval(Meta.parse(opstring3))
+    if Threads.nthreads() == 1
+        cellBased_serial(
+            numCells,
+            owners,
+            cellFacesSegments,
+            diagOffs,
+            rowOffs,
+            cellFacesValues,
+            faceSignV,
+            vals,
+            fused_pde,
+            faceFlux,
+            bfaceFlux,
+            gamma,
+            bgamma,
+            deltaCoeffs,
+            bdeltaCoeffs,
+            matrixColumnIdxV,
+            magFaceArea,
+            valueFractions,
+            surfaceCells,
+            bValues,
+            bRhs,
+            volumes,
+            oldVectors,
+            refValue,
+            refGradient,
+            RHS,
+            dt
+        )
+    else
+        cellBased_threaded(
+            numCells,
+            owners,
+            cellFacesSegments,
+            diagOffs,
+            rowOffs,
+            cellFacesValues,
+            faceSignV,
+            vals,
+            fused_pde,
+            faceFlux,
+            bfaceFlux,
+            gamma,
+            bgamma,
+            deltaCoeffs,
+            bdeltaCoeffs,
+            matrixColumnIdxV,
+            magFaceArea,
+            valueFractions,
+            surfaceCells,
+            bValues,
+            bRhs,
+            volumes,
+            oldVectors,
+            refValue,
+            refGradient,
+            RHS,
+            dt
+        )
+    end
+end
+
+function cellBased_serial(
+    numCells::Int32,
+    owners::Vector{Int32},
+    cellFacesSegments::Vector{Int32},
+    diagOffs::Vector{UInt8},
+    rowOffs::Vector{Int32},
+    cellFacesValues::Vector{Int32},
+    faceSignV::Vector{Float64},
+    vals::Vector{Float64},
+    fused_pde::PTERM,
+    faceFlux::Vector{Float64},
+    bfaceFlux::Vector{Float64},
+    gamma::Vector{Float64},
+    bgamma::Vector{Float64},
+    deltaCoeffs::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
+    matrixColumnIdxV::Vector{Int32},
+    magFaceArea::Vector{Float64},
+    valueFractions::Vector{Float64},
+    surfaceCells::Vector{Int32},
+    bValues::Vector{Float64},
+    bRhs::Vector{Float64},
+    volumes::Vector{Float64},
+    oldVectors::Vector{Float64},
+    refValue::Vector{Float64},
+    refGradient::Vector{Float64},
+    RHS::Vector{Float64},
+    dt::Float64
+)
     ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
     temporals = !isnothing(ddt) ? ddt : f(args...) = (0.0, 0.0, 0.0, 0.0)
     spatials = !isnothing(spatials) ? spatials : g(args...) = (0.0, 0.0)
@@ -136,6 +286,101 @@ function cellBased_(
     end
 
     faceBasedBoundary(
+        Int32(length(gamma)),
+        surfaceCells,
+        diagOffs,
+        rowOffs,
+        vals,
+        spatials,
+        bfaceFlux,
+        bgamma,
+        bdeltaCoeffs,
+        magFaceArea,
+        valueFractions,
+        refValue,
+        refGradient,
+        RHS,
+        bValues,
+        bRhs
+    )
+end
+
+
+function cellBased_threaded(
+    numCells::Int32,
+    owners::Vector{Int32},
+    cellFacesSegments::Vector{Int32},
+    diagOffs::Vector{UInt8},
+    rowOffs::Vector{Int32},
+    cellFacesValues::Vector{Int32},
+    faceSignV::Vector{Float64},
+    vals::Vector{Float64},
+    fused_pde::PTERM,
+    faceFlux::Vector{Float64},
+    bfaceFlux::Vector{Float64},
+    gamma::Vector{Float64},
+    bgamma::Vector{Float64},
+    deltaCoeffs::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
+    matrixColumnIdxV::Vector{Int32},
+    magFaceArea::Vector{Float64},
+    valueFractions::Vector{Float64},
+    surfaceCells::Vector{Int32},
+    bValues::Vector{Float64},
+    bRhs::Vector{Float64},
+    volumes::Vector{Float64},
+    oldVectors::Vector{Float64},
+    refValue::Vector{Float64},
+    refGradient::Vector{Float64},
+    RHS::Vector{Float64},
+    dt::Float64
+)
+    ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
+    temporals = !isnothing(ddt) ? ddt : f(args...) = (0.0, 0.0, 0.0, 0.0)
+    spatials = !isnothing(spatials) ? spatials : g(args...) = (0.0, 0.0)
+    numCells = Int(numCells)
+    @batch for celli in eachindex(volumes)
+        numInternalFaces = cellFacesSegments[celli+1] - cellFacesSegments[celli]
+        diagValue = 0.0
+        startIdx = cellFacesSegments[celli]
+        for i in 1:numInternalFaces
+            faceIdx = cellFacesValues[startIdx+i] + 1
+            dVal, offDiagValue = spatials(
+                faceFlux[faceIdx],
+                gamma[faceIdx],
+                deltaCoeffs[faceIdx],
+                magFaceArea[faceIdx],
+                0.0,
+                0.0,
+                faceSignV[startIdx+i]
+            )
+            fIdx = matrixColumnIdxV[startIdx+i] *3 +1
+            vals[fIdx] += offDiagValue 
+            vals[fIdx+1] += offDiagValue 
+            vals[fIdx+2] += offDiagValue 
+            diagValue -= dVal
+        end
+        idx2D = celli * 3 -2
+        dv, rx, ry, rz = temporals(
+            oldVectors[idx2D],
+            oldVectors[idx2D+1],
+            oldVectors[idx2D+2],
+            volumes[celli],
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        )
+        diagValue += dv
+
+        diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
+        vals[diagIdx:diagIdx+2] .+= diagValue
+        # vals[diagIdx+1] += diagValue
+        # vals[diagIdx+2] += diagValue
+        RHS[idx2D:idx2D+2] += [rx, ry, rz]
+    end
+
+    faceBasedBoundary_threaded(
         Int32(length(gamma)),
         surfaceCells,
         diagOffs,
@@ -252,15 +497,27 @@ function assemble(
     fused_pde = eval(Meta.parse(opstring3))
     ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
     if !isnothing(ddt)
-        ddtloop(
-            ddt,
-            volumes,
-            oldVectors,
-            diagOffs,
-            rowOffs,
-            vals,
-            RHS
-        )
+        if Threads.nthreads() == 1
+            ddtloop(
+                ddt,
+                volumes,
+                oldVectors,
+                diagOffs,
+                rowOffs,
+                vals,
+                RHS
+            )
+        else
+            ddtloop_threaded(
+                ddt,
+                volumes,
+                oldVectors,
+                diagOffs,
+                rowOffs,
+                vals,
+                RHS
+            )
+        end
     end
     if !isnothing(spatials)
         if Threads.nthreads() == 1
