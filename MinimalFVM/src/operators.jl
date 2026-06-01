@@ -197,7 +197,7 @@ function (d::Laplace{P})(
     x = flux * d.scale * (refValFrac * deltaCoeff * refValue[1] + refGradFrac * refGradient[1]);
     y = flux * d.scale * (refValFrac * deltaCoeff * refValue[2] + refGradFrac * refGradient[2]);
     z = flux * d.scale * (refValFrac * deltaCoeff * refValue[3] + refGradFrac * refGradient[3]);
-    return valueDiag + fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
+    return valueDiag - fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
 end
 
 # GPU facebased boundary 

@@ -83,6 +83,9 @@ function cellBased_(
     matrixColumnIdxV::Vector{Int32},
     magFaceArea::Vector{Float64},
     valueFractions::Vector{Float64},
+    surfaceCells::Vector{Int32},
+    bValues::Vector{Float64},
+    bRhs::Vector{Float64},
     volumes::Vector{Float64},
     oldVectors::Vector{Float64},
     refValue::Vector{Float64},
@@ -93,10 +96,10 @@ function cellBased_(
     dts = "$dt"
     opstring2 = replace(opString, "DELTAT" => dts)
     opstring3 = replace(opstring2, "BDF2" => "BDF1")
-
     fused_pde = eval(Meta.parse(opstring3))
     ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
     temporals = !isnothing(ddt) ? ddt : f(args...) = (0.0, 0.0, 0.0, 0.0)
+    spatials = !isnothing(spatials) ? spatials : g(args...) = (0.0, 0.0)
     for celli in 1:numCells
         diagValue = 0.0
         numInternalFaces = cellFacesSegments[celli+1] - cellFacesSegments[celli]
@@ -129,25 +132,27 @@ function cellBased_(
 
         diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
         vals[diagIdx:diagIdx+2] .+= diagValue
-        # RHS[idx2D:idx2D+2] = [rx, ry, rz]
+        # RHS[idx2D:idx2D+2] += [rx, ry, rz]
     end
 
-    # faceBasedBoundary(
-    #     Int32(length(gamma)),
-    #     owners,
-    #     diagOffs,
-    #     rowOffs,
-    #     vals,
-    #     spatials,
-    #     bfaceFlux,
-    #     bgamma,
-    #     bdeltaCoeffs,
-    #     magFaceArea,
-    #     valueFractions,
-    #     refValue,
-    #     refGradient,
-    #     RHS
-    # )
+    faceBasedBoundary(
+        Int32(length(gamma)),
+        surfaceCells,
+        diagOffs,
+        rowOffs,
+        vals,
+        spatials,
+        bfaceFlux,
+        bgamma,
+        bdeltaCoeffs,
+        magFaceArea,
+        valueFractions,
+        refValue,
+        refGradient,
+        RHS,
+        bValues,
+        bRhs
+    )
 end
 
 
@@ -635,7 +640,9 @@ function faceBased(
     faceFlux::Vector{Float64},
     gamma::Vector{Float64},
     deltaCoeffs::Vector{Float64},
-    magFaceArea::Vector{Float64}
+    magFaceArea::Vector{Float64},
+    bValues::Vector{Float64},
+    bRhs::Vector{Float64}
 )
     fused_pde = eval(Meta.parse(opString))
     for iFace in 1:numInteriorFaces
@@ -662,7 +669,7 @@ end
 
 function faceBasedBoundary(
     numInteriorFaces::Int32,
-    owner::Vector{Int32},  # surfaceCells 
+    surfaceCells::Vector{Int32},  # surfaceCells 
     diagOffs::Vector{UInt8},
     rowOffs::Vector{Int32},
     vals::Vector{Float64},
@@ -674,14 +681,16 @@ function faceBasedBoundary(
     valueFractions::Vector{Float64},
     refValue::Vector{Float64},
     refGradient_::Vector{Float64},
-    RHS::Vector{Float64}
+    RHS::Vector{Float64},
+    bValues::Vector{Float64},
+    bRhs::Vector{Float64}
 )
     fused_pde = eval(Meta.parse(opString))
     ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
 
     faceBasedBoundary(
         numInteriorFaces,
-        owner,
+        surfaceCells,
         diagOffs,
         rowOffs,
         vals,
@@ -693,38 +702,41 @@ function faceBasedBoundary(
         valueFractions,
         refValue,
         refGradient_,
-        RHS
+        RHS,
+        bValues,
+        bRhs
     )
 end
 
 function faceBasedBoundary(
     numInteriorFaces::Int32,
-    owner::Vector{Int32},  # surfaceCells 
+    surfaceCells::Vector{Int32},  # surfaceCells 
     diagOffs::Vector{UInt8},
     rowOffs::Vector{Int32},
     vals::Vector{Float64},
     spatialOperators::PTERM,
-    faceFlux::Vector{Float64},
-    gamma::Vector{Float64},
+    bfaceFlux::Vector{Float64},
+    bgamma::Vector{Float64},
     bdeltaCoeffs::Vector{Float64},
     magFaceArea::Vector{Float64},
     valueFractions::Vector{Float64},
     refValue::Vector{Float64},
-    refGradient_::Vector{Float64},
-    RHS::Vector{Float64}
+    refGradient::Vector{Float64},
+    RHS::Vector{Float64},
+    bValues::Vector{Float64},
+    bRhs::Vector{Float64}
 )
-    # numCells = length(rowOffs) - 1
-    for facei in numInteriorFaces+1:length(faceFlux)
+    for facei in numInteriorFaces+1:numInteriorFaces+length(bfaceFlux)
         bcfacei = facei - numInteriorFaces
         start = bcfacei * 3 - 2
         end_ = start + 2
         valueDiag, valueRHSx, valueRHSy, valueRHSz = spatialOperators(
             refValue[start:end_],
             refGradient[start:end_],
-            faceFlux[facei],
+            bfaceFlux[bcfacei],
             valueFractions[bcfacei],
             bdeltaCoeffs[bcfacei],
-            gamma[bcfacei],
+            bgamma[bcfacei],
             magFaceArea[facei],
             0.0, 0.0, 0.0, 0.0
         )
@@ -738,6 +750,64 @@ function faceBasedBoundary(
         # rhs[own] -= valueRhs
         # FIXME dont forget, changed this back to [vec3, vec3] instead of [xxxyyyzzz] for now
         RHS[own*3-2:own*3] += [valueRHSx, valueRHSy, valueRHSz]
+        # RHS[own] += valueRHSx
+        # RHS[own+numCells] += valueRHSy
+        # RHS[own+numCells+numCells] += valueRHSz
+
+        bRhs[bcfacei*3-2:bcfacei*3] += [valueRHSx, valueRHSy, valueRHSz]
+        # bRhs[own] += valueRHSx
+        # bRhs[own+numCells] += valueRHSy
+        # bRhs[own+numCells+numCells] += valueRHSz
+    end
+end
+
+
+function faceBasedBoundary_threaded(
+    numInteriorFaces::Int32,
+    surfaceCells::Vector{Int32},  # surfaceCells 
+    diagOffs::Vector{UInt8},
+    rowOffs::Vector{Int32},
+    vals::Vector{Float64},
+    spatialOperators::PTERM,
+    bfaceFlux::Vector{Float64},
+    bgamma::Vector{Float64},
+    bdeltaCoeffs::Vector{Float64},
+    magFaceArea::Vector{Float64},
+    valueFractions::Vector{Float64},
+    refValue::Vector{Float64},
+    refGradient::Vector{Float64},
+    RHS::Vector{Float64},
+    bValues::Vector{Float64},
+    bRhs::Vector{Float64}
+)
+    @batch for facei in numInteriorFaces+1:numInteriorFaces+length(bfaceFlux)
+        bcfacei = facei - numInteriorFaces
+        start = bcfacei * 3 - 2
+        end_ = start + 2
+        valueDiag, valueRHSx, valueRHSy, valueRHSz = spatialOperators(
+            refValue[start:end_],
+            refGradient[start:end_],
+            bfaceFlux[bcfacei],
+            valueFractions[bcfacei],
+            bdeltaCoeffs[bcfacei],
+            bgamma[bcfacei],
+            magFaceArea[facei],
+            0.0, 0.0, 0.0, 0.0
+        )
+        own = surfaceCells[bcfacei] + 1
+
+        vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
+        Atomix.@atomic vals[vIdx] += valueDiag
+        Atomix.@atomic vals[vIdx+1] += valueDiag
+        Atomix.@atomic vals[vIdx+2] += valueDiag
+
+        bValues[bcfacei*3-2:bcfacei*3] .= valueDiag
+
+        # rhs[own] -= valueRhs
+        # FIXME dont forget, changed this back to [vec3, vec3] instead of [xxxyyyzzz] for now
+        Atomix.@atomic RHS[own*3-2] += valueRHSx
+        Atomix.@atomic RHS[own*3-1] += valueRHSy
+        Atomix.@atomic RHS[own*3] += valueRHSz
         # RHS[own] += valueRHSx
         # RHS[own+numCells] += valueRHSy
         # RHS[own+numCells+numCells] += valueRHSz
