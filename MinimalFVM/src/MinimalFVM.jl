@@ -282,7 +282,7 @@ function cellBased_serial(
 
         diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
         vals[diagIdx:diagIdx+2] .+= diagValue
-        # RHS[idx2D:idx2D+2] += [rx, ry, rz]
+        RHS[idx2D:idx2D+2] += [rx, ry, rz]
     end
 
     faceBasedBoundary(
@@ -361,23 +361,21 @@ function cellBased_threaded(
             diagValue -= dVal
         end
         idx2D = celli * 3 -2
-        dv, rx, ry, rz = temporals(
-            oldVectors[idx2D],
-            oldVectors[idx2D+1],
-            oldVectors[idx2D+2],
-            volumes[celli],
-            0.0,
-            0.0,
-            0.0,
-            0.0
-        )
-        diagValue += dv
+        # dv, rx, ry, rz = temporals(
+        #     oldVectors[idx2D],
+        #     oldVectors[idx2D+1],
+        #     oldVectors[idx2D+2],
+        #     volumes[celli],
+        #     0.0,
+        #     0.0,
+        #     0.0,
+        #     0.0
+        # )
+        # diagValue += dv
 
         diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
         vals[diagIdx:diagIdx+2] .+= diagValue
-        # vals[diagIdx+1] += diagValue
-        # vals[diagIdx+2] += diagValue
-        RHS[idx2D:idx2D+2] += [rx, ry, rz]
+        # RHS[idx2D:idx2D+2] += [rx, ry, rz]
     end
 
     faceBasedBoundary_threaded(
@@ -1002,7 +1000,7 @@ function faceBasedBoundary(
         vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
         vals[vIdx:vIdx+2] .+= valueDiag
 
-        bValues[bcfacei*3-2:bcfacei*3] .= valueDiag
+        bValues[bcfacei*3-2:bcfacei*3] .+= valueDiag
 
         # rhs[own] -= valueRhs
         # FIXME dont forget, changed this back to [vec3, vec3] instead of [xxxyyyzzz] for now
@@ -1058,7 +1056,7 @@ function faceBasedBoundary_threaded(
         Atomix.@atomic vals[vIdx+1] += valueDiag
         Atomix.@atomic vals[vIdx+2] += valueDiag
 
-        bValues[bcfacei*3-2:bcfacei*3] .= valueDiag
+        bValues[bcfacei*3-2:bcfacei*3] .+= valueDiag
 
         # rhs[own] -= valueRhs
         # FIXME dont forget, changed this back to [vec3, vec3] instead of [xxxyyyzzz] for now

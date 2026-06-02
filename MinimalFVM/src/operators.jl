@@ -68,7 +68,6 @@ function (d::Div{P,S})(
     sign::P
 ) where {P<:AbstractFloat,S}
     weights_f = d.scheme(faceFlux)
-    ## for cell based: assume ownership here, change during loop if not 
     if sign > 0
         offdiag = faceFlux * (1.0 - weights_f) * d.scale
         diagContrib = faceFlux * weights_f * d.scale
@@ -76,7 +75,7 @@ function (d::Div{P,S})(
         offdiag = -faceFlux * weights_f * d.scale
         diagContrib = -faceFlux * (1.0 - weights_f) * d.scale
     end
-    return valueUpper - diagContrib, valueLower + offdiag
+    return valueUpper + diagContrib, valueLower + offdiag
 end
 
 # facebased inner
@@ -161,7 +160,7 @@ function (t::Laplace{P})(
     _::P
 ) where {P<:AbstractFloat}
     flux = gamma * deltaCoeff * magFaceArea * t.scale
-    return valueUpper + flux, valueLower + flux
+    return valueUpper - flux, valueLower + flux
 end
 
 #facebased
@@ -224,7 +223,7 @@ function (d::Laplace{P})(
     x = flux * d.scale * (refValFrac * deltaCoeff * refValuex + refGradFrac * refGradientx);
     y = flux * d.scale * (refValFrac * deltaCoeff * refValuey + refGradFrac * refGradienty);
     z = flux * d.scale * (refValFrac * deltaCoeff * refValuez + refGradFrac * refGradientz);
-    return valueDiag + fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
+    return valueDiag - fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
 end
 
 #### Operator Fusing
