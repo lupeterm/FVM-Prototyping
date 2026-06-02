@@ -1368,57 +1368,22 @@ LDC_N360,46656000,1106033,Face-Based,GPU,NeoN,,gpu-nvidia-h100
 LDC_N360,46656000,1105639,Face-Based,GPU,NeoN,,gpu-nvidia-h100
 LDC_N360,46656000,1107087,Face-Based,GPU,NeoN,,gpu-nvidia-h100
 
-LDC_N360,46656000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N360,46656000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N380,54872000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
-LDC_N400,64000000,,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+LDC_N360,46656000,140643,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+LDC_N360,46656000,133839,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+LDC_N360,46656000,131636,Cell-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+LDC_N360,46656000,114326,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+LDC_N360,46656000,113794,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+LDC_N360,46656000,113772,Global Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+LDC_N360,46656000,112507,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+LDC_N360,46656000,111899,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+LDC_N360,46656000,111906,Face-Based,GPU,NeoN + Julia,,gpu-nvidia-h100
+
+LDC_N380,54872000,,Cell-Based,GPU,NeoN + Julia,,
+LDC_N380,54872000,,Cell-Based,GPU,NeoN + Julia,,
+LDC_N380,54872000,,Cell-Based,GPU,NeoN + Julia,,
+LDC_N380,54872000,,Global Face-Based,GPU,NeoN + Julia,,
+LDC_N380,54872000,,Global Face-Based,GPU,NeoN + Julia,,
+LDC_N380,54872000,,Global Face-Based,GPU,NeoN + Julia,,
+LDC_N380,54872000,,Face-Based,GPU,NeoN + Julia,,
+LDC_N380,54872000,,Face-Based,GPU,NeoN + Julia,,
+LDC_N380,54872000,,Face-Based,GPU,NeoN + Julia,,
