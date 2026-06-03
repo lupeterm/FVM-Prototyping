@@ -269,44 +269,44 @@ function checkindex(index, arr)
 	end
 end
 
-function cellBased_gpu(
+function cellbased_gpu(
     numCells::Int32,
-    owners_::Ptr{Cvoid},
-    cellFacesSegments_::Ptr{Cvoid},
-    diagOffs_::Ptr{Cvoid},
-    rowOffs_::Ptr{Cvoid},
-    cellFacesValues_::Ptr{Cvoid},
-    faceSignV_::Ptr{Cvoid},
-    vals_::Ptr{Cvoid},
-    opString_::String,
-    faceFlux_::Ptr{Cvoid},
-    bfaceFlux_::Ptr{Cvoid},
-    gamma_::Ptr{Cvoid},
-    bgamma_::Ptr{Cvoid},
-    deltaCoeffs_::Ptr{Cvoid},
-    bdeltaCoeffs_::Ptr{Cvoid},
-    matrixColumnIdxV_::Ptr{Cvoid},
-    magFaceArea_::Ptr{Cvoid},
-    valueFractions_::Ptr{Cvoid},
-    surfaceCells_::Ptr{Cvoid},
-    bValues_::Ptr{Cvoid},
-    bRhs_::Ptr{Cvoid},
-    volumes_::Ptr{Cvoid},
-    oldVectors_::Ptr{Cvoid},
-    refValue_::Ptr{Cvoid},
-    refGradient_::Ptr{Cvoid},
-    RHS_::Ptr{Cvoid},
-    _dt::Float64,
     numInteriorFaces::Int32,
-	numTotalFaces::Int32
+	numTotalFaces::Int32,
+    owners_::Ptr{Cvoid}
+    cellFacesSegments_::Ptr{Cvoid}
+    diagOffs_::Ptr{Cvoid}
+    rowOffs_::Ptr{Cvoid}
+    cellFacesValues_::Ptr{Cvoid}
+    faceSignV_::Ptr{Cvoid}
+    vals_::Ptr{Cvoid}
+    opString_::String
+    faceFlux_::Ptr{Cvoid}
+    bfaceFlux_::Ptr{Cvoid}
+    gamma_::Ptr{Cvoid}
+    bgamma_::Ptr{Cvoid}
+    deltaCoeffs_::Ptr{Cvoid}
+    bdeltaCoeffs_::Ptr{Cvoid}
+    matrixColumnIdxV_::Ptr{Cvoid}
+    magFaceArea_::Ptr{Cvoid}
+    valueFractions_::Ptr{Cvoid}
+    surfaceCells_::Ptr{Cvoid}
+    bValues_::Ptr{Cvoid}
+    bRhs_::Ptr{Cvoid}
+    volumes_::Ptr{Cvoid}
+    oldVectors_::Ptr{Cvoid}
+    refValue_::Ptr{Cvoid}
+    refGradient_::Ptr{Cvoid}
+    RHS_::Ptr{Cvoid}
+    dt::Float64
 )
 	numBoundaryFaces = numTotalFaces - numInteriorFaces
 	owners = ptrToGpu(owners_, numInteriorFaces, Int32)
-	cellFacesSegments = ptrToGpu(cellFacesSegments_, numCells+1, Int32)
+	cellFacesSegments = ptrToGpu(cellFacesSegments_, numBoundaryFaces, Int32)
 	diagOffs = ptrToGpu(diagOffs_, numCells, UInt8)
 	rowOffs = ptrToGpu(rowOffs_, numCells, Int32)
-	cellFacesValues = ptrToGpu(cellFacesValues_, (numCells + 2*numInteriorFaces), Int32)
-	faceSignV = ptrToGpu(faceSignV_, (numCells + 2*numInteriorFaces), Float64)
+	cellFacesValues = ptrToGpu(cellFacesValues_, numCells, Int32)
+	faceSignV = ptrToGpu(faceSignV_, numInteriorFaces, Float64)
 	vals = ptrToGpu(vals_, (numCells + 2*numInteriorFaces)*3, Float64)
 	faceFlux = ptrToGpu(faceFlux_, numInteriorFaces, Float64)
 	bfaceFlux = ptrToGpu(bfaceFlux_, numBoundaryFaces, Float64)
@@ -314,7 +314,7 @@ function cellBased_gpu(
 	bgamma = ptrToGpu(bgamma_, numBoundaryFaces, Float64)
 	deltaCoeffs = ptrToGpu(deltaCoeffs_, numInteriorFaces, Float64)
 	bdeltaCoeffs = ptrToGpu(bdeltaCoeffs_, numBoundaryFaces, Float64)
-	matrixColumnIdxV = ptrToGpu(matrixColumnIdxV_, (numCells + 2*numInteriorFaces), Int32)
+	matrixColumnIdxV = ptrToGpu(matrixColumnIdxV_, numInteriorFaces, Int32)
 	magFaceArea = ptrToGpu(magFaceArea_, numTotalFaces, Float64)
 	valueFractions = ptrToGpu(valueFractions_, numTotalFaces, Float64)
 	surfaceCells = ptrToGpu(surfaceCells_, numBoundaryFaces, Int32)
@@ -322,92 +322,113 @@ function cellBased_gpu(
 	bRhs = ptrToGpu(bRhs_, numBoundaryFaces*3, Float64)
 	volumes = ptrToGpu(volumes_, numCells, Float64)
 	oldVectors = ptrToGpu(oldVectors_, numCells*3, Float64)
-	refValue = ptrToGpu(refValue_, numBoundaryFaces*3, Float64)
-	refGradient = ptrToGpu(refGradient_, numBoundaryFaces*3, Float64)
-	RHS = ptrToGpu(RHS_, numCells*3, Float64)
+	refValue = ptrToGpu(refValue_, boundaryFaces*3, Float64)
+	refGradient = ptrToGpu(refGradient_, boundaryFaces*3, Float64)
+	RHS = ptrToGpu(RHS_)
 
 	dt = "$_dt"
-    opstring2 = replace(opString_, "DELTAT" => dt)
+    opstring2 = replace(opString, "DELTAT" => dt)
     opstring3 = replace(opstring2, "BDF2" => "BDF1")
     fused_pde = eval(Meta.parse(opstring3))
 
     ddt, spatials = MinimalFVM.splitTempSpat(fused_pde)
 	backend = get_backend(vals)
-	temporals = !isnothing(ddt) ? ddt : f(args...) = (0.0, 0.0, 0.0, 0.0)
-    spatials = !isnothing(spatials) ? spatials : g(args...) = (0.0, 0.0)
-	cellbased_kernel(backend, 64)(
-		cellFacesSegments,
-		diagOffs,
-		rowOffs,
-		cellFacesValues,
-		faceSignV,
-		vals,
-		temporals,
-		spatials,
-		faceFlux,
-		gamma,
-		deltaCoeffs,
-		matrixColumnIdxV,
-		magFaceArea,
-		volumes,
-		oldVectors,
-		RHS;
-		ndrange=numCells
-	)
-	# KernelAbstractions.synchronize(backend)
-	face_boundaryKernel(backend, 64)(
-		numInteriorFaces,
-		surfaceCells,
-		diagOffs,
-		rowOffs,
-		vals,
-		spatials,
-		bfaceFlux,
-		bgamma,
-		bdeltaCoeffs,
-		magFaceArea,
-		valueFractions,
-		refValue,
-		refGradient,
-		RHS,
-		bValues,
-		bRhs;
-		ndrange=numBoundaryFaces
-	)
-	KernelAbstractions.synchronize(backend)
+	if !isnothing(ddt)
+		cellbased_kernel(backend, 64)(
+			numCells,
+            owners,
+            cellFacesSegments,
+            diagOffs,
+            rowOffs,
+            cellFacesValues,
+            faceSignV,
+            vals,
+            fused_pde,
+            faceFlux,
+            bfaceFlux,
+            gamma,
+            bgamma,
+            deltaCoeffs,
+            bdeltaCoeffs,
+            matrixColumnIdxV,
+            magFaceArea,
+            valueFractions,
+            surfaceCells,
+            bValues,
+            bRhs,
+            volumes,
+            oldVectors,
+            refValue,
+            refGradient,
+            RHS;
+			ndrange=numCells
+		)
+		KernelAbstractions.synchronize(backend)
+	end
+	if !isnothing(spatials)
+		face_boundaryKernel(backend, 64)(
+			numInteriorFaces,
+			surfaceCells,
+			diagOffs,
+			rowOffs,
+			vals,
+			spatials,
+			bfaceFlux,
+			bgamma,
+			bdeltaCoeffs,
+			magFaceArea,
+			valueFractions,
+			refValue,
+			refGradient,
+			RHS,
+			bValues,
+			bRhs;
+			ndrange=numBoundaryFaces
+		)
+		KernelAbstractions.synchronize(backend)
+	end
 end
 
-@kernel function cellbased_kernel(
+@kernel cellbased_kernel(
+	@Const(numCells),
+    @Const(owners),
     @Const(cellFacesSegments),
     @Const(diagOffs),
     @Const(rowOffs),
     @Const(cellFacesValues),
     @Const(faceSignV),
     vals,
-    @Const(temporals),
-    @Const(spatials),
+    @Const(fused_pde),
     @Const(faceFlux),
+    @Const(bfaceFlux),
     @Const(gamma),
+    @Const(bgamma),
     @Const(deltaCoeffs),
+    @Const(bdeltaCoeffs),
     @Const(matrixColumnIdxV),
     @Const(magFaceArea),
+    @Const(valueFractions),
+    @Const(surfaceCells),
+    bValues,
+    bRhs,
     @Const(volumes),
     @Const(oldVectors),
+    @Const(refValue),
+    @Const(refGradient),
     RHS,
 )
 	celli = @index(Global)
 	numInternalFaces = cellFacesSegments[celli+1] - cellFacesSegments[celli]
-
 	diagValue = 0.0
 	startIdx = cellFacesSegments[celli]
 	for i in 1:numInternalFaces
 		faceIdx = cellFacesValues[startIdx+i] + 1
-		diagValue, offDiagValue = spatials(
+		dVal, offDiagValue = spatials(
 			faceFlux[faceIdx],
 			gamma[faceIdx],
 			deltaCoeffs[faceIdx],
 			magFaceArea[faceIdx],
-			diagValue,
+			0.0,
 			0.0,
 			faceSignV[startIdx+i]
 		)
@@ -415,7 +436,7 @@ end
 		vals[fIdx] += offDiagValue 
 		vals[fIdx+1] += offDiagValue 
 		vals[fIdx+2] += offDiagValue 
-		# diagValue -= dVal
+		diagValue -= dVal
 	end
 	idx2D = celli * 3 -2
 	dv, rx, ry, rz = temporals(
@@ -428,7 +449,7 @@ end
 		0.0,
 		0.0
 	)
-	# diagValue += dv
+	diagValue += dv
 
 	diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
 	vals[diagIdx]   += diagValue
@@ -457,43 +478,38 @@ end
     bValues,
     bRhs
 )
-	bcfacei = @index(Global)
-	iFace = bcfacei + numInteriorFaces
+	iFace = @index(Global)
+	bcfacei = facei + numInteriorFaces
 	start = bcfacei * 3 - 2
 	end_ = start + 2
 	valueDiag, valueRHSx, valueRHSy, valueRHSz = spatialOperators(
-		refValue[start],
-		refValue[start+1],
-		refValue[start+2],
-		refGradient[start],
-		refGradient[start+1],
-		refGradient[start+2],
+		refValue[start:end_],
+		refGradient[start:end_],
 		bfaceFlux[bcfacei],
 		valueFractions[bcfacei],
 		bdeltaCoeffs[bcfacei],
 		bgamma[bcfacei],
-		magFaceArea[iFace],
+		magFaceArea[facei],
 		0.0, 0.0, 0.0, 0.0
 	)
-	
 	own = surfaceCells[bcfacei] + 1
+
 	vIdx = (rowOffs[own] + diagOffs[own]) * 3 + 1
-
-	bValues[bcfacei*3-2] += valueDiag
-	bValues[bcfacei*3-1] += valueDiag
-	bValues[bcfacei*3] 	 += valueDiag
-
-	Atomix.@atomic vals[vIdx]   += valueDiag
+	Atomix.@atomic vals[vIdx] += valueDiag
 	Atomix.@atomic vals[vIdx+1] += valueDiag
 	Atomix.@atomic vals[vIdx+2] += valueDiag
 
-	# # FIXME dont forget, changed this back to [xyzxyzxyz] instead of [xxxyyyzzz] for now
+	bValues[bcfacei*3-2] += valueDiag
+	bValues[bcfacei*3-1] += valueDiag
+	bValues[bcfacei*3] += valueDiag
+
+	# rhs[own] -= valueRhs
+	# FIXME dont forget, changed this back to [vec3, vec3] instead of [xxxyyyzzz] for now
 	Atomix.@atomic RHS[own*3-2] += valueRHSx
 	Atomix.@atomic RHS[own*3-1] += valueRHSy
 	Atomix.@atomic RHS[own*3] += valueRHSz
 
-	# bRhs[bcfacei*3-2:bcfacei*3] += [valueRHSx, valueRHSy, valueRHSz]
-	bRhs[bcfacei*3-2] += valueRHSx
-	bRhs[bcfacei*3-1] += valueRHSy
-	bRhs[bcfacei*3] += valueRHSz
+	bRhs[own] += valueRHSx
+	bRhs[own+numCells] += valueRHSy
+	bRhs[own+numCells+numCells] += valueRHSz	
 end

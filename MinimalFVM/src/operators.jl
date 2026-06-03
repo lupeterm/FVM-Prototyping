@@ -57,6 +57,27 @@ struct Div{P,S}
     scale::P
 end
 
+# cellbased inner
+function (d::Div{P,S})(
+    faceFlux::P,
+    _::P,
+    _::P,
+    _::P,
+    valueUpper::P,
+    valueLower::P,
+    sign::P
+) where {P<:AbstractFloat,S}
+    weights_f = d.scheme(faceFlux)
+    if sign > 0
+        offdiag = faceFlux * (1.0 - weights_f) * d.scale
+        diagContrib = faceFlux * weights_f * d.scale
+    else 
+        offdiag = -faceFlux * weights_f * d.scale
+        diagContrib = -faceFlux * (1.0 - weights_f) * d.scale
+    end
+    return valueUpper + diagContrib, valueLower + offdiag
+end
+
 # facebased inner
 function (d::Div{P,S})(
     faceFlux::P,
@@ -67,17 +88,16 @@ function (d::Div{P,S})(
     valueLower::P
 ) where {P<:AbstractFloat,S}
     weights_f = d.scheme(faceFlux)
-    ownFluxContrib = -faceFlux * weights_f
-    neiFluxContrib = +faceFlux * (1.0 - weights_f) 
-    # ϕf = dot(0.5(U_c + U_n), Sf)     #### von NeoFoam/NeoN schon vorberechnet
+    ownFluxContrib = -faceFlux * weights_f * d.scale
+    neiFluxContrib = +faceFlux * (1.0 - weights_f) * d.scale
     return valueUpper + ownFluxContrib, valueLower + neiFluxContrib
 end
 
 
 # facebased boundary 
 function (d::Div{P,S})(
-    refValue::Vector{P},
-    refGradient::Vector{P},
+    refValue::AbstractVector{P},
+    refGradient::AbstractVector{P},
     bFaceFlux::P,
     valueFraction::P,
     bdeltaCoeff::P,
@@ -129,6 +149,21 @@ struct Laplace{P}
     scale::P
 end
 
+#cellbased
+function (t::Laplace{P})(
+    _::P,
+    gamma::P,
+    deltaCoeff::P,
+    magFaceArea::P,
+    valueUpper::P,
+    valueLower::P,
+    _::P
+) where {P<:AbstractFloat}
+    flux = gamma * deltaCoeff * magFaceArea * t.scale
+    return valueUpper - flux, valueLower + flux
+end
+
+#facebased
 function (t::Laplace{P})(
     _::P,
     gamma::P,
@@ -143,8 +178,8 @@ end
 
 # facebased boundary 
 function (d::Laplace{P})(
-    refValue::Vector{P},
-    refGradient::Vector{P},
+    refValue::AbstractVector{P},
+    refGradient::AbstractVector{P},
     _::P,
     refValFrac::P,
     deltaCoeff::P,
@@ -161,7 +196,7 @@ function (d::Laplace{P})(
     x = flux * d.scale * (refValFrac * deltaCoeff * refValue[1] + refGradFrac * refGradient[1]);
     y = flux * d.scale * (refValFrac * deltaCoeff * refValue[2] + refGradFrac * refGradient[2]);
     z = flux * d.scale * (refValFrac * deltaCoeff * refValue[3] + refGradFrac * refGradient[3]);
-    return valueDiag + fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
+    return valueDiag - fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
 end
 
 # GPU facebased boundary 
@@ -188,7 +223,7 @@ function (d::Laplace{P})(
     x = flux * d.scale * (refValFrac * deltaCoeff * refValuex + refGradFrac * refGradientx);
     y = flux * d.scale * (refValFrac * deltaCoeff * refValuey + refGradFrac * refGradienty);
     z = flux * d.scale * (refValFrac * deltaCoeff * refValuez + refGradFrac * refGradientz);
-    return valueDiag + fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
+    return valueDiag - fluxContrib, valueRHSx - x, valueRHSy - y, valueRHSz - z
 end
 
 #### Operator Fusing
@@ -197,6 +232,15 @@ struct DiffEq{A,B}
     b::B
 end
 
+## cellbased inner
+@inline function (o::DiffEq)(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower, sign)
+    valueUpper, valueLower = o.a(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower, sign)
+    valueUpper, valueLower = o.b(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower, sign)
+    return valueUpper, valueLower
+end
+
+
+## facebased inner
 @inline function (o::DiffEq)(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
     valueUpper, valueLower = o.a(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)
     valueUpper, valueLower = o.b(faceFlux, gamma, deltaCoeffs, magFaceArea, valueUpper, valueLower)

@@ -62,3 +62,4 @@ variants(serial, "serial_cpu", "CPU, Serial")
 variants(parallel, "multithread_cpu", "CPU, Parallel")
 
 df.to_csv("out.csv", index=False)
+serial.to_csv("serial.csv", index=False)
