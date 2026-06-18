@@ -34,7 +34,7 @@ function (d::Ddt{P,BDF1{P}})(
     return valueDiag + ret[1], valueRHSx +ret[2][1], valueRHSy +ret[2][2], valueRHSz + ret[2][3]
 end
 
-# gpu version 
+# gpu version BDF1
 function (d::Ddt{P,BDF1{P}})(
     oldVectorx::P,
     oldVectory::P,
@@ -46,6 +46,24 @@ function (d::Ddt{P,BDF1{P}})(
     valueRHSz::P
 ) where {P<:AbstractFloat}
     r1,r2,r3,r4 = d.scale * d.scheme(volume, oldVectorx, oldVectory, oldVectorz)
+    return valueDiag + r1, valueRHSx +r2, valueRHSy +r3, valueRHSz + r4
+end
+
+# gpu version BDF2
+function (d::Ddt{P,BDF1{P}})(
+    oldVectorx::P,
+    oldVectory::P,
+    oldVectorz::P,
+    oldOldVectorx::P,
+    oldOldVectory::P,
+    oldOldVectorz::P,
+    volume::P,
+    valueDiag::P,
+    valueRHSx::P,
+    valueRHSy::P,
+    valueRHSz::P
+) where {P<:AbstractFloat}
+    r1,r2,r3,r4 = d.scale * d.scheme(volume, oldVectorx, oldVectory, oldVectorz, oldOldVectorx, oldOldVectory, oldOldVectorz)
     return valueDiag + r1, valueRHSx +r2, valueRHSy +r3, valueRHSz + r4
 end
 
@@ -113,7 +131,7 @@ function (d::Div{P,S})(
 	valueRHSx -= bFaceFlux * valueFraction * refValue[1] + refGradFrac * refGradient[1] / bdeltaCoeff
 	valueRHSy -= bFaceFlux * valueFraction * refValue[2] + refGradFrac * refGradient[2] / bdeltaCoeff
 	valueRHSz -= bFaceFlux * valueFraction * refValue[3] + refGradFrac * refGradient[3] / bdeltaCoeff
-    return valueDiag + flux, valueRHSx, valueRHSy, valueRHSz 
+    return valueDiag - flux, valueRHSx, valueRHSy, valueRHSz 
 end
 
 # facebased boundary 
@@ -139,7 +157,7 @@ function (d::Div{P,S})(
 	valueRHSx -= bFaceFlux * valueFraction * refValuex + refGradFrac * refGradientx / bdeltaCoeff
 	valueRHSx -= bFaceFlux * valueFraction * refValuey + refGradFrac * refGradienty / bdeltaCoeff
 	valueRHSx -= bFaceFlux * valueFraction * refValuez + refGradFrac * refGradientz / bdeltaCoeff
-    return valueDiag + flux, valueRHSx* d.scale, valueRHSy* d.scale, valueRHSz * d.scale
+    return valueDiag - flux, valueRHSx* d.scale, valueRHSy* d.scale, valueRHSz * d.scale
 end
 
 #### Diffusion
@@ -266,6 +284,8 @@ end
     valueDiag, valueRHSx, valueRHSy, valueRHSz = o.b(refValue, refGradient, flux, valueFraction, deltaCoeff, gamma, magFaceArea, valueDiag, valueRHSx, valueRHSy, valueRHSz)
     return valueDiag, valueRHSx, valueRHSy, valueRHSz
 end
+
+# gpu
 @inline function (o::DiffEq)(
     refValuex,refValuey,refValuez,
     refGradientx,refGradienty,refGradientz,

@@ -267,7 +267,7 @@ function cellBased_serial(
             )
             fIdx = matrixColumnIdxV[startIdx+i] *3 +1
             vals[fIdx:fIdx+2] .+= offDiagValue 
-            diagValue -= dVal
+            diagValue += dVal
         end
         idx2D = (celli - 1) * 3 + 1
         dv, rx, ry, rz = temporals(
@@ -339,7 +339,7 @@ function cellBased_threaded(
     temporals = !isnothing(ddt) ? ddt : f(args...) = (0.0, 0.0, 0.0, 0.0)
     spatials = !isnothing(spatials) ? spatials : g(args...) = (0.0, 0.0)
     numCells = Int(numCells)
-    @batch for celli in eachindex(volumes)
+    @batch for celli in 1:numCells
         numInternalFaces = cellFacesSegments[celli+1] - cellFacesSegments[celli]
         diagValue = 0.0
         startIdx = cellFacesSegments[celli]
@@ -361,21 +361,21 @@ function cellBased_threaded(
             diagValue -= dVal
         end
         idx2D = celli * 3 -2
-        # dv, rx, ry, rz = temporals(
-        #     oldVectors[idx2D],
-        #     oldVectors[idx2D+1],
-        #     oldVectors[idx2D+2],
-        #     volumes[celli],
-        #     0.0,
-        #     0.0,
-        #     0.0,
-        #     0.0
-        # )
-        # diagValue += dv
+        dv, rx, ry, rz = temporals(
+            oldVectors[idx2D],
+            oldVectors[idx2D+1],
+            oldVectors[idx2D+2],
+            volumes[celli],
+            0.0,
+            0.0,
+            0.0,
+            0.0
+        )
+        diagValue += dv
 
         diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
         vals[diagIdx:diagIdx+2] .+= diagValue
-        # RHS[idx2D:idx2D+2] += [rx, ry, rz]
+        RHS[idx2D:idx2D+2] += [rx, ry, rz]
     end
 
     faceBasedBoundary_threaded(
@@ -842,6 +842,7 @@ function faceBasedAll_(
     bValues::Vector{Float64},
     bRhs::Vector{Float64}
 )
+    println("here")
     numCells = length(rowOffs) - 1
     for iFace in 1:numInteriorFaces
         iOwner = owner[iFace] + 1
@@ -860,10 +861,13 @@ function faceBasedAll_(
         )
         idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
         vals[idx:idx+2] .+= valueUpper
+        
         idx = (rowOwnStart + diagOffs[iOwner]) * 3 + 1
         vals[idx:idx+2] .-= valueUpper
+
         idx = (rowOwnStart + ownOffs[iFace]) * 3 + 1
         vals[idx:idx+2] .+= valueLower
+
         idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
         vals[idx:idx+2] .-= valueLower
     end
@@ -1026,28 +1030,31 @@ function globalfaceBasedAll_(
     numTotalFaces = numInteriorFaces + length(bfaceFlux)
     for iFace in 1:numTotalFaces
         if iFace <= numInteriorFaces
-        iOwner = owner[iFace] + 1
-        iNeighbor = neighbour[iFace] + 1
+            iOwner = owner[iFace] + 1
+            iNeighbor = neighbour[iFace] + 1
 
-        rowNeiStart = rowOffs[iNeighbor]
-        rowOwnStart = rowOffs[iOwner]
+            rowNeiStart = rowOffs[iNeighbor]
+            rowOwnStart = rowOffs[iOwner]
 
-        valueUpper, valueLower = fused_pde(
-            faceFlux[iFace], 
-            gamma[iFace], 
-            deltaCoeffs[iFace], 
-            magFaceArea[iFace],
-            0.0, 
-            0.0
-        )
-        idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
-        vals[idx:idx+2] .+= valueUpper
-        idx = (rowOwnStart + diagOffs[iOwner]) * 3 + 1
-        vals[idx:idx+2] .-= valueUpper
-        idx = (rowOwnStart + ownOffs[iFace]) * 3 + 1
-        vals[idx:idx+2] .+= valueLower
-        idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
-        vals[idx:idx+2] .-= valueLower
+            valueUpper, valueLower = fused_pde(
+                faceFlux[iFace], 
+                gamma[iFace], 
+                deltaCoeffs[iFace], 
+                magFaceArea[iFace],
+                0.0, 
+                0.0
+            )
+            idx = (rowNeiStart + neiOffs[iFace]) * 3 + 1
+            vals[idx:idx+2] .+= valueUpper
+            
+            idx = (rowOwnStart + diagOffs[iOwner]) * 3 + 1
+            vals[idx:idx+2] .-= valueUpper
+
+            idx = (rowOwnStart + ownOffs[iFace]) * 3 + 1
+            vals[idx:idx+2] .+= valueLower
+
+            idx = (rowNeiStart + diagOffs[iNeighbor]) * 3 + 1
+            vals[idx:idx+2] .-= valueLower
         else
             bcfacei = iFace - numInteriorFaces
             start = bcfacei * 3 - 2
