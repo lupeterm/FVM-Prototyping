@@ -262,6 +262,7 @@ end
 ################
 ################ Parallel
 ################
+using Polyester
 
 
 function FusedCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vector{P}, RHS::Vector{P}, fused_pde::PTERM) where {P<:AbstractFloat}
@@ -272,7 +273,7 @@ function FusedCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vector
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(cells.index)
-    @threads for iElement in eachindex(cells.index)
+    @batch for iElement in eachindex(cells.index)
         diag, rhsx, rhsy, rhsz = zero(P), zero(P), zero(P), zero(P)
         for localIndex in 1:cells.nInternalFaces[iElement]
             iFace = cells.iFaces[iElement][localIndex]
@@ -282,7 +283,7 @@ function FusedCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vector
             vals[idx] += ifelse(isOwner, valueLower, valueUpper)
             diag += ifelse(!isOwner, valueLower, valueUpper)
         end
-        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:end]
+        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:length(cells.nInternalFaces[iElement])]
             iBoundary = faces.patchIndex[iFace]
             boundaryType = U_b[iBoundary].type
             if boundaryType != "fixedValue"
@@ -308,7 +309,7 @@ function PrecalculatedWeightsCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(cells.index)
-    @threads for iElement in eachindex(cells.index)
+    @batch for iElement in eachindex(cells.index)
         diag, rhsx, rhsy, rhsz = zero(P), zero(P), zero(P), zero(P)
         for localIndex in 1:cells.nInternalFaces[iElement]
             iFace = cells.iFaces[iElement][localIndex]
@@ -327,7 +328,7 @@ function PrecalculatedWeightsCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P
             Atomix.@atomic vals[offdiagIdx] += ifelse(isOwner, valueLower, valueUpper)
             diag += ifelse(!isOwner, valueLower, valueUpper)
         end
-        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:end]
+        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:length(cells.nInternalFaces[iElement])]
             iBoundary = faces.patchIndex[iFace]
             boundaryType = U_b[iBoundary].type
             if boundaryType != "fixedValue"
@@ -362,7 +363,7 @@ function DynamicCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vect
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(cells.index)
-    @threads for iElement in eachindex(cells.index)
+    @batch for iElement in eachindex(cells.index)
         diag, rhsx, rhsy, rhsz = zero(P), zero(P), zero(P), zero(P)
         for localIndex in 1:cells.nInternalFaces[iElement]
             iFace = cells.iFaces[iElement][localIndex]
@@ -381,7 +382,7 @@ function DynamicCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vect
             Atomix.@atomic vals[offdiagIdx] += ifelse(isOwner, valueLower, valueUpper)
             diag += ifelse(!isOwner, valueLower, valueUpper)
         end
-        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:end]
+        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:length(cells.nInternalFaces[iElement])]
             iBoundary = faces.patchIndex[iFace]
             boundaryType = U_b[iBoundary].type
             if boundaryType != "fixedValue"
@@ -416,7 +417,7 @@ function HardcodedUpwindCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, va
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(cells.index)
-    @threads for iElement in eachindex(cells.index)
+    @batch for iElement in eachindex(cells.index)
         diag, rhsx, rhsy, rhsz = zero(P), zero(P), zero(P), zero(P)
         for localIndex in 1:cells.nInternalFaces[iElement]
             iFace = cells.iFaces[iElement][localIndex]
@@ -435,7 +436,7 @@ function HardcodedUpwindCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, va
             Atomix.@atomic vals[offdiagIdx] += ifelse(isOwner, valueLower, valueUpper)
             diag += ifelse(!isOwner, valueLower, valueUpper)
         end
-        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:end]
+        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:length(cells.nInternalFaces[iElement])]
             iBoundary = faces.patchIndex[iFace]
             boundaryType = U_b[iBoundary].type
             if boundaryType != "fixedValue"
@@ -470,7 +471,7 @@ function HardcodedCDFCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals:
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(cells.index)
-    @threads for iElement in eachindex(cells.index)
+    @batch for iElement in eachindex(cells.index)
         diag, rhsx, rhsy, rhsz = zero(P), zero(P), zero(P), zero(P)
         for localIndex in 1:cells.nInternalFaces[iElement]
             iFace = cells.iFaces[iElement][localIndex]
@@ -489,7 +490,7 @@ function HardcodedCDFCellBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals:
             Atomix.@atomic vals[offdiagIdx] += ifelse(isOwner, valueLower, valueUpper)
             diag += ifelse(!isOwner, valueLower, valueUpper)
         end
-        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:end]
+        for iFace in cells.iFaces[iElement][cells.nInternalFaces[iElement]+1:length(cells.nInternalFaces[iElement])]
             iBoundary = faces.patchIndex[iFace]
             boundaryType = U_b[iBoundary].type
             if boundaryType != "fixedValue"
