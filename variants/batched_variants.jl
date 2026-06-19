@@ -18,7 +18,7 @@ function FusedBatchedFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::V
 end
 
 function FusedBatch(batch, nu, fused_pde, vals, U, faces)
-    Threads.@threads for iFace in batch
+    @batch for iFace in batch
         valueUpper, valueLower = fused_pde(U[faces.iOwner[iFace]], U[faces.iNeighbor[iFace]], faces.Sf[iFace], nu[faces.iOwner[iFace]], faces.gDiff[iFace], 0.0, 0.0)
 
         vals[faces.ownerIdx[iFace]] += valueUpper
@@ -44,7 +44,7 @@ function PrecalculatedWeightsBatchedFaceBasedAssembly(input::SOAMatrixAssemblyIn
 end
 
 function PrecalculatedWeightsBatch(batch, nu, weights, vals, U, faces)
-    Threads.@threads for iFace in batch
+    @batch for iFace in batch
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -80,7 +80,7 @@ function DynamicBatchedFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals:
 end
 
 function DynamicBatch(batch, nu, divScheme, vals, U, faces)
-    Threads.@threads for iFace in batch
+    @batch for iFace in batch
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -115,7 +115,7 @@ function HardCodedBatchedFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, val
     boundary(input.boundaries, U_b, faces, nu, vals, RHS, nCells)
 end
 function HardCodedCDFBatch(batch, nu, vals, U, faces)
-    Threads.@threads for iFace in batch
+    @batch for iFace in batch
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -135,7 +135,7 @@ function HardCodedCDFBatch(batch, nu, vals, U, faces)
 end
 
 function HardCodedUpwindBatch(batch, nu, vals, U, faces)
-    Threads.@threads for iFace in batch
+    @batch for iFace in batch
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -155,7 +155,7 @@ function HardCodedUpwindBatch(batch, nu, vals, U, faces)
 end
 
 function boundary(boundaries, U_b, faces, nu, vals, RHS, nCells)
-    @threads for iBoundary in eachindex(boundaries)
+    @batch for iBoundary in eachindex(boundaries)
         if U_b[iBoundary].type != "fixedValue"
             continue
         end
@@ -180,7 +180,7 @@ end
 
 
 function boundary_fused(boundaries, U_b, fused_pde, faces, nu, vals, RHS, nCells)
-    Threads.@threads for iBoundary in eachindex(boundaries)
+    @batch for iBoundary in eachindex(boundaries)
         if U_b[iBoundary].type != "fixedValue"
             continue
         end

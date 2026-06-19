@@ -9,7 +9,7 @@ function FusedFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::Vector{P
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    for iFace in input.numInteriorFaces
+    for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
 
@@ -50,7 +50,7 @@ function PrecalculatedWeightsFaceBasedAssembly(input::SOAMatrixAssemblyInput{P},
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    for iFace in input.numInteriorFaces
+    for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -59,8 +59,8 @@ function PrecalculatedWeightsFaceBasedAssembly(input::SOAMatrixAssemblyInput{P},
         ϕf = Uf ⋅ faces.Sf[iFace]                   # flux through the face
         weights_f = weights[iFace]                      # get precalculated weight
 
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1.0 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1.0 - weights_f) - diffusion
 
         vals[faces.ownerIdx[iFace]] += valueUpper
         vals[faces.neighborIdx[iFace]] += valueLower
@@ -76,7 +76,7 @@ function PrecalculatedWeightsFaceBasedAssembly(input::SOAMatrixAssemblyInput{P},
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            ϕf::P = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
+            ϕf = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
             convection = U_b[iBoundary].values[relativeFaceIndex] .* ϕf
 
             diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -97,7 +97,7 @@ function HardcodedUpwindFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    for iFace in input.numInteriorFaces
+    for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -106,8 +106,8 @@ function HardcodedUpwindFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals
         ϕf = Uf ⋅ faces.Sf[iFace]                   # flux through the face
         weights_f = upwind_f(ϕf)                      # get precalculated weight
 
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1.0 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1.0 - weights_f) - diffusion
 
         vals[faces.ownerIdx[iFace]] += valueUpper
         vals[faces.neighborIdx[iFace]] += valueLower
@@ -123,7 +123,7 @@ function HardcodedUpwindFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            ϕf::P = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
+            ϕf = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
             convection = U_b[iBoundary].values[relativeFaceIndex] .* ϕf
 
             diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -144,7 +144,7 @@ function HardcodedCDFFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::V
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    for iFace in input.numInteriorFaces
+    for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -153,8 +153,8 @@ function HardcodedCDFFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::V
         ϕf = Uf ⋅ faces.Sf[iFace]                   # flux through the face
         weights_f = cdf_f(ϕf)                      # get precalculated weight
 
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1.0 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1.0 - weights_f) - diffusion
 
         vals[faces.ownerIdx[iFace]] += valueUpper
         vals[faces.neighborIdx[iFace]] += valueLower
@@ -170,7 +170,7 @@ function HardcodedCDFFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::V
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            ϕf::P = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
+            ϕf = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
             convection = U_b[iBoundary].values[relativeFaceIndex] .* ϕf
 
             diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -191,7 +191,7 @@ function DynamicFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::Vector
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    for iFace in input.numInteriorFaces
+    for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -200,8 +200,8 @@ function DynamicFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::Vector
         ϕf = Uf ⋅ faces.Sf[iFace]                   # flux through the face
         weights_f = divScheme(ϕf)                      # get precalculated weight
 
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1.0 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1.0 - weights_f) - diffusion
 
         vals[faces.ownerIdx[iFace]] += valueUpper
         vals[faces.neighborIdx[iFace]] += valueLower
@@ -217,7 +217,7 @@ function DynamicFaceBasedAssembly(input::SOAMatrixAssemblyInput{P}, vals::Vector
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            ϕf::P = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
+            ϕf = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
             convection = U_b[iBoundary].values[relativeFaceIndex] .* ϕf
 
             diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -239,6 +239,7 @@ end
 ################
 ################ Parallel
 ################
+using Polyester
 
 
 
@@ -248,7 +249,7 @@ function FusedFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vector
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    Threads.@threads for iFace in input.numInteriorFaces
+    @batch for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
 
@@ -259,7 +260,7 @@ function FusedFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vector
         @inbounds vals[faces.neighborRelNeighborIdx[iFace]] += valueUpper
         @inbounds vals[faces.ownerRelOwnerIdx[iFace]] += valueLower
     end
-    @threads for iBoundary in eachindex(input.boundaries)
+    @batch for iBoundary in eachindex(input.boundaries)
         if U_b[iBoundary].type != "fixedValue"
             continue
         end
@@ -268,7 +269,7 @@ function FusedFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vector
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            ϕf::P = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
+            ϕf = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
             convection = U_b[iBoundary].values[relativeFaceIndex] .* ϕf
 
             diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -291,7 +292,7 @@ function PrecalculatedWeightsFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    Threads.@threads for iFace in input.numInteriorFaces
+    @batch for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -300,15 +301,15 @@ function PrecalculatedWeightsFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P
         ϕf = Uf ⋅ faces.Sf[iFace]                   # flux through the face
         weights_f = weights[iFace]                      # get precalculated weight
 
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1.0 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1.0 - weights_f) - diffusion
 
         Atomix.@atomic vals[faces.ownerIdx[iFace]] += valueUpper
         Atomix.@atomic vals[faces.neighborIdx[iFace]] += valueLower
         @inbounds vals[faces.neighborRelNeighborIdx[iFace]] += valueUpper
         @inbounds vals[faces.ownerRelOwnerIdx[iFace]] += valueLower
     end
-    @threads for iBoundary in eachindex(input.boundaries)
+    @batch for iBoundary in eachindex(input.boundaries)
         if U_b[iBoundary].type != "fixedValue"
             continue
         end
@@ -317,7 +318,7 @@ function PrecalculatedWeightsFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            ϕf::P = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
+            ϕf = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
             convection = U_b[iBoundary].values[relativeFaceIndex] .* ϕf
 
             diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -338,7 +339,7 @@ function HardcodedUpwindFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, va
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    Threads.@threads for iFace in input.numInteriorFaces
+    @batch for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -347,15 +348,15 @@ function HardcodedUpwindFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, va
         ϕf = Uf ⋅ faces.Sf[iFace]                   # flux through the face
         weights_f = upwind_f(ϕf)                      # get precalculated weight
 
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1.0 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1.0 - weights_f) - diffusion
 
         Atomix.@atomic vals[faces.ownerIdx[iFace]] += valueUpper
         Atomix.@atomic vals[faces.neighborIdx[iFace]] += valueLower
         @inbounds vals[faces.neighborRelNeighborIdx[iFace]] += valueUpper
         @inbounds vals[faces.ownerRelOwnerIdx[iFace]] += valueLower
     end
-    @threads for iBoundary in eachindex(input.boundaries)
+    @batch for iBoundary in eachindex(input.boundaries)
         if U_b[iBoundary].type != "fixedValue"
             continue
         end
@@ -364,7 +365,7 @@ function HardcodedUpwindFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, va
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            ϕf::P = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
+            ϕf = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
             convection = U_b[iBoundary].values[relativeFaceIndex] .* ϕf
 
             diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -385,7 +386,7 @@ function HardcodedCDFFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals:
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    Threads.@threads for iFace in input.numInteriorFaces
+    @batch for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -394,15 +395,15 @@ function HardcodedCDFFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals:
         ϕf = Uf ⋅ faces.Sf[iFace]                   # flux through the face
         weights_f = cdf_f(ϕf)                      # get precalculated weight
 
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1.0 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1.0 - weights_f) - diffusion
 
         Atomix.@atomic vals[faces.ownerIdx[iFace]] += valueUpper
         Atomix.@atomic vals[faces.neighborIdx[iFace]] += valueLower
         @inbounds vals[faces.neighborRelNeighborIdx[iFace]] += valueUpper
         @inbounds vals[faces.ownerRelOwnerIdx[iFace]] += valueLower
     end
-    @threads for iBoundary in eachindex(input.boundaries)
+    @batch for iBoundary in eachindex(input.boundaries)
         if U_b[iBoundary].type != "fixedValue"
             continue
         end
@@ -411,7 +412,7 @@ function HardcodedCDFFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals:
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            ϕf::P = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
+            ϕf = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
             convection = U_b[iBoundary].values[relativeFaceIndex] .* ϕf
 
             diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -432,7 +433,7 @@ function DynamicFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vect
     U_b = input.U_boundary
     U = input.U_internal
     nCells = length(input.cells.index)
-    Threads.@threads for iFace in input.numInteriorFaces
+    @batch for iFace in 1:input.numInteriorFaces
         iOwner = faces.iOwner[iFace]
         iNeighbor = faces.iNeighbor[iFace]
         diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]
@@ -441,15 +442,15 @@ function DynamicFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vect
         ϕf = Uf ⋅ faces.Sf[iFace]                   # flux through the face
         weights_f = divScheme(ϕf)                      # get precalculated weight
 
-        valueUpper::P = ϕf * weights_f + diffusion
-        valueLower::P = -ϕf * (1.0 - weights_f) - diffusion
+        valueUpper = ϕf * weights_f + diffusion
+        valueLower = -ϕf * (1.0 - weights_f) - diffusion
 
         Atomix.@atomic vals[faces.ownerIdx[iFace]] += valueUpper
         Atomix.@atomic vals[faces.neighborIdx[iFace]] += valueLower
         @inbounds vals[faces.neighborRelNeighborIdx[iFace]] += valueUpper
         @inbounds vals[faces.ownerRelOwnerIdx[iFace]] += valueLower
     end
-    @threads for iBoundary in eachindex(input.boundaries)
+    @batch for iBoundary in eachindex(input.boundaries)
         if U_b[iBoundary].type != "fixedValue"
             continue
         end
@@ -458,7 +459,7 @@ function DynamicFaceBasedAssembly_t(input::SOAMatrixAssemblyInput{P}, vals::Vect
         endFace = startFace + theBoundary.nFaces
         for iFace in startFace:endFace-1
             @inbounds relativeFaceIndex = iFace - input.boundaries[iBoundary].startFace
-            ϕf::P = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
+            ϕf = faces.Sf[iFace] ⋅ U_b[iBoundary].values[relativeFaceIndex]
             convection = U_b[iBoundary].values[relativeFaceIndex] .* ϕf
 
             diffusion = nu[faces.iOwner[iFace]] * faces.gDiff[iFace]

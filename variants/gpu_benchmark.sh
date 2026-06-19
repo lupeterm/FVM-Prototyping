@@ -31,9 +31,9 @@ do
 	fi
 	ncells=$(sed -nE 's/.* ([0-9]{2,3}).*/\1/p' $dir/case/system/blockMeshDict)
 	ncells=$((ncells * ncells * ncells))
-	if [ $ncells -gt 1000 ]; then
-		continue	
-	fi
+	# if [ $ncells -gt 1000 ]; then
+	# 	continue	
+	# fi
 	if grep -Eq "LDC-$ncells," variations_gpu.csv
 	then
 		echo "[$finished / $total] already calculated for $ncells cells and $nthreads threads"
