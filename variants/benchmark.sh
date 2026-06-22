@@ -37,10 +37,9 @@ do
 	# if [ $ncells -lt 46656000 ]; then
 	# 	continue	
 	# fi
-	# for nthreads in 1 2 4 8 16 32 64 128
-  	# do
-	nthreads=128
-	if grep -Eq "LDC-$ncells,.+,$nthreads$" cpu_maxthreads.csv
+	for nthreads in 2 4 8 16 32 64 128
+  	do
+	if grep -Eq "LDC-$ncells,.+,$nthreads$" variations_cpu_polyester_pinnedthreads.csv
 	then
 		echo "[$finished / $total] already calculated for $ncells cells and $nthreads threads"
 		# finished=$(($finished+1))
@@ -49,9 +48,9 @@ do
 		echo "[$finished / $total] not yet calculated for $ncells cells and $nthreads"
 	fi
 	
-	~/.juliaup/bin/julialauncher -t $nthreads bench_variants.jl $dir/case
+	# ~/.juliaup/bin/julialauncher  bench_variants.jl $dir/case
 	finished=$(($finished+1))
-  	# done
+  	done
 done
 echo "Done with $finished/$total benchmark runs."
 
