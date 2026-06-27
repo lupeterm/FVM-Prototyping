@@ -1,0 +1,50 @@
+date,commit,source_file,benchmark_family,case,case_size_hint,strategy,time_ms,speedup_vs_first_seen,notes
+2026-01-21,af92cce,results/serialOnly.csv,named-cases,LDC-S,,faceBased,42.410612,1.000000,"baseline named-case CPU median, excl. GC"
+2026-03-08,ce5fd80,results/results_new.csv,named-cases,LDC-S,,faceBased,33.386826,1.270280,best variant: LaplaceOnly
+2026-03-20,4436ec7,results/results_f64.csv,named-cases,LDC-S,,faceBased,22.581115,1.878145,best variant: DivOnlyHardCodedUpwind
+2026-01-21,af92cce,results/serialOnly.csv,named-cases,LDC-S,,cellBased,74.625969,1.000000,"baseline named-case CPU median, excl. GC"
+2026-03-08,ce5fd80,results/results_new.csv,named-cases,LDC-S,,cellBased,70.092990,1.064671,best variant: LaplaceOnly
+2026-03-20,4436ec7,results/results_f64.csv,named-cases,LDC-S,,cellBased,53.621159,1.391726,best variant: LaplaceOnly
+2026-01-21,af92cce,results/serialOnly.csv,named-cases,LDC-S,,batchedFace,49.009085,1.000000,"baseline named-case CPU median, excl. GC"
+2026-01-21,af92cce,results/serialOnly.csv,named-cases,LDC-M,,faceBased,469.113469,1.000000,"baseline named-case CPU median, excl. GC"
+2026-03-08,ce5fd80,results/results_new.csv,named-cases,LDC-M,,faceBased,369.414950,1.269882,best variant: LaplaceOnly
+2026-03-20,4436ec7,results/results_f64.csv,named-cases,LDC-M,,faceBased,178.242843,2.631878,best variant: LaplaceOnly
+2026-03-08,ce5fd80,results/results_new.csv,named-cases,LDC-M,,globalFaceBased,346.404400,1.000000,first recorded globalFaceBased point; best variant: LaplaceOnly
+2026-03-20,4436ec7,results/results_f64.csv,named-cases,LDC-M,,globalFaceBased,187.629516,1.846215,best variant: LaplaceOnly
+2026-01-21,af92cce,results/serialOnly.csv,named-cases,LDC-M,,cellBased,693.322062,1.000000,"baseline named-case CPU median, excl. GC"
+2026-03-08,ce5fd80,results/results_new.csv,named-cases,LDC-M,,cellBased,524.597400,1.321627,best variant: LaplaceOnly
+2026-03-20,4436ec7,results/results_f64.csv,named-cases,LDC-M,,cellBased,324.055674,2.139515,best variant: LaplaceOnly
+2026-01-21,af92cce,results/serialOnly.csv,named-cases,LDC-M,,batchedFace,478.117943,1.000000,"baseline named-case CPU median, excl. GC"
+2026-01-21,af92cce,results/serialOnly.csv,named-cases,Wind,,faceBased,388.274312,1.000000,"baseline named-case CPU median, excl. GC"
+2026-03-08,ce5fd80,results/results_new.csv,named-cases,Wind,,faceBased,284.662960,1.363979,best variant: LaplaceOnly
+2026-03-20,4436ec7,results/results_f64.csv,named-cases,Wind,,faceBased,150.200052,2.585048,best variant: LaplaceOnly
+2026-03-08,ce5fd80,results/results_new.csv,named-cases,Wind,,globalFaceBased,288.202640,1.000000,first recorded globalFaceBased point; best variant: LaplaceOnly
+2026-03-20,4436ec7,results/results_f64.csv,named-cases,Wind,,globalFaceBased,157.007628,1.835596,best variant: LaplaceOnly
+2026-01-21,af92cce,results/serialOnly.csv,named-cases,Wind,,cellBased,514.400005,1.000000,"baseline named-case CPU median, excl. GC"
+2026-03-08,ce5fd80,results/results_new.csv,named-cases,Wind,,cellBased,453.619450,1.133990,best variant: LaplaceOnly
+2026-03-20,4436ec7,results/results_f64.csv,named-cases,Wind,,cellBased,287.895434,1.786760,best variant: LaplaceOnly
+2026-01-21,af92cce,results/serialOnly.csv,named-cases,Wind,,batchedFace,408.318996,1.000000,"baseline named-case CPU median, excl. GC"
+2026-03-31,0283eb4,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,faceBased,12.857475,1.000000,best threaded/fused scaling point at this commit
+2026-04-04,efbb9df,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,faceBased,6.482810,1.983318,SOA fused facebased threaded
+2026-05-14,HEAD,results/cpuScaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,faceBased,7.818830,1.644424,current checked-in scaling data
+2026-03-31,0283eb4,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,globalFaceBased,12.722219,1.000000,best threaded/fused scaling point at this commit
+2026-04-04,efbb9df,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,globalFaceBased,6.467879,1.966985,fused globalFaceBased
+2026-05-14,HEAD,results/cpuScaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,globalFaceBased,6.953106,1.829717,current checked-in scaling data
+2026-03-31,0283eb4,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,cellBased,18.484950,1.000000,best threaded/fused scaling point at this commit
+2026-04-04,efbb9df,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,cellBased,11.249441,1.643188,fused cellBased
+2026-05-14,HEAD,results/cpuScaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,cellBased,12.556707,1.472118,current checked-in scaling data
+2026-03-31,0283eb4,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,batchedFace,31.724245,1.000000,best threaded/fused scaling point at this commit
+2026-04-04,efbb9df,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,batchedFace,21.980115,1.443316,fused batchedFace
+2026-05-14,HEAD,results/cpuScaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/100/,100^2 cells,batchedFace,21.987537,1.442828,current checked-in scaling data
+2026-03-31,0283eb4,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,faceBased,99.521216,1.000000,best threaded/fused scaling point at this commit
+2026-04-04,efbb9df,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,faceBased,55.193422,1.803135,SOA fused facebased threaded
+2026-05-14,HEAD,results/cpuScaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,faceBased,58.349695,1.705600,current checked-in scaling data
+2026-03-31,0283eb4,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,globalFaceBased,97.729037,1.000000,best threaded/fused scaling point at this commit
+2026-04-04,efbb9df,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,globalFaceBased,52.488251,1.861922,fused globalFaceBased
+2026-05-14,HEAD,results/cpuScaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,globalFaceBased,54.592526,1.790154,current checked-in scaling data
+2026-03-31,0283eb4,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,cellBased,141.722800,1.000000,best threaded/fused scaling point at this commit
+2026-04-04,efbb9df,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,cellBased,86.351230,1.641237,fused cellBased
+2026-05-14,HEAD,results/cpuScaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,cellBased,89.792734,1.578333,current checked-in scaling data
+2026-03-31,0283eb4,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,batchedFace,250.434087,1.000000,best threaded/fused scaling point at this commit
+2026-04-04,efbb9df,results/scaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,batchedFace,171.729723,1.458304,fused batchedFace
+2026-05-14,HEAD,results/cpuScaling.csv,ldc-scaling,cases/Lid-Driven-Cavities/200/,200^2 cells,batchedFace,174.068737,1.438708,current checked-in scaling data

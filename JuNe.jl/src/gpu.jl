@@ -421,7 +421,7 @@ end
 		0.0,
 		0.0
 	)
-	# diagValue += dv
+	diagValue += dv
 
 	diagIdx = (rowOffs[celli] + diagOffs[celli]) * 3 +1
 	vals[diagIdx]   += diagValue

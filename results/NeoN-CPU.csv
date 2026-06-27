@@ -1,4 +1,4 @@
-case,cells,time_ns,strategy,executor,julia_or_neon,threads,node,nnz
+case,cells,time_us,strategy,executor,julia_or_neon,threads,node,nnz
 LDC_N10,1000,72,Fused Cell-Based,CPU,NeoN,1,gpu-nvidia-h200,6400
 LDC_N10,1000,54,Fused Cell-Based,CPU,NeoN,1,gpu-nvidia-h200,6400
 LDC_N10,1000,47,Fused Cell-Based,CPU,NeoN,1,gpu-nvidia-h200,6400

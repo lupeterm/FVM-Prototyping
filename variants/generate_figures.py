@@ -9,10 +9,10 @@ df = pd.read_csv("variations_cpu_polyester.csv", skip_blank_lines=True)
 df["cells"] = df["case_long"].apply(lambda x: int(x.split("-")[1]))
 df["ms_normed"] = df["time_mean_ms"] / df["cells"]
 S = {
-    "faceBased": "Face-Based",
-    "globalFaceBased": "Face-Based Global",
-    "cellBased" : "Cell-Based",
-    "batchedFace" : "Face-Based Batched"
+    "faceBased": "Face-based",
+    "globalFaceBased": "Global Face-based",
+    "cellBased" : "Cell-based",
+    "batchedFace" : "Batched Face-based"
 }
 df["s_display"] = df["strategy"].apply(lambda x : S[x])
 M= {
@@ -56,7 +56,7 @@ def variants(_df, name, plotname):
             plot.set(
                 ylabel="Mean Assembly Time Per Cell [ms]",
             )
-            plot.set(xlabel=f"{strat.capitalize()}")
+            plot.set(xlabel=S[strat])
             ax.yaxis.set_tick_params(labelleft=True)
             ax.grid(True)
             ax.set_yscale("logit")

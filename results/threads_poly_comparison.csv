@@ -1,4 +1,4 @@
-case,cells,time_ns,strategy,executor,julia_or_neon,threads
+case,cells,time_us,strategy,executor,julia_or_neon,threads
 LDC_N260,17576000,6624459,Face-Based,Polyester,NeoN + Julia,1
 LDC_N260,17576000,5978168,Face-Based,Polyester,NeoN + Julia,1
 LDC_N260,17576000,6605594,Face-Based,Polyester,NeoN + Julia,1

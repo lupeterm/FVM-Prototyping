@@ -9,23 +9,23 @@ from matplotlib.offsetbox import AnchoredText
 file = sys.argv[1]
 prefix = file.rsplit("/", 1)[1].replace(".csv", "")
 df = pd.read_csv(file, skip_blank_lines=True)
-df["time_ms"] = df["time_ns"] / 1000000
+df["time_ms"] = df["time_us"] / 1000
 df["ms_normed"] = df["time_ms"] / df["cells"]
-df["ns_normed"] = df["time_ns"] / df["cells"]
+df["us_normed"] = df["time_us"] / df["cells"]
 df["mean_normed"] = df.groupby(["cells", "julia_or_neon", "strategy", "threads"])[
         "ms_normed"
 ].transform("median")
 df["ms_mean"] = df.groupby(["cells", "julia_or_neon", "strategy", "threads"])[
         "time_ms"
 ].transform("min")
-df["ns_mean_normed"] = df.groupby(["cells", "julia_or_neon", "strategy", "threads"])[
-        "ns_normed"
+df["us_mean_normed"] = df.groupby(["cells", "julia_or_neon", "strategy", "threads"])[
+        "us_normed"
 ].transform("median")
 prefix = "gpustrats"
 cells = sorted(df[~df["cells"].isna()]["cells"].unique())
 df["merged"] = df["strategy"] + df["julia_or_neon"]
 df["merged"] = df["merged"].apply(lambda s: s.replace("JuNe", " (JuNe)").replace("NeoN", " (NeoN)"))
-df["bandwidth"] = df["nnz"] * 24  / (df["ms_mean"] * 1000000000) 
+df["bandwidth"] = df["nnz"] * 24  / (df["ms_mean"] * 1000000) 
 print(df[(df["node"] == "gpu-nvidia-h200") & (df["julia_or_neon"] == "NeoN + Julia")]["cells"].unique())
 
 df["logthreads"] = df["threads"].apply(lambda x: log(x))
